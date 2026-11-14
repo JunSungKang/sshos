@@ -7,6 +7,7 @@ import { oneShotAuthentication } from './authentication';
 import { algorithms } from './algorithms';
 import { PrivateKeyParser } from './key-parser';
 import { identifyOS } from './os-release';
+import type { ControlAccess } from '../files/browser';
 
 interface RecordEntry {
   snapshot: SessionSnapshot; client: Client; sftp: SFTPWrapper | null; input: ConnectInput; agent: SingleKeyAgent | null;
@@ -16,6 +17,15 @@ export class SessionManager {
   private readonly parser = new PrivateKeyParser();
   constructor(private readonly emit: (snapshot: SessionSnapshot) => void) {}
   snapshots(): SessionSnapshot[] { return [...this.entries.values()].map(entry => ({ ...entry.snapshot })); }
+  control(serverId: string, generation: number): ControlAccess {
+    const entry = this.entries.get(serverId);
+    if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || !entry.sftp) throw new Error('SESSION_UNAVAILABLE');
+    return { sftp: entry.sftp, check: () => {
+      if (this.entries.get(serverId) !== entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || !entry.sftp) throw new Error('CONNECTION_LOST');
+    }, quarantine: () => {
+      this.changed(entry, { status: 'failed', errorCode: 'IO_TIMEOUT' }); entry.client.destroy(); this.release(entry);
+    } };
+  }
   private changed(entry: RecordEntry, values: Partial<SessionSnapshot>): void {
     if (this.entries.get(entry.snapshot.serverId) !== entry) return;
     Object.assign(entry.snapshot, values); this.emit({ ...entry.snapshot });

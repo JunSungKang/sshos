@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 // Keep this entry self-contained: sandboxed preload cannot require local modules.
 contextBridge.exposeInMainWorld('sshOS', Object.freeze({
+  file: Object.freeze({
+    open: (id: string) => ipcRenderer.invoke('file:open', id),
+    list: (token: string) => ipcRenderer.invoke('file:list', token),
+    enter: (token: string) => ipcRenderer.invoke('file:enter', token),
+    page: (token: string, offset: number) => ipcRenderer.invoke('file:page', { token, offset })
+  }),
   lifecycle: Object.freeze({ getSnapshot: () => ipcRenderer.invoke('lifecycle:getSnapshot') }),
   settings: Object.freeze({ retryStorage: () => ipcRenderer.invoke('settings:retryStorage') }),
   desktop: Object.freeze({
