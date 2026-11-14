@@ -1,0 +1,46 @@
+{
+  "name": "sshos",
+  "productName": "sshOS",
+  "version": "0.1.0",
+  "private": true,
+  "description": "sshOS(시오스): client-only SSH desktop workspace",
+  "license": "AGPL-3.0-only",
+  "author": "JunSungKang",
+  "main": "dist/main/index.js",
+  "engines": {
+    "node": "24.22.3"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "build": "tsc -p tsconfig.json && vite build",
+    "start": "node scripts/launch.mjs",
+    "test:unit": "vitest run",
+    "test:e2e": "node scripts/electron-smoke.mjs",
+    "test:integration": "node scripts/require-fixture.mjs integration",
+    "test:security": "vitest run tests/unit/security.test.ts",
+    "test:performance": "node scripts/require-fixture.mjs performance",
+    "package:win": "node scripts/package.mjs win",
+    "package:mac": "node scripts/package.mjs mac"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "ssh2": "1.17.0",
+    "zod": "4.6.7",
+    "@xterm/xterm": "6.0.0",
+    "@xterm/addon-fit": "0.11.0"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0",
+    "@playwright/test": "1.65.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/ssh2": "1.15.6",
+    "@electron/fuses": "2.1.3"
+  }
+}

@@ -1,0 +1,46 @@
+import { _electron as electron } from '@playwright/test';
+import { strict as assert } from 'node:assert';
+import { writeFileSync } from 'node:fs';
+import { root, localPath, runtimeEnvironment } from './environment.mjs';
+const env = runtimeEnvironment('smoke');
+Object.assign(process.env, env);
+const { default: executablePath } = await import('electron');
+const application = await electron.launch({ executablePath, args: [`--user-data-dir=${env.SSHOS_RUNTIME_ROOT}`, '--disable-background-networking', '--disable-component-update', root], cwd: root, env, timeout: 15000 });
+application.process().stderr?.on('data', data => process.stderr.write(data));
+try {
+  const page = await application.firstWindow();
+  page.setDefaultTimeout(15000);
+  await page.getByTestId('engine-state').filter({ hasText: '연결 엔진 준비됨' }).waitFor();
+  const snapshot = await page.evaluate(() => window.sshOS.lifecycle.getSnapshot());
+  assert.equal(snapshot.engine, 'ready');
+  assert.equal(snapshot.connectedServers, 0);
+  const isolation = await page.evaluate(() => ({ require: typeof window.require, process: typeof window.process, keys: Object.keys(window.sshOS) }));
+  assert.equal(isolation.require, 'undefined');
+  assert.equal(isolation.process, 'undefined');
+  assert.deepEqual(isolation.keys, ['lifecycle']);
+  const settings = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
+  assert.equal(settings.nodeIntegration, false);
+  assert.equal(settings.contextIsolation, true);
+  assert.equal(settings.sandbox, true);
+  assert.equal(settings.webSecurity, true);
+  const denied = await page.evaluate(async () => {
+    try { await fetch('https://example.com'); return false; } catch { return true; }
+  });
+  assert.equal(denied, true);
+  // DevTools evaluation can bypass the unsafe-eval CSP restriction. Inject an
+  // actual page script to test inline blocking, then test eval in bundled code.
+  const inlineBlocked = await page.evaluate(async () => {
+    const script = document.createElement('script'); script.textContent = 'window.inlineSentinel = true'; document.body.append(script);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    return window.inlineSentinel !== true;
+  });
+  assert.equal(inlineBlocked, true);
+  await page.screenshot({ path: `${localPath('evidence')}/d01-desktop.png` });
+  await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].loadURL('app://ui/tests/xterm.html'));
+  await page.getByTestId('xterm-ready').waitFor();
+  assert.equal(await page.locator('.xterm-screen').count(), 1);
+  assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-eval-blocked'), 'true');
+  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP'], limitation: 'Development executable on current machine only; no signing or Windows/Ubuntu result.' };
+  writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
+  console.log(JSON.stringify(report));
+} finally { await application.close(); }
