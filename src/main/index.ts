@@ -11,6 +11,7 @@ import { ConnectionController } from './connections';
 import { EngineGateway } from './engine-gateway';
 import { SecretVault } from './persistence/secrets';
 import { DesktopController } from './desktop';
+import { FileController } from './files';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
   const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage));
   const desktop = new DesktopController(connections);
+  const files = new FileController(desktop, connections, gateway);
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
@@ -117,11 +119,23 @@ async function main(): Promise<void> {
     });
   }
   for (const action of ['desktop:getWindowSnapshot', 'desktop:registerWindow', 'desktop:updateWindowLayout', 'desktop:closeWindow']) {
-    ipcMain.handle(action, (event, payload: unknown) => {
+    ipcMain.handle(action, async (event, payload: unknown) => {
       validateSender(event);
       try {
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
-        return desktop.handle(action, payload);
+        const result = desktop.handle(action, payload);
+        if (action === 'desktop:closeWindow' && typeof payload === 'string') await files.closeWindow(payload).catch(() => {});
+        return result;
+      } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
+    });
+  }
+  for (const action of ['file:open', 'file:list', 'file:enter', 'file:page']) {
+    ipcMain.handle(action, async (event, payload: unknown) => {
+      validateSender(event);
+      try {
+        if (engine !== 'ready') throw new Error('ENGINE_STOPPED');
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        return await files.handle(action, payload);
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }

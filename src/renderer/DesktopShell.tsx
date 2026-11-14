@@ -3,6 +3,7 @@ import { WindowManager, windowModelSchema, resizeBounds, type ResizeEdge, type B
 import type { RuntimeSnapshot } from '../shared/contracts';
 import type { SessionView } from '../shared/session-contracts';
 import { ProfileManager } from './ProfileManager';
+import { FileExplorer } from './FileExplorer';
 
 const labels: Record<WindowKind, string> = { connections: '연결', files: '파일', text: '텍스트', image: '이미지', execution: '실행 출력', terminal: '터미널', tasks: '작업', settings: '설정' };
 const icons: Record<WindowKind, string> = { connections: '▤', files: '▱', text: '≡', image: '▧', execution: '▷', terminal: '›_', tasks: '⇅', settings: '⚙' };
@@ -75,7 +76,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
         maximize={() => { manager.current!.toggleMaximize(row.windowId); update(); }}
         move={bounds => { manager.current!.moveResize(row.windowId, bounds); update(); }}
         close={() => { void window.sshOS.desktop.closeWindow(row.windowId).then(() => { manager.current!.close(row.windowId); mirrored.current.delete(row.windowId); update(); }).catch(() => setNotice('창을 닫지 못했습니다. 다시 시도하세요.')); }}>
-        {row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <section className="app-content"><h2>작업</h2><p>진행 중인 전송 없음</p></section> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
+        {row.kind === 'files' ? <FileExplorer windowId={row.windowId} generation={row.sessionGeneration!} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <section className="app-content"><h2>작업</h2><p>진행 중인 전송 없음</p></section> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
       </WindowFrame>)}
       {notice && <p className="desktop-notice" role="alert">{notice}</p>}
       {snapshot?.storage.status === 'unavailable' && <div className="storage-error" role="alert"><p>앱 데이터를 읽지 못했습니다. 기존 데이터를 초기화하지 않고 변경 기능을 잠갔습니다.</p><p>{snapshot.storage.path}</p><button onClick={() => { void window.sshOS.settings.retryStorage().catch(() => setNotice('저장소를 다시 확인하지 못했습니다.')); }}>저장소 다시 확인</button></div>}

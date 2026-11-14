@@ -1,11 +1,15 @@
 import { z } from 'zod';
 import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
+import { remotePathSchema } from './files';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action: z.literal('session:connect'), payload: connectInputSchema }).strict(),
   z.object({ ...identity, action: z.literal('session:disconnect') }).strict(),
   z.object({ ...identity, action: z.literal('session:snapshot') }).strict(),
-  z.object({ ...identity, action: z.literal('session:confirmOS') }).strict()
+  z.object({ ...identity, action: z.literal('session:confirmOS') }).strict(),
+  z.object({ ...identity, action: z.literal('file:list'), browserId: z.uuid(), path: remotePathSchema }).strict(),
+  z.object({ ...identity, action: z.literal('file:page'), browserId: z.uuid(), snapshotId: z.uuid(), offset: z.int().min(0).max(10000) }).strict(),
+  z.object({ ...identity, action: z.literal('file:close'), browserId: z.uuid() }).strict()
 ]);
 export type EngineRequest = z.infer<typeof engineRequestSchema>;
 export type EngineCommand = EngineRequest extends infer T ? T extends EngineRequest ? Omit<T, 'requestId' | 'backendEpoch'> : never : never;

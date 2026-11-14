@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D04",
+  "stage": "D05",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -35,14 +35,16 @@
     "Profile manager UI with persistence and visible locked storage recovery state",
     "SSH session lifecycle, ephemeral host challenge approval and OS/SFTP capability inspection",
     "Main-owned session tokens and desktop window registry bound to server/generation",
-    "Desktop launchers, taskbar and pointer/keyboard internal window movement, eight-edge resize, minimize/maximize/restore"
+    "Desktop launchers, taskbar and pointer/keyboard internal window movement, eight-edge resize, minimize/maximize/restore",
+    "Bounded paged SFTP enumeration, Unicode-safe names, metadata-only symlinks/special files and explicit refresh",
+    "Capability-bound tree/list explorer, virtual rows and readonly directory cache on UI reload/disconnect"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 53,
-      "evidence": "evidence/d03-desktop/test-unit.txt"
+      "tests": 57,
+      "evidence": "evidence/d05-browsing/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -105,6 +107,21 @@
         "disconnect and profile cleanup"
       ],
       "limitation": "Loopback ssh2 fixture, not a manual Ubuntu/OpenSSH target acceptance result."
+    },
+    "file_browsing_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "real SSH/SFTP directory enumeration",
+        "folder navigation with spaces",
+        "untrusted names as text",
+        "symlink is metadata only",
+        "explicit refresh sees external changes",
+        "renderer reload restores cached directory without remote enumeration",
+        "disconnect preserves readonly last listing"
+      ],
+      "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
     }
   },
   "remaining_D01": [
@@ -121,15 +138,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D05 SFTP browsing and capability-bound file operations, then D06 viewers and remaining v6 modules. D04 close-resource rules and animation are tracked for final integration.",
+  "next_action": "Implement durable mutation previews/receipts and path locks, then D06 viewers and remaining v6 modules.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d03-desktop",
+  "latest_evidence_directory": "evidence/d05-browsing",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D03 connection path and D04 window foundation implemented; D05 next",
-    "product_features_available": "Profile storage, SSH connection/trust and internal desktop windows; file/viewer/transfer/exec/PTY modules still in progress",
+    "current_stage": "D05 browsing implemented; file mutations next",
+    "product_features_available": "Profile/SSH trust, desktop windows, token-bound tree/list browsing with manual refresh. File mutation/viewer/transfer/exec/PTY modules remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {

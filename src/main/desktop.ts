@@ -6,6 +6,11 @@ import type { ConnectionController } from './connections';
 export class DesktopController {
   private readonly windows = new Map<string, WindowModel>();
   constructor(private readonly connections: ConnectionController) {}
+  requireWindow(id: string, kind: string): WindowModel {
+    const window = this.windows.get(id);
+    if (!window || window.kind !== kind) throw new Error('TOKEN_EXPIRED');
+    return structuredClone(window);
+  }
   handle(action: string, payload: unknown): unknown {
     if (action === 'desktop:getWindowSnapshot') { if (payload !== undefined) throw new Error('INPUT_INVALID'); return [...this.windows.values()].map(value => structuredClone(value)); }
     if (action === 'desktop:registerWindow') {
@@ -19,7 +24,7 @@ export class DesktopController {
       if (input.kind === 'files' && [...this.windows.values()].filter(row => row.kind === 'files').length >= 6) throw new Error('WINDOW_LIMIT');
       if (['text','image'].includes(input.kind) && [...this.windows.values()].filter(row => ['text','image'].includes(row.kind)).length >= 4) throw new Error('WINDOW_LIMIT');
       const bounds = { x: 0, y: 44, width: 720, height: 440 };
-      const model: WindowModel = { windowId: randomUUID(), kind: input.kind, serverId: capability?.serverId ?? null, sessionGeneration: capability?.generation ?? null, resourceId: null, bounds, restoreBounds: bounds, mode: 'normal', restoreMode: 'normal', focused: false, lastFocusedSequence: 0 };
+      const model: WindowModel = { windowId: randomUUID(), kind: input.kind, serverId: capability?.serverId ?? null, sessionGeneration: capability?.generation ?? null, resourceId: global ? null : randomUUID(), bounds, restoreBounds: bounds, mode: 'normal', restoreMode: 'normal', focused: false, lastFocusedSequence: 0 };
       this.windows.set(model.windowId, model); return structuredClone(model);
     }
     if (action === 'desktop:updateWindowLayout') {

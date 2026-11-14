@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ProfileDraft, ProfileView } from './models';
 import type { SessionCredentials, SessionView, HostChallenge } from './session-contracts';
 import type { WindowKind, WindowModel } from './windows';
+import type { DirectoryPage } from './files';
 
 export const runtimeSnapshotSchema = z.object({
   backendEpoch: z.uuid(),
@@ -18,6 +19,7 @@ export const workerEventSchema = z.object({
 }).strict();
 
 export interface DesktopBridge {
+  file: { open(windowId: string): Promise<DirectoryPage>; list(directoryToken: string): Promise<DirectoryPage>; enter(entryToken: string): Promise<DirectoryPage>; page(pageToken: string, offset: number): Promise<DirectoryPage> };
   lifecycle: { getSnapshot(): Promise<RuntimeSnapshot> };
   profile: {
     list(): Promise<ProfileView[]>;

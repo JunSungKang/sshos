@@ -15,3 +15,9 @@
 실제 Electron→main→utilityProcess→loopback SSH 경로에서 지문 확인 전 인증 요청0회, 승인 뒤 인증1회와 연결 유지, SFTP 거절 시 SSH 유지, 세션별 OS 확인 및 연결 해제를 검사했다. main은 서버/세대에 묶인 session capability와 내부 창 ID를 발급한다. 데스크톱은 런처·작업표시줄·드래그·8방향 크기조절·최소화/복원/최대화·키보드 이동을 구현했다. 타입/53개 단위 검사/build/실제 Electron 창 조작/SSH GUI smoke가 통과했으며 evidence/d03-desktop에 저장했다. 파일·뷰어·실행 창의 실제 자원 연동, 닫기 확인과 애니메이션은 후속 통합 대상으로 남긴다. 제품 D03/D04 전체 수용 또는 지원 OS 시험 통과를 뜻하지 않는다.
 
 사용자가 서명·공증 인증서가 현재 없다고 확인했다. 코드 개발을 계속하며 서명/공증 및 지원 OS 실기 검증은 미검사 인계 항목으로 남긴다.
+
+## SFTP 탐색 구현
+
+SFTP opendir/readdir/close와 요청15초/목록60초 제한을 적용했다. 폴더당10,000개/10MiB 상한,256항목 및192KiB 이하 worker page, 일부 목록 표시, Unicode code point 정렬, main 소유 entry/directory token, 세대/창 바인딩을 구현했다. 탐색기에는 트리·가상 목록·숨김 토글·현재 목록 필터가 있고 자동 외부 갱신은 없다. renderer reload는 main의 메모리 목록을 복원하며 SFTP를 다시 조회하지 않는다. 연결이 끊기면 마지막 목록을 읽기 전용으로 남긴다.
+
+57개 단위 검사와 실제 Electron/SSH/SFTP 시험에서 폴더 이동, 위험 이름 plain text, 링크 열기 차단, 명시적 새로고침, UI 복구 시 원격 재조회 없음, 해제 후 캐시 보존을 확인했다. evidence/d05-browsing의 검사는 로컬 fixture 근거이며 D05 전체/Ubuntu·지원 OS 수용 통과를 뜻하지 않는다. 파일 mutation은 다음 구현 단위다.
