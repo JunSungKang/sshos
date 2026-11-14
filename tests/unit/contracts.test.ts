@@ -10,6 +10,6 @@ it('rejects unrecognized worker messages, epochs and hidden payloads', () => {
 it('does not accept secrets or fabricated connected servers in foundation snapshots', () => {
   const valid = { backendEpoch: epoch, engine: 'ready', connectedServers: 0, storage: { status: 'ready', path: '/test/data' }, appVersion: '0.1.0', versions: { electron: '45', node: '24', chrome: '145' } };
   expect(runtimeSnapshotSchema.safeParse(valid).success).toBe(true);
-  expect(runtimeSnapshotSchema.safeParse({ ...valid, connectedServers: 1 }).success).toBe(false);
+  expect(runtimeSnapshotSchema.safeParse({ ...valid, connectedServers: 4 }).success).toBe(false);
   expect(runtimeSnapshotSchema.safeParse({ ...valid, password: 'sentinel' }).success).toBe(false);
 });
