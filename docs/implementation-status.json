@@ -23,13 +23,18 @@
     "utilityProcess loads ssh2 and reports its epoch without connecting",
     "React foundation screen with honest development status",
     "Workspace-local toolchain, install/runtime/cache scripts",
-    "Local protocol and IPC security tests, actual Electron smoke and xterm CSP fixture"
+    "Local protocol and IPC security tests, actual Electron smoke and xterm CSP fixture",
+    "Per-socket host-key verifier rejects unknown/changed hosts before authentication",
+    "Single RSA/Ed25519 in-process signer validates key identity and disallows SHA-1 signatures",
+    "One-shot authentication and explicit SSH algorithm allowlist",
+    "Real loopback SSH handshake tests with ephemeral in-memory keys"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 15
+      "tests": 32,
+      "evidence": "evidence/d01-auth/auth-test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -64,6 +69,12 @@
       "high": 0,
       "critical": 0,
       "total": 6
+    },
+    "loopback_ssh": {
+      "status": "pass",
+      "cases": 5,
+      "evidence": "tests/unit/ssh-handshake.test.ts",
+      "limitation": "Real TCP SSH exchange with ssh2 fixture; not Ubuntu/OpenSSH target verification."
     }
   },
   "remaining_D01": [
@@ -82,5 +93,13 @@
   ],
   "next_action": "Complete remaining D01 technical prerequisites, then D02 JSON persistence/profile/hosttrust. Do not claim cross-platform or production readiness.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
-  "evidence_directory": "evidence/d01"
+  "evidence_directory": "evidence/d01",
+  "latest_evidence_directory": "evidence/d01-auth",
+  "progress_summary": {
+    "completed_stages": 0,
+    "total_stages": 13,
+    "current_stage": "D01 partially implemented",
+    "product_features_available": "No end-user SSH/file/terminal workflow yet",
+    "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
+  }
 }
