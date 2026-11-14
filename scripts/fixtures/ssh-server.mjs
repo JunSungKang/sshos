@@ -17,7 +17,7 @@ export async function startSSHFixture(directory, options = {}) {
     return result;
   };
   const status = ssh2.utils.sftp.STATUS_CODE; const host = ssh2.utils.generateKeyPairSync('ed25519');
-  const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], readDirs: 0, openedPaths: [] };
+  const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], readDirs: 0, openedPaths: [], mutations:[] };
   const server = new ssh2.Server({ hostKeys: [host.private] }, connection => {
     connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});
     connection.on('authentication', ctx => { metrics.authenticationRequests++; if (ctx.method === 'password' && ctx.username === 'fixture' && ctx.password === 'test-only') ctx.accept(); else ctx.reject(['password']); });
@@ -53,6 +53,9 @@ export async function startSSHFixture(directory, options = {}) {
           const value = getHandle(handle); if (value.kind !== 'file') throw new Error('Wrong handle'); const bytes = Buffer.alloc(Math.min(length,1024*1024));
           const {bytesRead} = await value.file.read(bytes,0,bytes.length,offset); if (bytesRead) stream.data(id,bytes.subarray(0,bytesRead)); else stream.status(id,status.EOF);
         }));
+        stream.on('MKDIR',(id,path,attributes) => run(id,async () => {metrics.mutations.push({operation:'mkdir',path});await fs.mkdir(resolveRemote(path),{mode:attributes.mode ?? 0o700});stream.status(id,status.OK);}));
+        stream.on('REMOVE',(id,path) => run(id,async () => {metrics.mutations.push({operation:'unlink',path});await fs.unlink(resolveRemote(path));stream.status(id,status.OK);}));
+        stream.on('RMDIR',(id,path) => run(id,async () => {metrics.mutations.push({operation:'rmdir',path});await fs.rmdir(resolveRemote(path));stream.status(id,status.OK);}));
         stream.on('CLOSE',(id,handle) => run(id,async () => { const value = getHandle(handle); handles.delete(handle.toString('hex')); await (value.kind === 'file' ? value.file.close() : value.dir.close()); stream.status(id,status.OK); }));
         stream.on('close',() => { for (const value of handles.values()) void (value.kind === 'file' ? value.file.close() : value.dir.close()).catch(() => {}); handles.clear(); });
       });

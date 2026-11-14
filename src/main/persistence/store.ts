@@ -39,6 +39,7 @@ export class AtomicJSONStore<T> {
     this.path = resolve(path); this.backup = `${this.path}.bak`;
   }
   get faulted(): boolean { return this.fault; }
+  async settled():Promise<void> { await this.tail; }
   snapshot(): T { if (this.current === undefined) throw new Error('STORAGE_UNAVAILABLE'); return structuredClone(this.current); }
   private async read(path: string): Promise<{ payload: T; revision: number; raw: Buffer }> {
     const parent = await realpath(dirname(this.path));
@@ -52,7 +53,9 @@ export class AtomicJSONStore<T> {
       while (size < buffer.length) { const r = await fd.read(buffer, size, buffer.length - size, size); if (!r.bytesRead) break; size += r.bytesRead; }
       if (size > this.limit) throw new Error('STORAGE_INVALID');
       const raw = Buffer.from(buffer.subarray(0, size));
-      const envelope = envelopeSchema.parse(JSON.parse(raw.toString('utf8')));
+      const decoded: unknown = JSON.parse(raw.toString('utf8'));
+      if (typeof decoded === 'object' && decoded !== null && 'schemaVersion' in decoded && typeof decoded.schemaVersion === 'number' && decoded.schemaVersion > 1) throw new Error('STORAGE_FUTURE_SCHEMA');
+      const envelope = envelopeSchema.parse(decoded);
       const payload = this.schema.parse(envelope.payload);
       if (hash(envelope.payload) !== envelope.payloadSha256) throw new Error('STORAGE_INVALID');
       return { payload, revision: envelope.revision, raw };
@@ -62,7 +65,8 @@ export class AtomicJSONStore<T> {
     try {
       const row = await this.read(this.path); this.current = row.payload; this.revision = row.revision;
       return { value: this.snapshot(), recovered: false };
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === 'STORAGE_FUTURE_SCHEMA') { this.fault = true; throw error; }
       try {
         const row = await this.read(this.backup); this.current = row.payload; this.revision = row.revision;
         return { value: this.snapshot(), recovered: true };

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { connectOutcomeSchema, hostChallengeSchema, sessionCredentialsSchema, type ConnectInput, type HostChallenge, type SessionCredentials, type SessionSnapshot, type SessionView } from '../shared/session-contracts';
 import type { Profile } from '../shared/models';
@@ -9,6 +9,7 @@ import { EngineGateway } from './engine-gateway';
 
 interface PendingTrust { challenge: HostChallenge; profile: Profile; input: ConnectInput; publicKey: string; saveSecret: boolean; deadline: number; timer: ReturnType<typeof setTimeout> }
 export class ConnectionController {
+  private readonly identities=new Map<string,{generation:number;endpointSnapshot:{name:string;host:string;port:number;username:string;endpoint:string};hostKeyFingerprint:string}>();
   private readonly sessions = new Map<string, SessionSnapshot>();
   private readonly generations = new Map<string, number>();
   private readonly pending = new Map<string, PendingTrust>();
@@ -27,6 +28,11 @@ export class ConnectionController {
     const value = this.tokens.get(token);
     if (!value || this.sessions.get(value.serverId)?.status !== 'connected' || this.generations.get(value.serverId) !== value.generation) throw new Error('SESSION_UNAVAILABLE');
     return { ...value };
+  }
+  sessionIdentity(serverId:string,generation:number) {
+    const identity=this.identities.get(serverId);
+    if (!identity || identity.generation !== generation || this.sessions.get(serverId)?.status !== 'connected') throw new Error('SESSION_UNAVAILABLE');
+    const result=structuredClone(identity);const profile=this.state()?.snapshot().profiles.find(row => row.id === serverId);if (profile) result.endpointSnapshot.name=profile.name;return result;
   }
   views(): SessionView[] {
     const profiles = this.state()?.snapshot().profiles ?? [];
@@ -83,6 +89,8 @@ export class ConnectionController {
     const outcome = connectOutcomeSchema.parse(await this.gateway.request({ action: 'session:connect', serverId: profile.id, generation, payload: input }));
     if (this.generations.get(profile.id) !== generation) { this.clearInput(input); return; }
     if (outcome.status === 'connected') {
+      if (!input.trustedHostKey) throw new Error('HOST_TRUST_REQUIRED');
+      this.identities.set(profile.id,{generation,endpointSnapshot:{name:profile.name,host:profile.host,port:profile.port,username:profile.username,endpoint:endpointFor(profile)},hostKeyFingerprint:'SHA256:'+createHash('sha256').update(Buffer.from(input.trustedHostKey,'base64')).digest('base64').replace(/=+$/u,'')});
       this.observe(outcome.snapshot);
       if (saveSecret) {
         const value = profile.authentication === 'password' ? input.password : input.passphrase;

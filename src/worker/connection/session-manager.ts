@@ -17,9 +17,10 @@ export class SessionManager {
   private readonly parser = new PrivateKeyParser();
   constructor(private readonly emit: (snapshot: SessionSnapshot) => void) {}
   snapshots(): SessionSnapshot[] { return [...this.entries.values()].map(entry => ({ ...entry.snapshot })); }
-  control(serverId: string, generation: number): ControlAccess {
+  control(serverId: string, generation: number, write=false): ControlAccess {
     const entry = this.entries.get(serverId);
     if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || !entry.sftp) throw new Error('SESSION_UNAVAILABLE');
+    if (write && entry.snapshot.os !== 'supported' && !entry.snapshot.osConfirmed) throw new Error(entry.snapshot.os === 'unknown' ? 'OS_UNKNOWN' : 'OS_UNSUPPORTED');
     return { sftp: entry.sftp, check: () => {
       if (this.entries.get(serverId) !== entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || !entry.sftp) throw new Error('CONNECTION_LOST');
     }, quarantine: () => {

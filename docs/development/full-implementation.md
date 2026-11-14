@@ -21,3 +21,11 @@
 SFTP opendir/readdir/close와 요청15초/목록60초 제한을 적용했다. 폴더당10,000개/10MiB 상한,256항목 및192KiB 이하 worker page, 일부 목록 표시, Unicode code point 정렬, main 소유 entry/directory token, 세대/창 바인딩을 구현했다. 탐색기에는 트리·가상 목록·숨김 토글·현재 목록 필터가 있고 자동 외부 갱신은 없다. renderer reload는 main의 메모리 목록을 복원하며 SFTP를 다시 조회하지 않는다. 연결이 끊기면 마지막 목록을 읽기 전용으로 남긴다.
 
 57개 단위 검사와 실제 Electron/SSH/SFTP 시험에서 폴더 이동, 위험 이름 plain text, 링크 열기 차단, 명시적 새로고침, UI 복구 시 원격 재조회 없음, 해제 후 캐시 보존을 확인했다. evidence/d05-browsing의 검사는 로컬 fixture 근거이며 D05 전체/Ubuntu·지원 OS 수용 통과를 뜻하지 않는다. 파일 mutation은 다음 구현 단위다.
+
+## 단일 파일 변경과 영수증 구현
+
+서버/세대/경로/stat에 묶인60초1회 확인 token, 변경 전 durable intent, mkdir0700·unlink·rmdir, 같은 폴더 hardlink→ACK 저장→source 제거 intent→unlink를 구현했다. 기존 목적지 제거·덮어쓰기·recursive fallback은 없다. 부모 보존과 원본/목적지 lock을 적용하고, source 제거 실패는 partial, ACK 미확인은 result_unknown으로 유지한다. 영수증은 strict64KiB atomic JSON이며 재시작 dispatched 또는 backup 복구는 미확정으로 분류한다. 사용자가 확인 후 기록을 닫아도 원래 미확정 결과를 보존하며 별도 로컬 기록 삭제는 원격 요청을 보내지 않는다.
+
+73개 단위 검사와 실제 Electron/SFTP fixture에서 확인 전 mutation0회, 폴더 생성/삭제, hardlink 미지원의 원본 보존, 작업 상세와 로컬 기록 삭제를 확인했다. intent 저장 실패 시 dispatch 금지, ACK 뒤 기록 실패의 관측 사실 보존, ACK 유실의 미확정 유지, 경로 제한, future schema 덮어쓰기 거절을 자동 검사했다. evidence/d05-mutations에 근거를 저장했다. 지원 Ubuntu/OpenSSH/OS의 수용 통과를 뜻하지 않는다.
+
+통합 잔여: 늦은 성공 ACK의 별도 관측 기록, 앱 전체 종료/절전/worker 재시작 흐름, receipt 저장 fault의 trust/새 실행 등 전체 기능 guard. D06–D13 구현에서 함께 마무리하며 현재 D05 전체 완료로 선언하지 않는다. 다음 구현은 제한 읽기·signature 검증을 갖는 텍스트/이미지 viewer다.

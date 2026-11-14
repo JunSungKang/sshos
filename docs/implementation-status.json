@@ -37,14 +37,18 @@
     "Main-owned session tokens and desktop window registry bound to server/generation",
     "Desktop launchers, taskbar and pointer/keyboard internal window movement, eight-edge resize, minimize/maximize/restore",
     "Bounded paged SFTP enumeration, Unicode-safe names, metadata-only symlinks/special files and explicit refresh",
-    "Capability-bound tree/list explorer, virtual rows and readonly directory cache on UI reload/disconnect"
+    "Capability-bound tree/list explorer, virtual rows and readonly directory cache on UI reload/disconnect",
+    "Single-use sixty-second file mutation preview, durable pre-dispatch intent, SFTP mkdir0700/unlink/rmdir and hardlink-then-unlink rename",
+    "Path locks, partial/unknown outcomes, strict receipt recovery and explicit acknowledgement/local-record deletion",
+    "Task manager pages and detail dialogs, bounded task IPC payloads and aggregate directory paging budget",
+    "Future-schema JSON refusal prevents fallback downgrade over newer data"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 57,
-      "evidence": "evidence/d05-browsing/test-unit.txt"
+      "tests": 73,
+      "evidence": "evidence/d05-mutations/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -122,6 +126,25 @@
         "disconnect preserves readonly last listing"
       ],
       "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+    },
+    "file_mutation_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "real SSH/SFTP directory enumeration",
+        "folder navigation with spaces",
+        "untrusted names as text",
+        "symlink is metadata only",
+        "explicit refresh sees external changes",
+        "renderer reload restores cached directory without remote enumeration",
+        "GUI preview sends no mutation before confirmation",
+        "confirmed mkdir0700 and nonrecursive delete with durable receipts",
+        "unsupported hardlink preserves original file",
+        "task details and confirmed local receipt deletion without remote mutation",
+        "disconnect preserves readonly last listing"
+      ],
+      "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
     }
   },
   "remaining_D01": [
@@ -138,15 +161,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement durable mutation previews/receipts and path locks, then D06 viewers and remaining v6 modules.",
+  "next_action": "Implement D06 bounded text/image viewers. Final integration must add late ACK observation records, complete lifecycle shutdown/restart rules and whole-application storage-fault guards alongside remaining modules.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d05-browsing",
+  "latest_evidence_directory": "evidence/d05-mutations",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D05 browsing implemented; file mutations next",
-    "product_features_available": "Profile/SSH trust, desktop windows, token-bound tree/list browsing with manual refresh. File mutation/viewer/transfer/exec/PTY modules remain in progress.",
+    "current_stage": "D05 browsing/mutation foundations implemented; D06 viewers next",
+    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed single-file mutations and task receipts. Viewers/transfer/exec/PTY still in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {

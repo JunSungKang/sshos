@@ -9,6 +9,11 @@ async function path() { const base = resolve('.local/tmp'); await mkdir(base, { 
 afterEach(async () => { for (const dir of owned.splice(0)) await rm(dir, { recursive: true }); });
 const schema = z.object({ count: z.int().nonnegative() }).strict();
 describe('single-writer durable JSON', () => {
+  it('does not downgrade a future schema by falling back to an older backup',async () => {
+    const file=await path();const store=new AtomicJSONStore(file,schema,1024);await store.initialize({count:1});await store.save({count:2});
+    const future=JSON.parse(await readFile(file,'utf8'));future.schemaVersion=2;await writeFile(file,JSON.stringify(future));
+    const loaded=new AtomicJSONStore(file,schema,1024);await expect(loaded.load()).rejects.toThrow('STORAGE_FUTURE_SCHEMA');await expect(loaded.save({count:0})).rejects.toThrow('STORAGE_FAILED');expect(JSON.parse(await readFile(file,'utf8')).schemaVersion).toBe(2);
+  });
   it('initializes explicitly, serializes concurrent changes, and reloads exact state', async () => {
     const file = await path(); const store = new AtomicJSONStore(file, schema, 1024);
     await store.initialize({ count: 0 });
