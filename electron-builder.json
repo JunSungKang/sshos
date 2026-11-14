@@ -1,0 +1,7 @@
+{
+  "appId": "io.github.junsungkang.sshos", "productName": "sshOS",
+  "directories": { "output": "release" }, "asar": true,
+  "files": ["dist/**/*", "package.json", "LICENSE"],
+  "win": { "target": [{ "target": "portable", "arch": ["x64"] }], "requestedExecutionLevel": "asInvoker" },
+  "mac": { "target": [{ "target": "zip", "arch": ["arm64", "x64"] }], "minimumSystemVersion": "14.0", "category": "public.app-category.developer-tools" }
+}
