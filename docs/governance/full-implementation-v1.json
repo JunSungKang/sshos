@@ -1,0 +1,164 @@
+{
+  "schemaVersion": 4,
+  "workSlug": "full-implementation-v1",
+  "flowType": "bootstrap",
+  "branch": "work/import-plans",
+  "targetBranch": "main",
+  "baseSha": "609936e07db67734d204169801c251e8839ae4a4",
+  "mergeMethod": "merge",
+  "governance": {
+    "prAuthorLogin": "JunSungKang",
+    "assigneeLogin": "JunSungKang",
+    "pushActorLogin": "JunSungKang",
+    "reviewerLogin": "junsung-bot[bot]",
+    "commitAuthor": {
+      "name": "jun-sung, Kang",
+      "email": "kjuns1@naver.com"
+    },
+    "coAuthors": [
+      {
+        "name": "Codex",
+        "email": "noreply@openai.com"
+      },
+      {
+        "name": "junsung-bot[bot]",
+        "email": "302617028+junsung-bot[bot]@users.noreply.github.com"
+      }
+    ],
+    "requiredChecks": [
+      "planning-docs"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "G01",
+      "expectedPaths": [
+        ".gitignore",
+        ".gitattributes",
+        ".github/**",
+        "docs/**",
+        "design/**",
+        "README.md"
+      ],
+      "forbiddenPaths": [
+        "node_modules/**",
+        ".local/**",
+        "release/**"
+      ],
+      "acceptanceCriteria": [
+        "Keep original remote root commit unchanged; import existing plan/history assets using current real timestamps.",
+        "Require human author/assignee, current-head App APPROVED, provider-bound planning-docs check and verified branch cleanup.",
+        "No application code or dependency installation before first guarded push."
+      ],
+      "validationCommands": [
+        "python3 -B docs/validate-plan.py --root .",
+        "node ~/.codex/scripts/github-app-plan-validate.mjs docs/governance/import-plans.json",
+        "node ~/.codex/scripts/github-app-workflow-guard.mjs --verify-server docs/governance/import-plans.json"
+      ],
+      "documentation": {
+        "paths": [
+          "docs/governance/repository-setup.md"
+        ]
+      }
+    },
+    {
+      "id": "D01",
+      "expectedPaths": [
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "electron-builder.json",
+        "scripts/**",
+        "src/**",
+        "tests/**",
+        "evidence/**",
+        "docs/**",
+        "README.md",
+        ".github/**",
+        ".gitignore",
+        ".gitattributes",
+        "LICENSE"
+      ],
+      "forbiddenPaths": [
+        ".local/**",
+        "node_modules/**",
+        "release/**"
+      ],
+      "acceptanceCriteria": [
+        "Implement and run a sandboxed Electron/React/preload/main/utilityProcess foundation with offline app protocol and no generic OS access bridge.",
+        "Use exact baseline dependencies and workspace-local caches/runtime; record actual local checks and missing target tests.",
+        "Bind actual user implementation instruction to approved v6 scope without changing requirement acceptance.",
+        "Do not claim D01 target matrix complete without Windows and Ubuntu fixtures."
+      ],
+      "validationCommands": [
+        "npm run typecheck",
+        "npm run test:unit",
+        "npm run build",
+        "npm run test:e2e",
+        "python3 -B docs/validate-plan.py --root ."
+      ],
+      "documentation": {
+        "paths": [
+          "docs/implementation-status.json",
+          "docs/development/d01-foundation.md"
+        ]
+      }
+    },
+    {
+      "id": "D02-D13",
+      "expectedPaths": [
+        "src/**",
+        "tests/**",
+        "scripts/**",
+        "docs/**",
+        "evidence/**",
+        "design/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "electron-builder.json",
+        "README.md",
+        "LICENSE",
+        "NOTICE",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+        ".github/**",
+        ".gitignore",
+        ".gitattributes"
+      ],
+      "forbiddenPaths": [
+        ".local/**",
+        "node_modules/**",
+        "release/**"
+      ],
+      "acceptanceCriteria": [
+        "Implement all approved v6 requirements R01-R38 without adding excluded services or databases.",
+        "Keep product acceptance, local unit checks, real target evidence and public release gates distinct.",
+        "Use latest continuous user instruction to develop independent modules while D01 cross-target gates remain untested, rather than claim D01 completed or stop all code.",
+        "Maintain separate real commits and guarded push/PR/review/merge, preserving original remote history."
+      ],
+      "validationCommands": [
+        "npm run typecheck",
+        "npm run test:unit",
+        "npm run test:integration",
+        "npm run test:e2e",
+        "npm run test:security",
+        "npm run test:performance",
+        "npm run build",
+        "python3 -B docs/validate-plan.py --root ."
+      ],
+      "documentation": {
+        "paths": [
+          "docs/implementation-status.json",
+          "docs/development/full-implementation.md"
+        ]
+      }
+    }
+  ],
+  "supersedes": "docs/governance/d01-foundation-v3.json",
+  "changeReason": "2026-11-15 user explicitly instructed continuous completion of all plans. Continue independent implementation while target evidence is collected; never mark untested stage gates passed."
+}

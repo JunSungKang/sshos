@@ -8,8 +8,8 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D01",
-  "stage_status": "in_progress",
+  "stage": "D02",
+  "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
   "first_push": {
@@ -27,14 +27,19 @@
     "Per-socket host-key verifier rejects unknown/changed hosts before authentication",
     "Single RSA/Ed25519 in-process signer validates key identity and disallows SHA-1 signatures",
     "One-shot authentication and explicit SSH algorithm allowlist",
-    "Real loopback SSH handshake tests with ephemeral in-memory keys"
+    "Real loopback SSH handshake tests with ephemeral in-memory keys",
+    "Bounded key reading and serialized five-second worker-thread key parser with bcrypt-round limits",
+    "Atomic checksummed JSON store with backups, serialized writer, corruption recovery and storage fault state",
+    "Persisted profile CRUD and main-only key selection capability through strict IPC",
+    "OS encryption vault adapter with unavailable handling and persist-before-use key rotation",
+    "Profile manager UI with persistence and visible locked storage recovery state"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 32,
-      "evidence": "evidence/d01-auth/auth-test-unit.txt"
+      "tests": 47,
+      "evidence": "evidence/d02/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -75,6 +80,11 @@
       "cases": 5,
       "evidence": "tests/unit/ssh-handshake.test.ts",
       "limitation": "Real TCP SSH exchange with ssh2 fixture; not Ubuntu/OpenSSH target verification."
+    },
+    "profile_persistence_electron_smoke": {
+      "status": "pass",
+      "evidence": "evidence/d02/test-e2e.txt",
+      "scope": "profile create/list/reload/delete, sandbox and CSP on current macOS arm64"
     }
   },
   "remaining_D01": [
@@ -91,15 +101,21 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Complete remaining D01 technical prerequisites, then D02 JSON persistence/profile/hosttrust. Do not claim cross-platform or production readiness.",
+  "next_action": "Implement D03 SSH session lifecycle, host challenge approval, authentication and capability inspection; continue remaining independent code without blocking on user-owned target tests.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d01-auth",
+  "latest_evidence_directory": "evidence/d02",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D01 partially implemented",
+    "current_stage": "D02 modules implemented; D03 wiring next",
     "product_features_available": "No end-user SSH/file/terminal workflow yet",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
+  },
+  "user_owned_verification": {
+    "source": "2026-11-15 user decision",
+    "quote": "아 없어. 내가 직접 시험할게 넌 작성된 모든 문서 기반으로 개발만 정확하게 진행하도록 해.",
+    "signing_available": false,
+    "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   }
 }
