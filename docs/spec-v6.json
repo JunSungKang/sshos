@@ -1,0 +1,4181 @@
+{
+  "schema_version": 1,
+  "id": "sshOS",
+  "version": "v6",
+  "goal": "Electron client-only desktop with SSH/SFTP file workflows, read-only viewers, explicit remote exec and PTY; implement only on a subsequent user instruction.",
+  "excluded": [
+    "X11/Wayland/VNC/RDP remote GUI",
+    "server agent/helper installation",
+    "application database",
+    "local OS terminal",
+    "online error search/hidden browser/AI/model SDK",
+    "external filesystem auto-sync",
+    "GUI editing/overwrite/recursive folder operations",
+    "auto reconnect/resume/re-execution/update",
+    "telemetry/crash upload"
+  ],
+  "assumptions": [
+    "Existing SSH account and feature-specific permissions; SFTP, exec and PTY may be independently restricted.",
+    "First supported Linux server Ubuntu24.04; GUI exec uses a POSIX-compatible login shell.",
+    "User commands and external writers do not participate in GUI path locks.",
+    "Upload/finalize requires read-back and same-directory hardlink; not a requirement of SSH itself."
+  ],
+  "open_questions": [],
+  "approval": {
+    "status": "pending",
+    "spec_version": "v6",
+    "evidence": "",
+    "spec_sha256": ""
+  },
+  "requirements": [
+    {
+      "id": "R01",
+      "priority": "must",
+      "title": "제품 정체성과 제외 범위",
+      "statement": "클라이언트 Desktop·파일·뷰어·명시적 실행·PTY 범위를 구현한다.",
+      "acceptance": "앱 실행·인증·데스크톱·파일 열기·명시적 원격 실행·PTY·전송 흐름을 제공하고 X11/서버helper/DB/AI/검색 기능은 없다.",
+      "checks": [
+        "F001",
+        "S001"
+      ],
+      "contract_reference": "01 §1–2; 02 §1,3"
+    },
+    {
+      "id": "R02",
+      "priority": "must",
+      "title": "지원 OS와 portable 배포",
+      "statement": "지정한 client/server 조합과 실행 형태로 배포한다.",
+      "acceptance": "Windows11x64와 macOS14 arm64/x64, Ubuntu24.04 amd64/arm64를 시험하며 사용자 런타임 설치 없는 exe/app와 서명 검증 증거가 있다.",
+      "checks": [
+        "Q001",
+        "Q002",
+        "Q003",
+        "Q029"
+      ],
+      "contract_reference": "01 §3; 02 §14,16"
+    },
+    {
+      "id": "R03",
+      "priority": "must",
+      "title": "추가 의존성과 DB 제거",
+      "statement": "앱 기능 DB와 대상 서버 전용 설치를 요구하지 않는다.",
+      "acceptance": "기능 저장은 JSON/OS 암호화이며 원격 agent·DB·Python·HTTP 설치와 로컬 관리 서버 listener가 없다.",
+      "checks": [
+        "Q002",
+        "S001",
+        "S019",
+        "S021"
+      ],
+      "contract_reference": "01 §2–3; 02 §1,11–12,19.1"
+    },
+    {
+      "id": "R04",
+      "priority": "must",
+      "title": "OS형 작업 공간",
+      "statement": "Desktop·기본 앱·작업표시줄·전송 선반의 일관된 공간을 제공한다.",
+      "acceptance": "하나의 BrowserWindow 안 바탕화면·launcher·taskbar·상시선반과 통합트리/목록을 제공한다. 고정5영역이나 별도트리모드로 대체하지 않는다.",
+      "checks": [
+        "F001",
+        "F015",
+        "F048",
+        "F061",
+        "Q013",
+        "Q014",
+        "Q015"
+      ],
+      "contract_reference": "01 §4; 09 §1–4"
+    },
+    {
+      "id": "R05",
+      "priority": "must",
+      "title": "프로필과 입력",
+      "statement": "프로필 식별자와 입력·수정 범위를 고정한다.",
+      "acceptance": "최대10프로필, 정규화/범위 검사, UUID정체성, endpoint·username변경 새ID 및 연결/미해결 상태 수정 제한을 지킨다.",
+      "checks": [
+        "F002",
+        "F003",
+        "F004"
+      ],
+      "contract_reference": "02 §5"
+    },
+    {
+      "id": "R06",
+      "priority": "must",
+      "title": "호스트 키 신뢰",
+      "statement": "모든 인증 연결에서 호스트 키를 확인한다.",
+      "acceptance": "control/transfer/execution 모두 공개blob/지문검증, 신규승인 전 인증정보전송0, 변경차단, backup복구 재신뢰를 검증한다.",
+      "checks": [
+        "F055",
+        "S008",
+        "S009",
+        "S010"
+      ],
+      "contract_reference": "02 §5,11"
+    },
+    {
+      "id": "R07",
+      "priority": "must",
+      "title": "인증과 서명",
+      "statement": "명시한 password/key를 사용하고 약한 서명을 차단한다.",
+      "acceptance": "지원키 인증, 한방식1회, key입력상한/파싱thread기한, 내부BaseAgent RSA SHA256/512 허용과 SHA1거절을 검증한다.",
+      "checks": [
+        "F005",
+        "S011",
+        "S012",
+        "S013",
+        "S025",
+        "S026"
+      ],
+      "contract_reference": "02 §5"
+    },
+    {
+      "id": "R08",
+      "priority": "must",
+      "title": "연결과 세대",
+      "statement": "SFTP·뷰어·exec·PTY·probe의 연결/채널 수명과 세대를 분리한다.",
+      "acceptance": "최대3서버·서버별 control1/transfer1/execution1·전체9socket, viewer4/서버2·exec+PTY6/서버4. opening예약·late channel정리·generation·연결별실패격리를 검증한다.",
+      "checks": [
+        "F006",
+        "F007",
+        "F008",
+        "F041",
+        "F059",
+        "F081",
+        "F085"
+      ],
+      "contract_reference": "02 §2,6; 09 §3,5"
+    },
+    {
+      "id": "R09",
+      "priority": "must",
+      "title": "기능별 지원 판정",
+      "statement": "OS·SFTP·probe·GUI exec·PTY·경로 권한을 별도 판정한다.",
+      "acceptance": "OS/SFTP/probe/userExec/PTY/hardlink를 분리하고 실제 사용자 요청으로 capability를 관측한다. unsupported·unknown확인·SFTP-only·exec/PTY거절 동작은 개발§6을 따른다.",
+      "checks": [
+        "F009",
+        "F010",
+        "F011",
+        "F030",
+        "F077",
+        "F083",
+        "Q016",
+        "S021"
+      ],
+      "contract_reference": "01 §3; 02 §6,18–19"
+    },
+    {
+      "id": "R10",
+      "priority": "must",
+      "title": "경로와 파일 종류",
+      "statement": "실제 경로와 표시명을 분리하고 지원 type과 실행 대상을 검증한다.",
+      "acceptance": "POSIX/local구분·길이/문자/token/타입검사와 실제 exclusive충돌판정을 수행하고 링크/특수파일/UNC를 정한범위에서 거절한다.",
+      "checks": [
+        "F012",
+        "F013",
+        "F016",
+        "F066",
+        "F071",
+        "F072",
+        "Q015",
+        "S005",
+        "S020",
+        "S033"
+      ],
+      "contract_reference": "02 §4,7,18,19.2"
+    },
+    {
+      "id": "R11",
+      "priority": "must",
+      "title": "파일 탐색",
+      "statement": "창별 경로와 수동·명시 GUI 파일 작업 후 재조회를 유지한다.",
+      "acceptance": "창별트리/목록·10,000항목/10MiB·정렬·숨김·늦은응답폐기·수동갱신·해당GUI변경후1회갱신을 검증하고 외부변경자동감시는 없다.",
+      "checks": [
+        "F014",
+        "F015",
+        "F067",
+        "F082",
+        "Q009",
+        "S028"
+      ],
+      "contract_reference": "02 §7; 09 §4"
+    },
+    {
+      "id": "R12",
+      "priority": "must",
+      "title": "새 폴더",
+      "statement": "단일 새 폴더만 명시한 대상에 만든다.",
+      "acceptance": "durable intent→mkdir0700→ACK→lstat→receipt이며 기존이름·중간부모자동생성은 없다.",
+      "checks": [
+        "F017",
+        "F035"
+      ],
+      "contract_reference": "02 §7"
+    },
+    {
+      "id": "R13",
+      "priority": "must",
+      "title": "이름 변경과 삭제",
+      "statement": "일반 파일 이름 변경과 비재귀 삭제 계약을 지킨다.",
+      "acceptance": "hardlink후source unlink의 두단계결과와 partial을 표시하며 기존목적지·링크·루트·비어있지않은폴더를 보호한다.",
+      "checks": [
+        "F018",
+        "F019",
+        "F020",
+        "F021"
+      ],
+      "contract_reference": "02 §7"
+    },
+    {
+      "id": "R14",
+      "priority": "must",
+      "title": "전송 큐와 동시성",
+      "statement": "SFTP 전송별 큐·슬롯·경로 잠금을 유지하고 다른 기능과 자원을 구분한다.",
+      "acceptance": "전체2/서버1슬롯·대기100상한·실행가능FIFO·원본/목적지잠금·혼합preview·task불변정체성을 지킨다.",
+      "checks": [
+        "F007",
+        "F021",
+        "F022",
+        "F023",
+        "F081",
+        "Q010"
+      ],
+      "contract_reference": "02 §2,6–8"
+    },
+    {
+      "id": "R15",
+      "priority": "must",
+      "title": "업로드",
+      "statement": "임시 파일에 쓰고 검증한 뒤 기존 파일을 덮지 않고 확정한다.",
+      "acceptance": "durable intent/wx0600·bounded write·read-back SHA256·hardlink확정·temp정리분리, 기존파일덮어쓰기0을 검증한다.",
+      "checks": [
+        "F024",
+        "F025",
+        "F026",
+        "F027",
+        "F028",
+        "F029",
+        "F030",
+        "F031",
+        "F035"
+      ],
+      "contract_reference": "02 §8.2"
+    },
+    {
+      "id": "R16",
+      "priority": "must",
+      "title": "다운로드",
+      "statement": "로컬 임시 파일을 검증하고 배타 확정한다.",
+      "acceptance": "bounded read/short write·sync/close/readback·fs.link·충돌보존과 metadata비복제를 검증한다.",
+      "checks": [
+        "F016",
+        "F024",
+        "F025",
+        "F031",
+        "F032",
+        "F033",
+        "F034",
+        "F035"
+      ],
+      "contract_reference": "02 §8.3"
+    },
+    {
+      "id": "R17",
+      "priority": "must",
+      "title": "무결성과 진행",
+      "statement": "전송 byte·검증·실행 출력의 의미를 구분한다.",
+      "acceptance": "실처리byte·검증·최종확정과 원격stdout/stderr/exit를 구분한다. 100%전송이나exit0을 원격업무전체성공으로 오인시키지 않는다.",
+      "checks": [
+        "F026",
+        "F027",
+        "F028",
+        "F033",
+        "F036",
+        "F037",
+        "F074"
+      ],
+      "contract_reference": "02 §8–9,19.2,19.4"
+    },
+    {
+      "id": "R18",
+      "priority": "must",
+      "title": "취소와 timeout",
+      "statement": "작업 종류별 시작·중단·정리 기한을 적용한다.",
+      "acceptance": "파일task의5초취소·요청/무진행기한·최종화경합과 viewer취소를 검사한다. exec/PTY 무출력에는 파일timeout을 적용하지 않는다.",
+      "checks": [
+        "F008",
+        "F038",
+        "F039",
+        "F040",
+        "F041",
+        "F059",
+        "F070",
+        "F076",
+        "F085",
+        "Q012",
+        "Q016"
+      ],
+      "contract_reference": "02 §2,8.4,18,19.1,19.3"
+    },
+    {
+      "id": "R19",
+      "priority": "must",
+      "title": "부분 결과와 복원",
+      "statement": "파일 변경·실행 결과 불명을 자동 성공이나 재시도로 바꾸지 않는다.",
+      "acceptance": "link/cleanup ACK유실·crash·backup복구·저장실패·현재관측을 구분하고 result_unknown/partial을 보존한다.",
+      "checks": [
+        "F020",
+        "F025",
+        "F029",
+        "F031",
+        "F042",
+        "F043",
+        "F044",
+        "F056",
+        "F059",
+        "F060",
+        "F073",
+        "F076",
+        "F080",
+        "F084",
+        "S006",
+        "S037"
+      ],
+      "contract_reference": "02 §7–8,11,19.3"
+    },
+    {
+      "id": "R20",
+      "priority": "must",
+      "title": "SSH 응답 지표",
+      "statement": "probe에만 고정 /bin/true 제한을 적용하고 활성 서버 응답을 표시한다.",
+      "acceptance": "/bin/true exec→정상exit+close만sample,5초주기/기한·15초신선도·4KiB한도·epoch/latecallback·미지원표시를 지킨다.",
+      "checks": [
+        "F045",
+        "F046",
+        "F047",
+        "F048",
+        "F051",
+        "F081",
+        "S021"
+      ],
+      "contract_reference": "01 §7; 02 §10"
+    },
+    {
+      "id": "R21",
+      "priority": "must",
+      "title": "앱 수명",
+      "statement": "renderer·worker·앱·절전과 원격 작업 수명을 분리한다.",
+      "acceptance": "내부창닫기/최소화·기본창종료·worker/renderer crash·절전을 구분하고 전송유지/PTY복구barrier/원격실행불명을 검증한다.",
+      "checks": [
+        "F049",
+        "F050",
+        "F051",
+        "Q012"
+      ],
+      "contract_reference": "02 §9; 09 §5,7"
+    },
+    {
+      "id": "R22",
+      "priority": "must",
+      "title": "JSON 내구성과 복구",
+      "statement": "단일 writer로 프로필·신뢰·영수증을 저장하고 창 배치는 메모리 수명으로 분리한다.",
+      "acceptance": "단일writer·원자교체·schema/checksum·backup와 kind별receipt를 검사한다. layout은main메모리에만저장하며 앱재실행시작업을자동재개하지않는다.",
+      "checks": [
+        "F052",
+        "F053",
+        "F054",
+        "F055",
+        "F056",
+        "F057",
+        "F060",
+        "F065",
+        "S027",
+        "S037"
+      ],
+      "contract_reference": "02 §11; 09 §7"
+    },
+    {
+      "id": "R23",
+      "priority": "must",
+      "title": "비밀정보",
+      "statement": "선택한 인증 비밀만 OS 암호화하고 viewer/실행/PTY 데이터를 분리한다.",
+      "acceptance": "선택한비밀만safeStorage암호화, 평문fallback0. 원격파일/명령인수/입력/출력의자동디스크저장0,세션메모리수명/전달경계검사를통과한다.",
+      "checks": [
+        "F057",
+        "S007",
+        "S012",
+        "S014",
+        "S015",
+        "S016",
+        "S017",
+        "S025",
+        "S027",
+        "S032",
+        "S034",
+        "S037"
+      ],
+      "contract_reference": "02 §5,12,18–19"
+    },
+    {
+      "id": "R24",
+      "priority": "must",
+      "title": "Electron 권한과 IPC",
+      "statement": "sandbox·capability·제한 action과 데이터 스트림 경계를 지킨다.",
+      "acceptance": "sender/schema/token/epoch·일반제어/전용stream한도·sandbox·CSP·fuses를검증한다. CSSinline만한정허용, JSinline/eval/외부HTML/로컬shell은없다.",
+      "checks": [
+        "F072",
+        "S002",
+        "S003",
+        "S004",
+        "S005",
+        "S006",
+        "S007",
+        "S016",
+        "S020",
+        "S024",
+        "S028",
+        "S029",
+        "S030",
+        "S031",
+        "S032",
+        "S033",
+        "S035",
+        "S036",
+        "S038"
+      ],
+      "contract_reference": "02 §3–4,18–19"
+    },
+    {
+      "id": "R25",
+      "priority": "must",
+      "title": "통신과 로그",
+      "statement": "불필요한 외부 통신·출력 저장·다른 사용자 변경 감시를 만들지 않는다.",
+      "acceptance": "선택SSH+필요DNS외앱자동통신0,검색/AI/telemetry/update/listener0,정해진redactedlog와1MiB×3한도를 지킨다.",
+      "checks": [
+        "F082",
+        "S001",
+        "S017",
+        "S018",
+        "S019",
+        "S020",
+        "S031",
+        "S034"
+      ],
+      "contract_reference": "02 §12; 09 §4"
+    },
+    {
+      "id": "R26",
+      "priority": "must",
+      "title": "고정 오류 표현",
+      "statement": "확인한 단계와 오류 코드로만 한글 오류를 표시한다.",
+      "acceptance": "기존오류와VIEW/SESSION/EXEC/PTY/STOP코드의확인단계·허용행동·한글문구를검사하고원인추측/검색/자동수정이없다.",
+      "checks": [
+        "F058"
+      ],
+      "contract_reference": "02 §13,19.5"
+    },
+    {
+      "id": "R27",
+      "priority": "must",
+      "title": "성능과 접근성",
+      "statement": "창·뷰어·입출력·전송을 포함한 실제 자원·반응 예산을 지킨다.",
+      "acceptance": "정해진장비/반복/네트워크에서크기·시작·CPU/RSS·UI/목록/누수/키보드/IME/대비를모두측정해예산을통과한다.",
+      "checks": [
+        "F063",
+        "F069",
+        "F078",
+        "Q004",
+        "Q005",
+        "Q006",
+        "Q007",
+        "Q008",
+        "Q009",
+        "Q010",
+        "Q011",
+        "Q012",
+        "Q013",
+        "Q014",
+        "Q015",
+        "Q025",
+        "Q026",
+        "Q027",
+        "Q028",
+        "Q029",
+        "S030",
+        "S038"
+      ],
+      "contract_reference": "02 §14,18–19; 09 §1,6"
+    },
+    {
+      "id": "R28",
+      "priority": "must",
+      "title": "시험 증거",
+      "statement": "실제 target·장애·성능·보안 검사 증거를 남긴다.",
+      "acceptance": "6조합smoke·제한fixture·실제script·coverage·hash/환경/절차/actual/evidence가있고미실행을pass로표시하지않는다.",
+      "checks": [
+        "Q001",
+        "Q016",
+        "Q017",
+        "Q018",
+        "Q023",
+        "S024"
+      ],
+      "contract_reference": "02 §14–15,17"
+    },
+    {
+      "id": "R29",
+      "priority": "must",
+      "title": "라이선스와 공급망",
+      "statement": "AGPL 배포와 dependency 보안·고지 의무를 이행한다.",
+      "acceptance": "AGPL-3.0-only원문·실제license/전이deps·SBOM·대응소스·lock·적용high/critical해결을검증하고단순사용/독립코드전체공개를보장하지않는다.",
+      "checks": [
+        "S022",
+        "S023"
+      ],
+      "contract_reference": "01 §2; 02 §16"
+    },
+    {
+      "id": "R30",
+      "priority": "must",
+      "title": "사용자 가치",
+      "statement": "Desktop 워크플로의 이해·사용성과 반복 사용 가설을 별도 검증한다.",
+      "acceptance": "G0/G2/G3를수행하면제품§9절차와기준으로보고하고 미실시는untested/관찰부족으로공개한다. 비차단연구를기술검증이나수요입증으로대체하지않는다.",
+      "checks": [
+        "Q019",
+        "Q020",
+        "Q021",
+        "Q023"
+      ],
+      "contract_reference": "01 §9; 02 §15 D13"
+    },
+    {
+      "id": "R31",
+      "priority": "must",
+      "title": "Git과 공개",
+      "statement": "실제 권한과 기술 gate 안에서 Git·공개를 수행한다.",
+      "acceptance": "실제remote·적용guard/currenthead review/branch cleanup·서명·전체필수기술검사·차단결함gate를따른다.연구미실시는기술gate와구분한다.",
+      "checks": [
+        "Q003",
+        "Q022",
+        "Q023",
+        "S023"
+      ],
+      "contract_reference": "02 §16; 01 §9"
+    },
+    {
+      "id": "R32",
+      "priority": "must",
+      "title": "구현 절차와 버전",
+      "statement": "v6의 exact dependency·D01–D13·검증·인계 계약을 따른다.",
+      "acceptance": "실제구현착수와v6scope를연결하고D01–D13,exactbaseline/lock,변경영향·회귀·문서/제품검사구분을기록한다.",
+      "checks": [
+        "Q017",
+        "Q024"
+      ],
+      "contract_reference": "02 §15,17; 07"
+    },
+    {
+      "id": "R33",
+      "priority": "must",
+      "title": "내부 창 관리",
+      "statement": "이동·resize·최소화·최대화·복원·focus·taskbar·layout 수명을 구현한다.",
+      "acceptance": "창12/파일6/viewer4, normal/maximized/minimized와restoreMode/bounds,clamp/포커스/taskbar/키보드/IME/main메모리snapshot을09명세대로검사한다.",
+      "checks": [
+        "F001",
+        "F015",
+        "F048",
+        "F049",
+        "F050",
+        "F061",
+        "F062",
+        "F063",
+        "F064",
+        "F065",
+        "F079",
+        "Q001",
+        "Q004",
+        "Q006",
+        "Q008",
+        "Q013",
+        "Q014",
+        "Q017",
+        "Q020",
+        "Q025",
+        "Q028",
+        "Q029",
+        "S002",
+        "S035"
+      ],
+      "contract_reference": "09 §1–7"
+    },
+    {
+      "id": "R34",
+      "priority": "must",
+      "title": "UTF-8 텍스트 뷰어",
+      "statement": "지원 텍스트를 제한 읽기로 열어 읽기 전용으로 표시한다.",
+      "acceptance": "UTF8strict/BOM/NUL/2MiB/긴행100,000scalar,readonly plain text,읽기기한/취소/변경관측/수동재읽기와stream한도를검증한다.",
+      "checks": [
+        "F001",
+        "F007",
+        "F041",
+        "F058",
+        "F066",
+        "F067",
+        "F070",
+        "F081",
+        "F082",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q014",
+        "Q015",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q026",
+        "Q029",
+        "S003",
+        "S016",
+        "S020",
+        "S028",
+        "S029",
+        "S030"
+      ],
+      "contract_reference": "02 §18; 09 §4–5"
+    },
+    {
+      "id": "R35",
+      "priority": "must",
+      "title": "이미지 뷰어",
+      "statement": "PNG·JPEG·WebP를 제한 decode하여 fit·zoom으로 표시한다.",
+      "acceptance": "정적PNG/JPEG/WebP20MiB·40MP·16384px,header사전검사/APNG·animatedWebP거절,EXIF치수·Worker단일decode/canvas·timeout/해제를검증한다. PNG eXIf/WebP EXIF는 첫 버전 미지원이며 JPEG orientation누락은1이다.",
+      "checks": [
+        "F001",
+        "F007",
+        "F041",
+        "F058",
+        "F067",
+        "F068",
+        "F069",
+        "F070",
+        "F081",
+        "F082",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q014",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q026",
+        "Q029",
+        "S003",
+        "S016",
+        "S028",
+        "S029",
+        "S030"
+      ],
+      "contract_reference": "02 §18; 09 §4–5"
+    },
+    {
+      "id": "R36",
+      "priority": "must",
+      "title": "GUI 원격 실행",
+      "statement": "선택 파일·인수·작업 폴더를 명시 확인하고 실행·출력·종료를 표시한다.",
+      "acceptance": "GUI의명시적실행preview와1회token,POSIXquote된cwd/path/argv, direct/sh/bash,stdin유지·출력분리·exit관측·TERM요청/미확인·파일더블클릭비실행을검증한다.",
+      "checks": [
+        "F001",
+        "F007",
+        "F011",
+        "F021",
+        "F041",
+        "F056",
+        "F058",
+        "F071",
+        "F072",
+        "F073",
+        "F074",
+        "F075",
+        "F076",
+        "F081",
+        "F082",
+        "F083",
+        "F084",
+        "F085",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q027",
+        "S004",
+        "S009",
+        "S012",
+        "S016",
+        "S017",
+        "S019",
+        "S020",
+        "S021",
+        "S028",
+        "S033",
+        "S034",
+        "S035",
+        "S036",
+        "S037"
+      ],
+      "contract_reference": "02 §19.1–19.3,19.5; 09 §5"
+    },
+    {
+      "id": "R37",
+      "priority": "must",
+      "title": "PTY 터미널",
+      "statement": "SSH PTY의 입력·화면·resize·세션을 클라이언트 터미널로 제공한다.",
+      "acceptance": "ssh2 shell PTY+xterm,resize/IME/입력sequence·다중줄paste대상고정,OSC52/OSC8/title차단,출력backpressure/replay송신barrier/REP·메모리보호를검증한다.",
+      "checks": [
+        "F001",
+        "F007",
+        "F011",
+        "F021",
+        "F041",
+        "F056",
+        "F058",
+        "F075",
+        "F077",
+        "F078",
+        "F079",
+        "F080",
+        "F081",
+        "F082",
+        "F083",
+        "F084",
+        "F085",
+        "Q001",
+        "Q006",
+        "Q008",
+        "Q012",
+        "Q014",
+        "Q015",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q027",
+        "Q029",
+        "S002",
+        "S004",
+        "S009",
+        "S012",
+        "S016",
+        "S017",
+        "S019",
+        "S020",
+        "S021",
+        "S028",
+        "S031",
+        "S032",
+        "S034",
+        "S035",
+        "S036",
+        "S037",
+        "S038"
+      ],
+      "contract_reference": "02 §19.1,19.3–19.5; 09 §5–6"
+    },
+    {
+      "id": "R38",
+      "priority": "must",
+      "title": "실행·창·연결 수명",
+      "statement": "창 닫기·중지 요청·세션 단절·프로세스 종료와 결과 불명을 구분한다.",
+      "acceptance": "GUI출력창닫기유지와PTY세션닫기,opening예약·latechannel·close/exit/단절차이,stop_unconfirmed/result_unknown·재실행없음·kind별receipt·앱재시작을검증한다.",
+      "checks": [
+        "F008",
+        "F049",
+        "F050",
+        "F051",
+        "F056",
+        "F059",
+        "F064",
+        "F065",
+        "F070",
+        "F073",
+        "F076",
+        "F080",
+        "F084",
+        "F085",
+        "Q012",
+        "Q017",
+        "Q028",
+        "S037",
+        "S038"
+      ],
+      "contract_reference": "02 §6,9,11,19.3–19.4; 09 §5,7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "D01",
+      "title": "기술 기반",
+      "depends_on": [],
+      "requirements": [
+        "R02",
+        "R03",
+        "R07",
+        "R23",
+        "R29",
+        "R32"
+      ],
+      "artifacts": [
+        "P01"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D01"
+    },
+    {
+      "id": "D02",
+      "title": "저장과 신뢰",
+      "depends_on": [
+        "D01"
+      ],
+      "requirements": [
+        "R05",
+        "R06",
+        "R22",
+        "R23",
+        "R24"
+      ],
+      "artifacts": [
+        "P02"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D02"
+    },
+    {
+      "id": "D03",
+      "title": "연결과 capability",
+      "depends_on": [
+        "D02"
+      ],
+      "requirements": [
+        "R07",
+        "R08",
+        "R09"
+      ],
+      "artifacts": [
+        "P03"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D03"
+    },
+    {
+      "id": "D04",
+      "title": "데스크톱",
+      "depends_on": [
+        "D03"
+      ],
+      "requirements": [
+        "R01",
+        "R04",
+        "R26",
+        "R33"
+      ],
+      "artifacts": [
+        "P04"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D04"
+    },
+    {
+      "id": "D05",
+      "title": "탐색과 파일 변경",
+      "depends_on": [
+        "D04"
+      ],
+      "requirements": [
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R19"
+      ],
+      "artifacts": [
+        "P05"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D05"
+    },
+    {
+      "id": "D06",
+      "title": "뷰어",
+      "depends_on": [
+        "D05"
+      ],
+      "requirements": [
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P06"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D06"
+    },
+    {
+      "id": "D07",
+      "title": "비동기 전송",
+      "depends_on": [
+        "D05"
+      ],
+      "requirements": [
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19"
+      ],
+      "artifacts": [
+        "P07"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D07"
+    },
+    {
+      "id": "D08",
+      "title": "GUI 원격 실행",
+      "depends_on": [
+        "D03",
+        "D04",
+        "D05"
+      ],
+      "requirements": [
+        "R17",
+        "R36"
+      ],
+      "artifacts": [
+        "P08"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D08"
+    },
+    {
+      "id": "D09",
+      "title": "PTY 터미널",
+      "depends_on": [
+        "D03",
+        "D04"
+      ],
+      "requirements": [
+        "R37"
+      ],
+      "artifacts": [
+        "P09"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D09"
+    },
+    {
+      "id": "D10",
+      "title": "통합 수명과 응답",
+      "depends_on": [
+        "D06",
+        "D07",
+        "D08",
+        "D09"
+      ],
+      "requirements": [
+        "R08",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P10"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D10"
+    },
+    {
+      "id": "D11",
+      "title": "보안·기능·성능",
+      "depends_on": [
+        "D10"
+      ],
+      "requirements": [
+        "R01",
+        "R03",
+        "R10",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D11"
+    },
+    {
+      "id": "D12",
+      "title": "패키징과 기여 문서",
+      "depends_on": [
+        "D11"
+      ],
+      "requirements": [
+        "R02",
+        "R28",
+        "R29",
+        "R31",
+        "R32"
+      ],
+      "artifacts": [
+        "P12"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D12"
+    },
+    {
+      "id": "D13",
+      "title": "사용성 평가",
+      "depends_on": [
+        "D12"
+      ],
+      "requirements": [
+        "R30",
+        "R31"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "completion_contract": "docs/02-development-plan.md §15 D13"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "A01",
+      "path": "README.md",
+      "version": "v6",
+      "sha256": "431e7de0af66d85f42137c3ec570efe234f7eef63321d177ebc0eaf939353406",
+      "kind": "planning"
+    },
+    {
+      "id": "A02",
+      "path": "docs/01-product-plan.md",
+      "version": "v6",
+      "sha256": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
+      "kind": "planning"
+    },
+    {
+      "id": "A03",
+      "path": "docs/02-development-plan.md",
+      "version": "v6",
+      "sha256": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
+      "kind": "planning"
+    },
+    {
+      "id": "A04",
+      "path": "docs/03-research-and-positioning.md",
+      "version": "v6",
+      "sha256": "bfd947769381b609bf03b7e2d4440aca5034bb43f751bdeb0434c397bbd5a47f",
+      "kind": "planning"
+    },
+    {
+      "id": "A05",
+      "path": "docs/04-system-architecture.md",
+      "version": "v6",
+      "sha256": "e544a9b048b929bd60d92b25e3031f16caadb8869ca5d63e356cce3575f1cea1",
+      "kind": "planning"
+    },
+    {
+      "id": "A06",
+      "path": "docs/05-framework-comparison.md",
+      "version": "v6",
+      "sha256": "3f18edb802e5134636231410bea74a71b30793ad06ac3394b59678c6db7d5e6a",
+      "kind": "planning"
+    },
+    {
+      "id": "A07",
+      "path": "docs/06-quality-security-checklist.md",
+      "version": "v6",
+      "sha256": "9285e3a52938ad904153d6dbae038e41d61bd74356f3d2eadd19573029897541",
+      "kind": "planning"
+    },
+    {
+      "id": "A08",
+      "path": "docs/07-implementation-handoff.md",
+      "version": "v6",
+      "sha256": "4ff4a19da385c6eb05b09763ed1e06b4a288b3ee08b711e27cb5f4796af3afff",
+      "kind": "planning"
+    },
+    {
+      "id": "A09",
+      "path": "docs/08-requirement-traceability.md",
+      "version": "v6",
+      "sha256": "1c3f6c2536e349f1ef7ddf66d5e0e5c88e2da1da6a365a2b51494cad552f7bdc",
+      "kind": "planning"
+    },
+    {
+      "id": "A10",
+      "path": "docs/09-desktop-interaction-spec.md",
+      "version": "v6",
+      "sha256": "de84d2cb0dd741b2c5aabdc76d144abb17cba329be316facf330c4f7888cf003",
+      "kind": "planning"
+    },
+    {
+      "id": "A11",
+      "path": "docs/10-session-decisions.md",
+      "version": "v6",
+      "sha256": "a9bef4a9cc91acf3dc330a5159b4bf9a25dd9795c6b6d18cf32417fc452f5b3d",
+      "kind": "planning"
+    },
+    {
+      "id": "A12",
+      "path": "docs/11-document-audit.md",
+      "version": "v6",
+      "sha256": "1b0c441ef5c951f9b5c21c1a054f0c40a1522dbf2745b5f7fddc5db20241c5d6",
+      "kind": "planning"
+    },
+    {
+      "id": "A13",
+      "path": "docs/dependency-baseline-v6.json",
+      "version": "v6",
+      "sha256": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
+      "kind": "planning"
+    },
+    {
+      "id": "A14",
+      "path": "docs/validate-plan.py",
+      "version": "v6",
+      "sha256": "fc23bdd2418ce0f9d5070a66fb9325daa8a9e4adaa94a59013dea309380af0f7",
+      "kind": "planning"
+    },
+    {
+      "id": "A15",
+      "path": "design/README.md",
+      "version": "v6",
+      "sha256": "90d6fba01e4ad898c24082d3e7e497ec35117a1f88fc6a95d83d80543da03d72",
+      "kind": "planning"
+    },
+    {
+      "id": "A16",
+      "path": "design/preview-prompt.txt",
+      "version": "v6",
+      "sha256": "3a5b025b3ab6fd88ed3d63be43956c44f2d96d5e04f7490aa5dbe9014d21233e",
+      "kind": "planning"
+    },
+    {
+      "id": "A17",
+      "path": "design/mockups/scene-spec-v6.json",
+      "version": "v6",
+      "sha256": "aeafe614dff09c88e8a058711e5d1afa3c51e81e4d3edf02a000706587fc857a",
+      "kind": "planning"
+    },
+    {
+      "id": "P01",
+      "path": "package.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P02",
+      "path": "src/main/persistence/store.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P03",
+      "path": "src/worker/connection/session-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P04",
+      "path": "src/renderer/desktop/window-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P05",
+      "path": "src/worker/files/mutations.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P06",
+      "path": "src/renderer/viewers/index.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P07",
+      "path": "src/worker/transfers/engine.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P08",
+      "path": "src/worker/execution/exec-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P09",
+      "path": "src/renderer/terminal/terminal-controller.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P10",
+      "path": "src/worker/lifecycle.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P11",
+      "path": "evidence/checklist-results.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P12",
+      "path": "release/release-manifest.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P13",
+      "path": "evidence/usability-report.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    }
+  ],
+  "checks": [
+    {
+      "id": "F001",
+      "requirements": [
+        "R01",
+        "R04",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "빈 프로필에서 연결·호스트 확인·파일 탐색·텍스트/이미지 열기·선택 파일 실행·PTY 터미널·SFTP 전송을 수행하고 내부 창을 전환한다.",
+      "expected": "sshOS(시오스)의 데스크톱과 각 기능이 명세대로 동작한다. 파일 탐색·뷰어·파일 실행의 GUI 흐름에 자유 명령 입력을 요구하지 않는다. PTY는 명시적으로 연 터미널이며 원격 데스크톱/X11 화면 전달이나 서버 전용 앱을 요구하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F002",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "프로필 10개와 name·host·port·username의 §5 최소·최대·초과·금지문자 경계값을 입력한다.",
+      "expected": "11번째 프로필과 범위 밖 입력은 거절한다. 포트 기본값은 22이며 name 1–64 scalar, host 253byte 이하, port 1–65535 정수, username UTF-8 1–256byte를 적용한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F003",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "대소문자 DNS·IDN·끝점·IPv4·괄호 IPv6·scheme·경로·공백을 가진 host를 등록한다.",
+      "expected": "DNS는 domainToASCII 후 소문자·끝점 하나 제거, IPv6는 저장 시 괄호 제거다. IP parser 실패·scheme·경로·사용자정보·공백은 거절하며 serverId는 UUID v4다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F004",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "연결 중·미해결 작업 보유·미연결 프로필 각각에서 이름·endpoint·username·인증 방식·삭제를 요청한다.",
+      "expected": "endpoint 또는 username 변경은 새 serverId 복제이며 기존 프로필 유지다. 연결·미해결 상태에서는 규정된 수정·삭제를 막고, 표시 이름 변경 후 기존 task snapshot은 유지한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F005",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "password와 암호화/비암호화 OpenSSH v1 Ed25519·RSA 2048bit 이상·PKCS#1 RSA PEM으로 실제 인증한다. 잘못된 암호도 입력한다.",
+      "expected": "지원 형식의 정상 인증과 passphrase 처리가 성공한다. 실패는 입력 방식 한 번으로 끝나며 password↔key fallback·자동 반복이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F006",
+      "requirements": [
+        "R08"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "연결 성공·취소·인증 실패·새 호스트 승인·rekey·수동 재접속 이벤트를 상태 reducer에 전달한다.",
+      "expected": "§6의 연결 전이만 발생한다. 연결 시도마다 새 generation, rekey는 기존 generation 유지, 승인 대기는 socket이 닫힌 awaiting_host_trust다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F007",
+      "requirements": [
+        "R08",
+        "R14",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "서버 3개와 control·transfer·execution socket, metadata·viewer·probe·exec·PTY 채널을 한도까지 열고 초과 요청 및 idle execution 종료를 관측한다.",
+      "expected": "서버별 control1+transfer최대1+execution최대1, 전체 socket최대9다. control은 metadata1·viewer최대2·probe최대1이며 viewer 읽기는 전체4다. exec+PTY는 서버별4·전체6이고 실행 대기 큐 없이 초과 요청을 시작 전 거절한다. viewer 초과 읽기는 FIFO, transfer 슬롯은 전체2·서버별1이다. 다른 서버/기존 채널을 끊어 자원을 만들지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F008",
+      "requirements": [
+        "R08",
+        "R18",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "transfer·execution socket 각각만 거절/종료하고 별도 사례에서는 control 연결을 종료한다. 같은 서버와 다른 서버에 viewer·exec·PTY·전송을 유지한다.",
+      "expected": "transfer만 종료되면 control/execution을, execution만 종료되면 control/transfer를 유지한다. control 단절은 같은 서버 transfer/execution을 닫고 queued 전송은 interrupted, 진행 실행/PTY는 관측에 맞는 결과 불명으로 처리한다. 다른 서버는 유지하며 자동 재접속·입력/실행 재전송이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F009",
+      "requirements": [
+        "R09"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "SSH 인증은 되지만 SFTP subsystem이 없는 서버에 연결한다.",
+      "expected": "연결 정보는 유지하고 파일 앱만 잠근다. SFTP_UNAVAILABLE을 표시하며 셸·SCP·helper 방식으로 파일 기능을 우회하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F010",
+      "requirements": [
+        "R09"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "SFTP realpath와 os-release fixture에 Ubuntu 24.04·다른 OS·읽기 실패·중복키·형식 오류·16KiB 초과를 제공한다.",
+      "expected": "realpath('.')가 초기 폴더다. /etc/os-release는 최대 16KiB만 읽으며 정상 ID/VERSION_ID로만 판정한다. 읽기·형식 실패는 unknown이며 내용을 실행하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F011",
+      "requirements": [
+        "R09",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "supported·unsupported·unknown 및 SFTP-only/chroot·exec 거절·PTY 거절 fixture에서 파일·뷰어·GUI 실행·터미널·probe를 각각 요청한다.",
+      "expected": "v6의 OS 정책과 기능별 capability를 적용한다. unknown 확인은 세션별이며 재접속 뒤 상속하지 않는다. exec/PTY/probe 실패를 SFTP 전체 실패로 합치거나 probe 성공만으로 사용자 프로그램 실행 권한을 확정하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F012",
+      "requirements": [
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "원격 POSIX 절대경로·basename 255byte/초과·전체 4096byte/초과와 §7 금지문자·NFC/NFD·대소문자 fixture를 처리한다.",
+      "expected": "범위 밖·손실 이름은 동작을 막는다. rawName과 표시명을 분리하고 escape·정규화·Windows path.join으로 실제 원격 이름을 변형하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F013",
+      "requirements": [
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "remote symlink·FIFO·socket·device·미확인 type, local lstat 식별 symlink/junction·UNC와 선택 후 type 변경을 시험하고 미지원 위치 설명을 확인한다.",
+      "expected": "링크·특수파일 동작과 UNC를 거절하고 fstat·mutation 직전 lstat/parent realpath를 재확인한다. 모든 reparse tag/cloud placeholder·volume 종류를 자동 탐지한다고 주장하지 않으며 지원 범위는 로컬 일반 파일·폴더로 설명한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F014",
+      "requirements": [
+        "R11"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "점 항목·숨김 파일·폴더·동명이형 이름 및 10,000항목/10MiB 경계 목록을 읽고 필터·토글·새로고침한다.",
+      "expected": "점 항목 제외, 폴더 우선 code-point 정렬, 숨김 기본 표시다. 상한 초과는 handle을 닫고 일부 목록을 명시한다. 필터는 읽은 이름만 대상으로 하며 재귀 스캔이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F015",
+      "requirements": [
+        "R04",
+        "R11",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "서버 A/B의 여러 탐색기 창을 전환하면서 이전 목록 응답을 지연하고 파일 창 6개·전체 내부 창 12개 한도를 넘겨 연다.",
+      "expected": "서버·경로·선택 상태는 창에 귀속되고 늦은 응답이 다른 창을 덮지 않는다. 초과 창은 요청 전 거절하며 기존 창을 닫지 않는다. 현재 활성 창으로 기존 task 대상을 바꾸지 않고 명세에 없는 파일 탭 기능을 추가하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F016",
+      "requirements": [
+        "R10",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Windows 금지문자·예약명·끝 공백/점, macOS 금지 이름, case-insensitive·Unicode alias 충돌 목적지를 다운로드한다.",
+      "expected": "이름을 자동 치환하지 않고 다른 이름을 요구한다. 실제 최종 exclusive link가 충돌을 판정하며 기존 파일의 bytes와 이름을 보존한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F017",
+      "requirements": [
+        "R12"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "없는 단일 이름·기존 이름·중간 부모 없음 fixture에서 새 폴더 preview를 승인한다.",
+      "expected": "intent 저장→mkdir(0700)→ACK→lstat(directory)→receipt 순서다. 기존 이름은 충돌, 중간 부모 자동 생성은 없으며 결과 target이 승인 preview와 일치한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F018",
+      "requirements": [
+        "R13"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "일반 파일·빈 폴더·삭제 직전 항목이 생긴 폴더·루트·진행 중 경로를 삭제한다.",
+      "expected": "파일 unlink와 폴더 rmdir만 사용한다. 루트·작업 중 경로·비어 있지 않은 폴더는 삭제하지 않으며 rmdir 최종 결과를 따른다. 재귀·shell rm fallback이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F019",
+      "requirements": [
+        "R13"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "같은 폴더의 일반 파일을 없는 이름·기존 이름으로 바꾸고 폴더·링크·다른 폴더 이동도 시도한다.",
+      "expected": "허용 사례는 intent→hardlink(source,newName)→ACK 기록→unlink(source)→ACK 기록이다. 기존 목적지를 보존하고 폴더·링크·이동은 거절한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F020",
+      "requirements": [
+        "R13",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "rename에서 hardlink 성공 뒤 source unlink 실패 또는 ACK 유실을 주입한다.",
+      "expected": "확정 실패는 partial과 두 경로, ACK 유실은 단계가 붙은 result_unknown이다. source 자동 재삭제와 새 이름 rollback 삭제가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F021",
+      "requirements": [
+        "R13",
+        "R14",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "같은 경로/조상의 삭제·rename, 전송 source 변경, 같은 parent의 다른 자식 생성·조회와 명시적 exec/PTY의 동시 파일 변경을 시험한다.",
+      "expected": "SFTP 엔진이 관리하는 경로 lock과 parent 보존 규칙을 지킨다. 자기 exec/PTY나 외부 writer의 임의 파일 접근까지 통제한다고 주장하지 않는다. 관측된 source 변경은 명세대로 중단하며 snapshot/transaction 보장으로 표시하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F022",
+      "requirements": [
+        "R14"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "A 서버 작업 여러 개를 먼저 넣고 B/C 작업을 넣은 뒤 취소와 enqueue를 경합시킨다.",
+      "expected": "전체 슬롯 2·서버별 1이며 준비부터 검증·확정·최종기록까지 점유한다. 실행 가능한 가장 오래된 (enqueuedSequence,taskId)를 선택하고 A 대기가 B/C를 막지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F023",
+      "requirements": [
+        "R14"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "100개/101개 선택·대기 상한 초과 및 유효·충돌·미지원 파일 혼합 선택을 제출한다.",
+      "expected": "상한 초과 요청은 전체 거절한다. 혼합 preview는 모든 항목을 나열하고 유효 항목 진행/전체 취소를 받으며 조용히 누락하거나 자동 이름 접미사를 만들지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F024",
+      "requirements": [
+        "R15",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "0byte·5GiB·64GiB·64GiB 초과 파일과 enqueue 후/전송 중 size·mtime 변경을 주입한다.",
+      "expected": "허용 크기는 0–64GiB이며 offset은 안전 정수다. 같은 source handle을 유지하고 시작·마지막 fstat 변화는 SOURCE_CHANGED로 중단한다. 시점 snapshot 보장을 표시하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F025",
+      "requirements": [
+        "R15",
+        "R16",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "`.sshos-<taskId>.part` 기존 충돌, 생성 ACK 유실, created 저장 실패를 업로드·다운로드에 주입하고 순서를 기록한다.",
+      "expected": "양 방향 모두 durable intent 성공→wx/0600 생성→durable created 성공 후 byte 전송이다. 충돌 temp 보존, ACK 유실 result_unknown, created 실패는 전송 없이 socket 종료다. 패턴만으로 소유권을 추정하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F026",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "지연·역순 write ACK와 느린 source를 제공하여 업로드 요청·메모리·진행량을 관측한다.",
+      "expected": "32KiB chunk·미완료 write 최대 16개와 backpressure를 적용한다. ACK 받은 byte만 진행에 반영하고 전체파일 Buffer·임의 동일 offset 재전송을 만들지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F027",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "0byte·일반·실제 5GiB 파일을 업로드하며 source hash·EOF·write ACK·remote close·temp lstat·read-back 결과를 수집한다.",
+      "expected": "모든 write/close와 size 확인 뒤 같은 transfer SFTP에서 temp 전량 read-back의 SHA-256·byte를 대조한다. 빈 파일도 empty hash·close·size 검사를 생략하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F028",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "업로드 후 READ 금지 또는 temp byte 변조 fixture로 검증을 실패시킨다.",
+      "expected": "각각 VERIFY_READ_DENIED 또는 VERIFY_MISMATCH다. final link를 보내지 않으며 원격 checksum 명령·검증 생략으로 우회하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F029",
+      "requirements": [
+        "R15",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "업로드 검증 뒤 finalize_intent_pending·durable intent·hardlink 사이에 기존 destination을 만들고 정상 사례도 수행한다.",
+      "expected": "intent 저장 성공 후 finalizing에서만 hardlink(temp,destination)를 보낸다. 충돌 보존, 정상은 ACK→destination 일반파일·size 확인→생성 기록→temp 정리→완료 기록 후 completed다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F030",
+      "requirements": [
+        "R09",
+        "R15"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "hardlink 확장 미지원·EXDEV·권한 오류를 사용자 업로드/rename에서 발생시키고 로그인 통신도 관측한다.",
+      "expected": "해당 기능은 실패·제한된다. rename/posix-rename/copy/destination unlink/helper fallback이 없고 로그인 시 지원 탐지용 임의 파일을 만들지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F031",
+      "requirements": [
+        "R15",
+        "R16",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "final destination 확인 후 temp 제거 실패·ACK 유실·완료 receipt 저장 실패를 각각 주입한다.",
+      "expected": "정리 실패는 completed+needed, 정리 ACK 유실은 completed+unknown이다. destination rollback 삭제는 없다. 기록 실패는 목적지 생성 확인 경고와 새 mutation 잠금이며 재시작 시 남은 finalizing은 result_unknown이다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F032",
+      "requirements": [
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "5GiB 이상 원격 파일의 short read·short local write·지연 read를 주입하며 다운로드한다.",
+      "expected": "32KiB chunk·미완료 read 최대 16개, 실제 길이에 따른 잔여 처리를 지킨다. offset을 32bit로 절단하지 않고 동일 source handle에서 전체 bytes를 순서대로 저장한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F033",
+      "requirements": [
+        "R16",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "로컬 APFS·NTFS에서 실제 5GiB 다운로드 및 local sync·close·read-back 실패를 주입한다.",
+      "expected": "source 마지막 fstat·remote close·local sync/close·temp 재개방 hash/size 확인 후 finalize_intent_pending→durable intent 성공→finalizing→fs.link 순서다. 검증 실패는 final 생성으로 넘어가지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F034",
+      "requirements": [
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "다운로드 최종 확정 직전에 destination을 만들거나 fs.link를 실패시키고 UNC·hardlink 미지원 목적지도 선택한다.",
+      "expected": "existing/alias 충돌·UNC·hardlink 미지원은 실패한다. local rename·COPYFILE·기존 파일 삭제 fallback이 없고 기존 destination을 보존한다. 미지원 volume 전체를 자동 탐지한다고 주장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F035",
+      "requirements": [
+        "R12",
+        "R15",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "실행권한·mtime·소유자·ACL·xattr가 있는 파일을 전송하고 새 파일·폴더의 요청 mode와 설명을 확인한다.",
+      "expected": "새 upload 파일 요청 0600·mkdir 요청 0700이다. 원본 mode/owner/ACL/mtime/xattr를 복제하거나 동일하게 보존했다고 표시하지 않는다. 다운로드가 원격 실행권한을 복제하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F036",
+      "requirements": [
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "0byte·일반 파일의 ACK/로컬 write와 검증 read 진행 이벤트를 전송 완료 경계에 전달한다.",
+      "expected": "byte는 단조 증가하고 total을 넘지 않는다. 0byte는 byte단계 끝 전 0%, 이후 100%다. 검증은 별도 verifiedBytes와 ‘내용 확인 중’이며 200%·조기 완료가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F037",
+      "requirements": [
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "monotonic 시간으로 3초 창·첫 sample·3초 정지·terminal·고빈도 이벤트를 재생한다.",
+      "expected": "최근 3초 실제 처리량/경과시간으로 속도를 계산한다. 첫 sample 전·3초 무진전은 —, 검증은 검증 속도, terminal은 속도 없음이다. 최대 4Hz·terminal 즉시·UI 1초 이내이며 ETA가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F038",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "아직 슬롯을 얻지 못한 queued 전송을 취소한다.",
+      "expected": "cancelled로 종료하고 socket·temp를 생성하지 않는다. 다른 queued/실행 task의 상태와 순서를 임의 변경하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F039",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "preparing/transferring/verifying에서 취소하고 소유 temp 확인 가능/parent 변경/불명 socket 사례를 만든다.",
+      "expected": "수락 즉시 cancel_requested·새 I/O 중지, 5초 내 해당 stream/socket만 닫는다. 소유·세션·연결 조건이 맞을 때만 1회 정리 가능하며 불명 경로는 자동 삭제하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F040",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "취소와 finalize_intent_pending 진입을 양 순서로 경합시키고 durable intent 저장 지연·실패를 주입한다.",
+      "expected": "cancel_requested가 먼저면 link 없음이다. pending이 먼저면 저장 대기 중에도 CANCEL_TOO_LATE·취소 비활성이다. 메모리 pending 동안 디스크에는 phase=finalizing·dispatchAllowed=true를 저장한다. 저장 성공 ACK 뒤에만 link를 보내며 실패는 STORAGE_FAILED·link 없음이다. pending은 디스크에 저장하지 않고 문구는 §8.4와 일치한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F041",
+      "requirements": [
+        "R08",
+        "R18",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "SSH ready·SFTP·viewer read/decode·exec/PTY 시작·probe를 각 기한 경계로 지연하고 무출력 장기 프로그램과 유휴 PTY를 유지한다.",
+      "expected": "SSH 인증20초, SFTP 요청15초·목록 전체60초, viewer dispatch부터 전체읽기30초·decode5초, 실행 채널 요청10초, probe5초를 적용한다. 전송30초 무진행과 취소5초를 실행/PTY 전체 수명에 적용하지 않는다. viewer 큐 대기는 읽기 기한에서 제외하며 무출력 실행을 임의 실패/완료로 바꾸지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F042",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "mkdir/delete/rename/temp 생성/final link의 ACK를 유실하고 종료·timeout 후 늦은 callback을 전달한다.",
+      "expected": "변경 가능성이 남으면 단계별 result_unknown이다. 명시적 실패와 단절을 구분하며 늦은 성공은 관측 기록만 남기고 terminal task를 completed로 승격하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F043",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "유효한 current의 queued·created·생성 불명·finalizing·잘못 저장된 pending·dispatched·completed receipt를 가진 앱을 재실행한다.",
+      "expected": "§8.4 복원 규칙대로 interrupted/needed/result_unknown/기존 completed를 복원한다. 잘못 저장된 pending도 result_unknown이다. 자동 실행·이어받기·재접속·이전 temp 검색 및 삭제가 없다. backup 복원 판정은 F060을 따른다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F044",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "result_unknown 작업의 위치를 열고 현재 size/hash가 일치하는 파일을 관찰한 뒤 ‘확인 후 기록 닫기’를 선택한다.",
+      "expected": "위치 열기는 읽기만 수행한다. 일치해도 과거 성공을 소급 확정하지 않고 acknowledgedAt만 추가하며 원래 result_unknown을 보존한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F045",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "인증된 제어 SSH에서 정상 /bin/true를 실행하고 exec 직전·exit·close·로컬 대기 시각을 기록한다.",
+      "expected": "고정 명령만 실행하며 code=0·signal/error 없음·5초 이내 close를 모두 충족해야 실제 exec 직전부터 sample을 만든다. 로컬 큐 대기·keepalive·전송 속도는 값에 넣지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F046",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "exec 거절·nonzero·signal·exit 누락·channel error·stdout+stderr 4KiB 초과 fixture를 반환한다.",
+      "expected": "해당 세션을 unavailable로 표시하고 반복 probe를 중지한다. 출력은 최대 4KiB만 소비하고 저장하지 않으며 SFTP 기능을 함께 끊지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F047",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "exec callback을 5초 이후 반환하거나 영원히 반환하지 않고 시간과 timer를 진행한다.",
+      "expected": "timeout은 delayed이며 숫자를 저장하지 않는다. 미정리 callback 동안 새 probe를 누적하지 않고 늦게 온 channel은 닫으며 sample 폐기다. 측정 때문에 제어 연결을 강제 종료하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F048",
+      "requirements": [
+        "R20",
+        "R04",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "서버가 다른 내부 창의 focus·최소화·복원, 앱 blur/minimize·복귀, 오래된 sample과 채널 대기를 재생한다.",
+      "expected": "활성 서버와 앱 foreground 정책에 맞춰 probe를 실행하고 이전 서버 숫자를 즉시 제거한다. 내부 창 최소화와 OS 앱 최소화를 구분한다. sample freshness·epoch·지연/불가 문구는 v6 probe 계약을 따른다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F049",
+      "requirements": [
+        "R21",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "전송·viewer 읽기·GUI 실행·PTY가 있는 상태에서 내부 창 최소화/닫기, 프로필 해제, 앱 종료를 각각 선택한다.",
+      "expected": "최소화는 작업과 세션을 종료하지 않는다. 닫기·연결 해제·앱 종료는 작업 종류별 확인과 수명 계약을 적용하며 출력창 닫기를 원격 프로세스 중지 성공으로 표시하지 않는다. 앱 종료 기한 뒤 불명을 보존한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F050",
+      "requirements": [
+        "R21",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "전송·뷰어·GUI 실행·PTY 중 renderer crash와 worker crash를 각각 주입하고 UI 복구/연결 엔진 다시 시작을 요청한다.",
+      "expected": "renderer crash는 main/worker 자원을 유지하고 마지막 main 메모리 창 snapshot과 worker 관측 상태로 복구한다. worker 사망은 연결과 결과를 보수적으로 종료하며 자동 재시작·원격 재실행·입력 replay가 없다. PTY ring 재생은 화면 복구만 수행하고 누락/잘림을 안내한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F051",
+      "requirements": [
+        "R21",
+        "R20",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "정상 suspend와 이벤트 없는 강제 suspend 후 복귀하고 OS wall clock을 변경한다. GUI 실행·PTY·전송을 함께 관측한다.",
+      "expected": "기존 세대와 probe를 무효화하고 작업 종류별 단절 결과를 보존한다. 원격 프로세스가 중지됐다고 추정하지 않으며 자동 재연결·전송 재개·명령/키 입력 replay가 없다. timeout/속도는 monotonic clock을 사용한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F052",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "같은 userData로 앱 두 개를 실행하고 여러 저장 요청을 동시에 제출한다.",
+      "expected": "single instance lock 소유 main만 JSON을 쓴다. 두 번째 앱은 기존 창 활성화 후 종료한다. data와 runtime cache가 분리되고 실행파일·키 원본·시스템 SSH 파일을 덮어쓰지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F053",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "key 순서·배열 순서·checksum 변조·unsafe revision·금지 값·state 1MiB/receipt 64KiB 경계의 JSON을 읽고 쓴다.",
+      "expected": "재귀 code-point key 정렬·배열 순서 유지로 SHA-256을 계산한다. parse 전 상한·strict schema·checksum·안전 정수를 검사하고 undefined/NaN/Infinity/bigint를 거절한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F054",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "JSON writer의 temp 작성·sync·backup 교체·current 교체마다 중단시키고 Windows replace 잠금을 주입한다.",
+      "expected": "동일 폴더 wx/0600→sync→close→검증 backup copy/sync/replace→current replace 순서다. current 선삭제가 없다. 100/200/400ms 최대 3회 재시도와 5초 기한을 적용하고 새 writer를 겹치지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F055",
+      "requirements": [
+        "R22",
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "current 유효·backup만 유효·둘 다 손상·높은 schemaVersion 상태로 시작한다.",
+      "expected": "유효 current를 우선한다. backup 복구는 사용자에게 알리고 trust 재승인 전 인증하지 않는다. 둘 다 손상이면 연결/변경 잠금이며 자동 빈 초기화·덮어쓰기·downgrade가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F056",
+      "requirements": [
+        "R22",
+        "R19",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "디스크 부족·권한 거절·읽기 전용·잠금으로 file mutation 및 exec/PTY 시작 intent 전과 요청 후 저장을 실패시키고 저장소 다시 확인을 선택한다.",
+      "expected": "intent 실패는 새 요청 dispatch 금지다. ACK 후 저장 실패를 원격 실패로 바꾸지 않는다. storage fault 동안 새 mutation/enqueue/exec/PTY/trust 변경을 막고 읽기·기존 PTY 입력·중지·해제를 허용한다. writer 정리와 파일 검증 전 잠금을 풀지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F057",
+      "requirements": [
+        "R22",
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "30일/1,000개 경계 terminal·unresolved 100개 초과·손상 receipt·orphan secret을 로드하고 기록/프로필을 삭제한다.",
+      "expected": "terminal만 시작 시 1회 보관 한도로 정리한다. unresolved 자동 삭제 금지·초과 시 새 변경 차단이다. 손상은 해당 receipt만 표시하고 다른 secret 대체·원격 파일/계정 삭제가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F058",
+      "requirements": [
+        "R26",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "개발 §13 및 §19.5의 모든 고정 오류와 미확인 errno/SFTP FAILURE·결과 불명·지원 형식 거절을 UI에 전달한다.",
+      "expected": "code/userMessage/confirmedPhase/affectedTarget/actions/technicalDetails는 해당 기능의 계약과 일치한다. 결과 불명을 우선하고 원문 stack/credential을 노출하지 않는다. stderr만으로 원인을 확정하거나 검색·AI·자동 sudo/chmod 안내로 대체하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F059",
+      "requirements": [
+        "R08",
+        "R18",
+        "R19",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "metadata control SFTP 요청을15초 넘게 지연하고 같은 서버 transfer/execution 및 다른 서버 작업과 늦은 callback을 관측한다.",
+      "expected": "control quarantine·새 요청 차단·socket 종료 후 같은 서버 transfer/execution을 §6대로 종료한다. 조회는 IO_TIMEOUT, 변경 가능성이 있으면 result_unknown이다. unresolved 경로는 확인 전 mutation 금지이고 이전 callback은 폐기한다. probe/viewer timeout은 별도 채널 정리이며 다른 서버는 유지한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F060",
+      "requirements": [
+        "R19",
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "current receipt를 손상시키고 queued·verifying·종결 상태가 각각 담긴 유효 backup으로 복원한다.",
+      "expected": "모두 recoveryUncertain=true와 result_unknown으로 복원한다. backup 종결 관측은 과거 기록으로만 남고 최신성 불명을 표시한다. 자동 실행·정리·완료 복구 추정이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F061",
+      "requirements": [
+        "R04",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "바탕화면의 연결/파일/터미널/설정 아이콘, 시작 버튼의 작업 관리자, taskbar를 마우스·Enter로 열고 재선택한다.",
+      "expected": "아이콘 단일클릭은 선택이고 더블클릭/Enter는 실행한다. 연결/작업/설정은 singleton, 파일 아이콘은 마지막 파일 창 복원, 새 파일 창은 명시 명령이다. 같은 서버/세대/path/종류의 viewer는 복원하며 taskbar는 활성 창을 임의 최소화하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F062",
+      "requirements": [
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "12개 내부 창에서 제목/버튼/본문 pointer down·drag·pointercancel·blur·resize·최소/최대화·복원·viewport 축소를 반복한다.",
+      "expected": "09 §1–2의 최소 크기·bounds·restoreBounds·mode/restoreMode를 지킨다. maximized→minimized→복원에서도 이전 최대화와 normal 좌표를 보존한다. 영역은 x0,y44,width=viewportWidth,height=viewportHeight−160이며 제목줄40px와 상/하단을 유지한다. 좌표는 animation frame당 최대1회, 최대화는 OS fullscreen이 아니다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F063",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "겹친 창을 마우스와 키보드로 전환하고 활성 창 최소화·닫기·dialog 열기/닫기를 반복한다.",
+      "expected": "focus·z-order·활성 표시·다음 활성 창이 일관된다. 가려진 창이 입력을 받지 않으며 dialog 종료 뒤 유효한 이전 focus로 돌아온다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F064",
+      "requirements": [
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "활성/비활성 창의 닫기·최소화와 연결/전송/프로그램/PTY 상태 변화를 교차 전달한다.",
+      "expected": "windowId와 session/taskId의 수명을 분리한다. 최소화는 유지하고 닫기는 기능별 계약을 따른다. 창 UI 제거가 원격 프로세스 중지 확인이나 전송 취소로 자동 변환되지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F065",
+      "requirements": [
+        "R22",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "창 이동 후 main 메모리 snapshot의250ms debounce 경계에서 renderer를 복구하고 별도로 앱 전체 재시작·viewport 축소를 수행한다.",
+      "expected": "renderer 복구는 마지막 메모리 snapshot을 clamp해 사용하며 마지막250ms 좌표 보존을 보장하지 않는다. 창 geometry·열린 파일·터미널 내용/입력은 디스크에 자동 저장하지 않는다. 앱 재실행은 바탕화면+연결 창으로 시작하고 SSH/PTY·실행·전송을 자동 재개하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F066",
+      "requirements": [
+        "R10",
+        "R34"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "UTF-8 한글/emoji·BOM·CRLF/LF·빈 파일·잘못된 UTF-8·NUL, 2MiB 및 단일 행100,000 Unicode scalar의 경계/초과를 연다.",
+      "expected": "BOM 제거 후 strict UTF-8 decode, 잘못된 byte/NUL은 VIEW_FORMAT_UNSUPPORTED, 크기/행 상한 초과는 VIEW_LIMIT다. plain text와 가상 스크롤을 사용하며 HTML/Markdown/ANSI 실행·서식화·검색·편집·저장·인코딩 변환을 제공하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F067",
+      "requirements": [
+        "R11",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "읽는 중 원격 파일의 size/mtime를 변경하고 같은 metadata로 내용만 바꾸는 사례도 비교한다. 완료 후 다른 접속으로 수정하고 수동 다시읽기를 선택한다.",
+      "expected": "EOF와 처음/끝 fstat 비교 성공 뒤 표시한다. 변화 관측은 SOURCE_CHANGED와 이전 화면 유지이며 동일 metadata 동시 수정까지 검출했다고 보장하지 않는다. 마지막 읽음 시각을 표시하고 수동 다시읽기만 새 요청으로 처리하며 watcher/주기 polling은 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F068",
+      "requirements": [
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "PNG/JPEG/WebP와 signature 위장·APNG·animated WebP·GIF/SVG/PDF·손상 길이·JPEG EXIF orientation1–8·누락/손상 orientation·PNG eXIf·WebP EXIF·크기/픽셀 경계를 제공한다.",
+      "expected": "4KiB signature 판별과 header 검증 뒤 정적 PNG/JPEG/WebP만 연다. 압축20MiB·한 변16384px·40MP 상한이다. JPEG orientation 누락은1, 손상은 거절하며 PNG eXIf/WebP EXIF는 VIEW_FORMAT_UNSUPPORTED다. EXIF5–8은 교환된 폭/높이와 비교하고 단일 ImageBitmap을 canvas로 전송한다. img/blob 재decode가 없고 교체/닫기 때 bitmap/canvas 참조를 해제한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F069",
+      "requirements": [
+        "R27",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "가로/세로/투명 이미지에서 최초 열기·화면맞춤·25/50/100/200%·스크롤·resize를 수행한다.",
+      "expected": "최초 맞춤이며 해당 확대 단계만 제공한다. 경로·형식·치수·byte·읽음 시각과 실제 배율·종횡비가 맞다. viewport 변화를 반영하고 시안/placeholder 이미지를 실제 읽은 파일로 표시하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F070",
+      "requirements": [
+        "R18",
+        "R34",
+        "R35",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "viewer read/decode 중 닫기·다시읽기·다른 파일·서버 전환·재접속·늦은 callback·timeout을 주입한다.",
+      "expected": "viewerId/requestId/generation이 맞는 결과만 적용한다. 해당 handle/channel·buffer·미전달 bitmap을 닫고 canvas 참조를 정리하며 metadata/transfer socket을 viewer timeout 때문에 끊지 않는다. decode Web Worker는5초 기한으로 terminate하고 SSH event loop를 막지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F071",
+      "requirements": [
+        "R10",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "일반 파일 실행의 direct/sh/bash·기본 cwd/인수·변경된 cwd·POSIX 로그인 셸 확인·실행확인 취소와60초 만료를 시험한다.",
+      "expected": "기본 direct·canonical parent·빈 argv이며 서버/계정/절대경로/cwd/mode/각 인수를 명시한다. POSIX 호환 확인과 유효한1회 confirmation 후에만 dispatch한다. direct 실행 bit 없음은 EXEC_PERMISSION이고 자동 sudo/chmod/interpreter 설치나 확장자 기반 mode 전환은 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F072",
+      "requirements": [
+        "R10",
+        "R24",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "빈 인수·공백·quote·달러·backtick·세미콜론·Unicode 및64개/4096byte/합16KiB 경계·NUL/CR/LF/제어문자를 실제 GUI 실행에 제공한다.",
+      "expected": "인수를 문자열 분할하지 않고 각 행을 argv로 보낸다. cwd/path/각 argv의 POSIX single quote 인코딩으로 추가 shell 실행이 없으며 거절값은 요청 전 차단한다. preview/dispatch lstat·parent 확인을 지키되 path 교체 TOCTOU를 원자적으로 막았다고 주장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F073",
+      "requirements": [
+        "R19",
+        "R36",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "prepared 취소·명시 요청 거절·시작ACK 유실·정상/nonzero/signal exit·exit 누락·close 누락·단절·늦은 종료를 주입한다.",
+      "expected": "dispatch 전 취소는 cancelled_not_sent, 명시 거절은 rejected다. 수락은 running이며 유효 exit/signal과 같은 채널 close를 모두 관측해야 exited다. dispatch 후 불명/exit 없는 close는 result_unknown이고 관측값을 보존한다. code0은 업무 성공이 아니며 자동 재실행이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F074",
+      "requirements": [
+        "R17",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "stdout/stderr의 교차·UTF-8 분할·무출력·flood와6개 실행의 로그16MiB 초과, 출력창 닫기·renderer 소실·다시열기를 시험한다.",
+      "expected": "stream 구분과 arrival sequence를 표시하고 원격 발생 순서를 보장하지 않는다. GUI ANSI는 escape 문자다. chunk32KiB·미확인256KiB·출력1MiB/s·로그4MiB/작업 및16MiB전체를 지킨다. 창/renderer가 없어도 worker는 bounded ring으로 drain하며 종결 buffer 다음 전역 가장 오래된 chunk를 제거하고 해당 작업에 생략을 표시한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F075",
+      "requirements": [
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "GUI exec의 stdin 대기 fixture와 TERM 수신 fixture를 고정 ssh2로 실행하고 별도 PTY에 대화형 프로그램을 연다.",
+      "expected": "GUI exec는 PTY 없이 stdin channel을 열어두며 사용자 입력은 제공하지 않는다. 실행 중 선행 stream.end/EOF로 signal 전송을 막지 않는다. stdin 대기로 무출력 상태가 계속될 수 있음을 표시하고 임의 timeout/성공을 만들지 않는다. 대화형 입력은 별도 PTY다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F076",
+      "requirements": [
+        "R18",
+        "R19",
+        "R36",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "GUI 중지 요청에 TERM 거절·유실·무시·종료 지연·자식 생존을 주입하고 별도 확인 후 채널 닫기도 선택한다.",
+      "expected": "확인한 대상 채널에 TERM1회이며 stop_requested 후5초 내 종료 미관측은 stop_unconfirmed로 출력 수신을 유지한다. 자동 KILL/검색/재실행이 없다. 채널 닫기를 프로세스/자손 종료 성공으로 표시하지 않으며 관측 부족은 result_unknown이다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F077",
+      "requirements": [
+        "R09",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "정상 PTY·PTY 거절·shell 거절·SFTP-only·ForceCommand 서버에서 터미널을 연다.",
+      "expected": "PTY와 shell 결과로 해당 터미널 상태를 판단하고 서버가 요청한 프로그램을 그대로 실행했다고 추정하지 않는다. 실패해도 가능한 SFTP/뷰어를 유지한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F078",
+      "requirements": [
+        "R27",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "실제 vi·shell에서 한글IME/emoji·Ctrl+C·선택복사·paste 및4KiB/64KiB·줄바꿈 경계와 입력 폭주를 시험한다.",
+      "expected": "키 입력 최대120/s·64KiB/s·in-flight64KiB, paste64KiB/요청을 지킨다. CR/LF 또는4KiB 초과 paste는 고정 대상/내용 확인 후 전송하고 임의 줄바꿈을 붙이지 않는다. 초과 입력은 조용히 버리지 않고 대기를 표시하며 조합/붙여넣기를 중복 전송하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F079",
+      "requirements": [
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "터미널 최초열기·resize·최대화·복원·최소화 중 grid 및 SSH window-change를 서버에서 관측한다.",
+      "expected": "초기 xterm-256color·cols80/rows24·pixel0, fit 후 cols2–500/rows1–200이다. 마지막 변경100ms debounce로 setWindow하고 숨김0크기는 이전값 유지다. generation/대상 검증 후 요청하며 닫힌/다른 창에 늦은 resize를 보내지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F080",
+      "requirements": [
+        "R19",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "PTY의 CSI/DA 질의·출력과 입력 중 최소화·닫기·renderer crash·앱 재시작을 수행하고 원격 수신 byte를 검사한다.",
+      "expected": "최소화는 유지하고 닫기는 확인 후 채널만 닫는다. 복구는1MiB/채널·전체6MiB ring의 sequence S snapshot을 재생한다. 마지막 write callback ACK까지 disableStdin과 onData/onBinary 송신 차단을 유지해 과거 질의 자동응답도 재전송하지 않는다. live는 S 이후만 재개하고 실패는 입력잠금·복구불완전 안내다. 원격 종료를 단정하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F081",
+      "requirements": [
+        "R08",
+        "R14",
+        "R20",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "3서버에 전송2개·viewer읽기4개·exec/PTY6개·내부창12개와 probe를 동시에 열고 MaxSessions 거절·출력 flood·입력/중지를 섞는다.",
+      "expected": "정본의 기능별 한도·FIFO/대기 없음·우선순위·backpressure를 지킨다. 사용자 제어는 probe보다 우선하고 한 기능 거절 때문에 기존/다른 서버 채널을 끊지 않는다. 입력·중지·해제 요청이 출력 뒤로 무기한 밀리지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F082",
+      "requirements": [
+        "R11",
+        "R25",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "다른 클라이언트가 파일을 변경하는 동안 앱 네트워크를 관측하고 수동 refresh·자기 SFTP 작업·실행 종료를 각각 수행한다.",
+      "expected": "타 사용자 변경의 실시간 감시·주기 전체조회·원격 watcher 설치가 없다. 명세의 제한된 재조회와 자신의 전송/실행/PTY 스트림은 유지하며 임의 프로그램의 모든 파일 변경을 자동 파악했다고 표시하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F083",
+      "requirements": [
+        "R09",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "실행 가능/불가 파일, 누락 프로그램, 다른 cwd 권한, interpreter 실패와 channel 정책 차이를 제공한다.",
+      "expected": "해당 요청의 관측 결과로 가능 여부를 표시한다. GUI 실행 권한을 SSH 접속 성공이나 /bin/true 성공만으로 확정하지 않으며 서버에 전용 런타임·권한 자동수정을 요구하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F084",
+      "requirements": [
+        "R19",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "중복 시작/중지 request·이전 epoch/generation의 ACK/output/exit, confirmation 재사용 및 worker 재시작을 교차 전달한다.",
+      "expected": "동일 승인 요청을 중복 dispatch하지 않으며 정확한 서버/자원/epoch/generation을 검증한다. 결과 불명 실행을 자동 재실행하지 않고 늦은 terminal bytes를 새 세션에 적용하지 않는다. 재실행은 새로운 명시적 사용자 동작을 요구한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "F085",
+      "requirements": [
+        "R08",
+        "R18",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "동일 서버에서 동시 exec/PTY start를 요청하고 opening 중4/6 슬롯 상한·10초 callback 지연/영구 미응답·늦은 채널·socket 종료를 교차시킨다.",
+      "expected": "socket 생성 promise/lock을 공유하고 opening도 한도를 점유한다. timeout 슬롯은 미정리 상태로 예약하며 새 요청에 재사용하지 않는다. 늦은 channel은 닫되 원격 종료는 불명이다. callback 미복귀는 해당 execution socket 종료까지 정리 대기이고 다른 서버/기존 채널을 임의 종료하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q001",
+      "requirements": [
+        "R02",
+        "R28",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "지원 클라이언트 세 target과 Ubuntu 24.04 amd64/arm64의 여섯 조합에서 인증·창·뷰어·GUI 실행·PTY·SFTP·host trust·단절 smoke를 수행한다.",
+      "expected": "각 조합의 실제 OS/CPU/OpenSSH와 결과가 있다. native x64를 Rosetta만으로 대체하지 않고 추가 macOS major는 양 CPU 증거 없이 지원하지 않는다. 새 기능을 단위 mock만으로 합격시키지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q002",
+      "requirements": [
+        "R02",
+        "R03"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "개발 런타임·DB가 없는 허가된 clean PC에서 target별 0.1.0 배포물을 실행한다.",
+      "expected": "이름은 배포 계약의 exe·arm64 zip·x64 zip과 일치하고 mac ZIP 최상위는 sshOS.app 하나다. Windows는 portable/user 권한이며 installer·UAC 관리자·추가 런타임 설치를 요구하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q003",
+      "requirements": [
+        "R02",
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Windows exe·mac app의 서명과 mac notarization/stapling을 플랫폼 도구로 검증한다.",
+      "expected": "유효한 배포자 서명·공증 증거가 있다. 자격증명이 없으면 개발용 패키지로만 기록하고 공개 배포 완료로 처리하지 않는다. 모든 PC 경고 제거를 보장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q004",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "기준 장비에서 cold/warm 각5회 앱 시작 후 연결 화면 조작 가능 시점을 측정하며 Windows portable 해제를 포함한다.",
+      "expected": "cold5회 모두10초 이내, warm5회 모두3초 이내다. 바탕화면 그림만 그린 시점을 조작 가능으로 기록하지 않고 장비·OS·전원·부하·반복별 결과를 남긴다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q005",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "서명된 각 target 배포물의 압축 크기와 해제된 앱의 크기를 측정한다.",
+      "expected": "target별 압축 250MiB 이하·해제 앱 750MiB 이하이며 양 수치를 별도로 기록한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q006",
+      "requirements": [
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "각 target에서60초 안정화 뒤5분간1초 표본으로 미연결·3서버·2전송검증·통합부하의 전체 앱 메모리를 측정한다.",
+      "expected": "working set/RSS 합 p95는 미연결500MiB·3서버650MiB·2전송검증800MiB·2전송+4뷰어(각40MP)+6실행채널+12창1800MiB 이하다. image RGBA160MB/개·main/renderer/utility/GPU/helper를 포함하고 공유 page 중복을 기록한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q007",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "3개 연결·활성 probe 1개·사용자 입력 없음 상태를 5분 측정한다.",
+      "expected": "평균 CPU가 한 logical CPU의 3% 이하이며 전체 앱 프로세스를 대상으로 계산한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q008",
+      "requirements": [
+        "R27",
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "통합 부하에서 로컬 버튼·taskbar·취소·창 drag/resize와 PTY 입력을 반복하고 시각 피드백/원격 echo를 별도 기록한다.",
+      "expected": "로컬 조작 피드백 p95 100ms·최대300ms와 통합 부하 drag p95 100ms 예산을 적용한다. 원격 echo/명령 종료는 별도 관측이며 명세에 없는 원격 RTT/프레임률 목표를 추가하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q009",
+      "requirements": [
+        "R11",
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "100Mbps·RTT 40ms·loss 0에서 10,000항목 폴더를 열고 가상 목록을 스크롤한다.",
+      "expected": "첫 완전 표시 10초 이하이며 이후 스크롤에 100ms 초과 UI long task가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q010",
+      "requirements": [
+        "R14",
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "서로 다른 서버로 1GiB 두 파일을 전송하면서 기준 네트워크의 1,000항목 폴더를 연다.",
+      "expected": "목록이 5초 안에 표시되고 두 전송의 대상·진행 기록이 유지된다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q011",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "각10MiB 파일로 연결/전송/취소/뷰어 열닫기/PTY 생성종료100cycle을 수행하고 전체 앱 메모리를 수집한다.",
+      "expected": "마지막10cycle p95가 최초 안정화10cycle p95보다50MiB 이상 증가하지 않는다. 앱 전체 process 합과 cycle별 조건을 기록한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q012",
+      "requirements": [
+        "R18",
+        "R21",
+        "R27",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "전송·viewer·exec·PTY·내부 창을 반복 생성/종료한 뒤 handle·socket·channel·timer·listener·ImageBitmap/canvas 참조와 메모리를 관측한다.",
+      "expected": "안정화 후 기준치로 복귀하고 반복 증가가 없다. 사용 중인 세션/출력 보관과 미정리 자원을 구분하며 응답 없는 I/O를 숨긴 채 정리 완료로 표시하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q013",
+      "requirements": [
+        "R04",
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "visual",
+      "required": true,
+      "status": "untested",
+      "procedure": "최소·기준 창 크기, 각 OS 배율과 viewport 축소 상태에서 바탕화면·아이콘·겹친 내부 창·작업표시줄·전송 선반·dialog를 검수한다.",
+      "expected": "v6 desktop geometry와 최소 크기를 지킨다. 의도한 창 가림은 허용하지만 활성 창 titlebar·복원 동작·필수 확인은 접근 가능하다. 최소화한 창은 작업표시줄에 남고 전송 서버/진행은 계속 확인할 수 있다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q014",
+      "requirements": [
+        "R04",
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "키보드로 앱 실행·내부 창 focus 전환·최소화/복원·뷰어·터미널·확인 dialog를 조작하고 screen reader와 대비를 점검한다.",
+      "expected": "명세의 focus 순서·visible focus·dialog focus trap/복원·label·aria-live·일반 텍스트 대비를 지킨다. 내부 창을 모달처럼 전부 focus trap하지 않고 터미널 입력을 다른 창으로 보내지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q015",
+      "requirements": [
+        "R04",
+        "R10",
+        "R27",
+        "R34",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Windows/macOS 한글 IME의 조합·확정·취소와 한글/emoji 이름을 파일 조작·텍스트 뷰어·PTY에서 시험한다.",
+      "expected": "조합 중 Enter가 파일 실행·전송·삭제를 오작동시키지 않는다. 터미널에는 확정 입력이 중복 없이 전달되고 Unicode chunk 경계의 문자가 손상되지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q016",
+      "requirements": [
+        "R09",
+        "R18",
+        "R28",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "SFTP-only/chroot·exec 거절·PTY 거절·SFTP 없음·READ 제한·hardlink 미지원·MaxSessions·quota/full과 지연/손실/단절 fixture를 실행한다.",
+      "expected": "각 fixture에서 가능한 기능을 유지하고 거절된 기능만 제한한다. 실제 서버 설정과 장애 조건을 남기며 사용자 서버를 시험 대상으로 수정하지 않는다. 서버에 누락 프로그램이나 interpreter를 자동 설치하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q017",
+      "requirements": [
+        "R28",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "고정 package script·TS compiler option·핵심 모듈 coverage와 실제 report를 검사하고 TEST_HOST 없는 integration도 실행한다.",
+      "expected": "v6 개발 계획의 script/coverage/strict compiler 기준을 적용하며 새 window/viewer/exec/PTY/lifecycle 모듈도 대상에 포함한다. 환경 미준비를 pass/skip으로 합격시키거나 UI 상수 복제 테스트로 대체하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q018",
+      "requirements": [
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "각 실행 행의 결과 레코드와 첨부 원자료를 증거 schema에 대조한다.",
+      "expected": "build hash·revision·환경·fixture·절차·actual/expected·evidence·defectId가 있다. bytes/trust/egress를 screenshot만으로 합격 처리하지 않으며 미실행은 untested다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q019",
+      "requirements": [
+        "R30"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "제품 계획의 G0 모집·인터뷰 절차에 따라 파일·뷰어·실행·터미널을 오가는 실제 과업과 불편을 수집한다.",
+      "expected": "표본·분석·가설 유지 조건은 제품 계획을 따른다. 파일 작업만 수행한 결과로 전체 Desktop 수요를 입증하지 않으며 미달/미실행을 기술 검사 실패나 수요 검증 성공으로 바꾸지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q020",
+      "requirements": [
+        "R30",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "제품 계획의 G2 과업·표본·순서에 따라 기존 도구와 시오스의 창 전환·뷰어·실행·PTY·전송·단절 이해를 비교한다.",
+      "expected": "제품 계획의 완료율·오서버 조작·확정/불명 구분 기준을 그대로 적용한다. baseline을 인위적으로 제한하지 않고 기능 미지원 과업은 따로 보고한다. 미검증 차별화나 보편적 선호를 주장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q021",
+      "requirements": [
+        "R30"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "제품 계획의 G3 기간·참가자·적합한 작업 기회와 자발적 사용을 기록한다.",
+      "expected": "제품 계획의 반복 사용 기준을 적용하고 기회 부족은 관찰 부족으로 분리한다. 사용성을 측정하지 않고 기술 검사 통과만으로 제품 수요가 입증됐다고 주장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q022",
+      "requirements": [
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "후속 개발의 실제 Git 원격·권한·guard·PR/review/merge·branch 정리 증거를 검토한다.",
+      "expected": "원격 없는 push 완료·무단 worktree/remote가 없다. GitHub origin은 사용자 AGENTS 흐름·current-head APPROVED·guard·양쪽 branch 정리를 지키며 미충족 선행조건을 우회하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q023",
+      "requirements": [
+        "R31",
+        "R28",
+        "R30"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "공개 후보의 필수 기술 검사·미해결 결함·서명과 별도 사용자 연구 결과를 v6 공개 기준에 대조한다.",
+      "expected": "미해결 P0/P1 및 필수 기준 위반 P2는 기술 공개를 차단한다. 기술 공개 gate와 사용자 수요 가설 검증을 구분하고 서로를 대체하거나 연구 미실행을 pass로 바꾸지 않는다. 최종 공개는 실제 사용자 권한 범위 안에서 수행한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q024",
+      "requirements": [
+        "R32"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "실제 구현 착수 지시·v6 scope digest·D01 dependency 검증·D01–D13 단계와 인계 기록을 검사한다.",
+      "expected": "exact baseline과 실제 Electron Node/Chromium 버전을 기록한다. latest/^/~ 및 다른 프레임워크 우회가 없고 변경은 새 판본과 영향 범위로 남긴다. 문서 개정·GIF 제작 승인을 제품 구현 승인으로 기록하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q025",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "내부창12개와 통합 부하에서 drag·resize·z-order·최소화/복원을 수행하고 입력 지연·animation 상태를 기록한다.",
+      "expected": "drag 시각 반응 p95 100ms와 로컬 UI 피드백 예산을 통과한다. 기본 최소화/복원150ms, OS reduced-motion이면 애니메이션 없음이다. GIF 연출을 제품 성능 증거로 사용하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q026",
+      "requirements": [
+        "R27",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "크기 한도에 가까운 텍스트·이미지를 동시에 여러 창에서 반복 열기/새로고침/닫기한다.",
+      "expected": "명세의 viewer 로드/오류 표시 기한·메모리 예산을 지킨다. decode 한도와 cleanup이 동작하고 UI·SSH event loop를 장시간 막지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q027",
+      "requirements": [
+        "R27",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "채널당1MiB/s 초과 producer·한글입력·PTY resize·2SFTP전송 중 창 최소화/닫기와 renderer 소비 ACK 소실을 주입한다.",
+      "expected": "32KiB chunk·256KiB unacked·GUI4MiB/작업 및16MiB전체·PTY ring1MiB/채널 및6MiB전체·scrollback2000줄/cols500을 지킨다. GUI는 창이 없어도 bounded drain, PTY 최소화는 소비 유지, renderer 소실은 pause/backpressure다. 원격 출력 대기를 중지 신호/프로세스 종료로 오인하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q028",
+      "requirements": [
+        "R27",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "창·viewer·GUI exec·PTY 생성/종료를100cycle 반복하고 재연결·renderer 복구를 겹쳐 listener/handle/socket/buffer를 관측한다.",
+      "expected": "마지막10cycle p95의 최초 안정화10cycle 대비 증가50MiB 미만 및 종료자원 기준치 복귀를 지킨다. 살아 있는 session/출력 보관과 누수를 구분하며 복구된 UI를 새 원격 실행으로 구현하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "Q029",
+      "requirements": [
+        "R02",
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "각 native target의1120×760/1600×1000, OS배율100/150/200%, viewport 축소·IME·접근성 경로를 검수한다.",
+      "expected": "창 경계·본문·터미널 grid·focus·읽기 순서를 유지한다. 제목 메뉴의 이동/resize는 화살표10px·Shift1px·Enter확정/Esc원복이고 OS Alt+Tab/Cmd+Tab을 가로채지 않는다. 다른 target이나 PNG만으로 합격시키지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S001",
+      "requirements": [
+        "R01",
+        "R03",
+        "R25"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "배포 소스·의존성·IPC·메뉴·설정·feature flag를 v6 제외 목록과 대조한다.",
+      "expected": "온라인 검색·AI·원격 GUI/X11·전용 서버 앱/DB·타 사용자 파일 변경의 실시간 감시·자동 원격 복구 등 제외 기능이 없다. Desktop·뷰어·명시적 GUI exec·PTY는 포함 범위대로 구현한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S002",
+      "requirements": [
+        "R24",
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "운영 BrowserWindow·CSP·preload·xterm 동적 style·navigation·새 창·권한·DevTools를 검사하고 script/CSS/외부자원 주입을 시도한다.",
+      "expected": "nodeIntegration=false, contextIsolation/sandbox/webSecurity=true다. script-src self·worker-src self·img-src self와 나머지 §4 CSP를 지킨다. CSS의 style-src unsafe-inline만 고정 xterm/검증 UI에 허용하고 스크립트 inline/eval·원격 CSS/HTML/URL·외부 navigation·webview·권한·remote debug는 차단한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S003",
+      "requirements": [
+        "R24",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "app protocol의 traversal·package 밖 symlink·미확인 MIME·외부 HTML과 viewer 파일 bytes를 제공한다.",
+      "expected": "패키지 UI 경로 검증을 유지한다. viewer는 검증된 일시 content stream을 사용하고 이미지는 Web Worker ImageBitmap을 canvas로 전달한다. 임의 OS path/file URL·외부 URL bridge·원격 HTML/JavaScript 실행을 열지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S004",
+      "requirements": [
+        "R24",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "잘못된 origin/frame/schema와 IPC 크기·요청율 초과를 주입하고 terminal input·resize·paste·viewer/output stream의 한도도 시험한다.",
+      "expected": "control 요청과 데이터 스트림을 구분한 v6 schema·byte·backpressure 기준을 적용한다. 자유로운 로컬 invoke/OS exec/readFile API는 없고 명시된 원격 실행·PTY action만 허용한다. 종료·중지 요청이 출력 flood 뒤로 무기한 밀리지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S005",
+      "requirements": [
+        "R24",
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "token의 serverId·generation·parent·rawName·type을 바꾸고 60초 지난/소비된 confirmationToken을 재사용한다.",
+      "expected": "main 보관 capability와 불일치·재접속 token·만료/재사용 확인을 거절한다. 삭제 승인을 다른 경로·작업·기존 목적지 제거에 재사용하지 못한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S006",
+      "requirements": [
+        "R24",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "이전 backendEpoch/generation·중복 requestId·sequence gap·서버 전환 중 이벤트를 주입한다.",
+      "expected": "틀린 epoch/generation 폐기, gap은 main snapshot 복구다. 중복은 같은 응답/처리 중이며 side effect 1회다. 선택 UI로 task serverId를 바꾸지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S007",
+      "requirements": [
+        "R23",
+        "R24"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "renderer가 임의 로컬 경로·dialog 선택 밖 file token으로 업로드/키 읽기를 요청하고 worker 저장을 유도한다.",
+      "expected": "main OS dialog가 부여한 capability만 허용한다. renderer/worker가 state JSON을 직접 쓰지 못하고 renderer가 fs/net/secret 복호화에 직접 접근하지 못한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S008",
+      "requirements": [
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "신규 endpoint에서 인증 관측 서버로 연결하고 승인·취소·120초 만료·신뢰 저장 실패를 수행한다.",
+      "expected": "첫 socket은 지문 수집 뒤 verifier=false로 닫혀 인증 정보가 나가지 않는다. 승인 지문 저장 성공 후 새 연결을 검증하며 만료·취소·저장 실패는 인증하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S009",
+      "requirements": [
+        "R06",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "저장 키 불일치·승인/재연결 사이 변경과 transfer/execution 각각 다른 키를 제공한다.",
+      "expected": "control/transfer/execution 모두 hostVerifier로 공개 blob을 byte 비교한다. 변경은 HOST_KEY_CHANGED로 종료하고 인증 정보 전송을 차단한다. 무시·자동교체·약한 지문 비교가 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S010",
+      "requirements": [
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "동일 endpoint의 복수 프로필과 대기 task에서 설정의 신뢰 삭제를 실행하고 시스템 SSH 파일 변경을 추적한다.",
+      "expected": "endpoint의 연결·대기 task를 먼저 종료하며 비밀을 재전송하지 않는다. 다음 연결은 신규 승인이고 ~/.ssh/config·known_hosts를 자동 읽거나 수정하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S011",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "512KiB 초과·.pub·PPK·PKCS#8 입력 파일·DSA·ECDSA 사용자키·인증서·FIDO·외부 agent·MFA·약한 RSA 및 1,024byte 초과 password/passphrase를 제공한다.",
+      "expected": "지원 밖 형식·방식·크기를 거절하고 사용자 입력 형식 변환·fallback을 하지 않는다. RSA 2048bit 미만·SHA-1 약화 인증이 없다. 내부 PKCS#8 전달과 내부 서명 adapter를 외부 입력/agent 지원으로 간주하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S012",
+      "requirements": [
+        "R07",
+        "R23",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "폼·control/transfer/execution 재인증의 비밀을 관측한 뒤 disconnect·worker사망·앱종료를 수행한다.",
+      "expected": "제출 후 폼을 비우고 비밀은 해당 서버 세션 메모리에만 유지한다. 종료 시 참조 폐기·가능한 Buffer 덮어쓰기를 수행하며 renderer로 저장 비밀을 반환하지 않는다. 완전 물리 소거를 주장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S013",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "§5 allowlist의 협상·서명을 실제 고정 라이브러리로 검사하고 약한 알고리즘·server-sig-algs 미제공·sha1-only 서버를 연결한다.",
+      "expected": "지정 KEX/server-key/cipher/MAC·compression none을 지킨다. 미지원 지정 이름은 빌드 실패이며 allowlist 축소·약화가 없다. 협상 예외에서도 서명된 SHA-1 인증을 전송하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S014",
+      "requirements": [
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "저장 기본값·명시적 저장 선택·암호화 사용 불가·OS 잠금·encrypt/decrypt 실패를 시험한다.",
+      "expected": "기본 저장은 false다. app.ready 이후 지정 async safeStorage API를 쓰고 실패는 SECRET_UNAVAILABLE이다. base64 암호문과 연결 참조만 저장하며 평문·고정키·다른 crypto fallback이 없다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S015",
+      "requirements": [
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "실제 서명된 mac 앱 업데이트와 Windows 같은/다른 사용자 계정·다른 PC의 저장 비밀 복호화를 시험한다.",
+      "expected": "mac 서명 identity 연속성과 Keychain 접근을 확인한다. 실패는 SECRET_UNAVAILABLE과 재입력이며 다른 사용자/기기의 암호문이 항상 이식 가능하다고 설명하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S016",
+      "requirements": [
+        "R23",
+        "R24",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "sentinel SSH 비밀·개인키·파일 bytes·터미널 입력/출력을 사용하고 상태 snapshot·receipt·기본 로그·진단·디스크를 검사한다.",
+      "expected": "SSH 비밀과 파일/PTY 본문은 영속 snapshot·receipt·기본 로그에 없다. viewer/terminal 전용 휘발성 데이터 전달을 별도로 검사하고 렌더링 자체를 금지하지 않는다. 저장 미선택 인증 비밀은 디스크에 없으며 모든 원격 출력의 비밀을 자동 식별한다고 보장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S017",
+      "requirements": [
+        "R23",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "host/IP·username·전체경로·비밀·stdout/stderr·terminal input을 포함한 오류/출력을 만들고 로그 회전·진단 내보내기를 검사한다.",
+      "expected": "기본 로그/진단은 v6 허용 필드와 redaction·용량 한도를 지킨다. 사용자가 보는 프로그램 출력과 앱 진단 로그를 분리하고 raw 실행/PTY 본문을 자동 영구 기록하거나 진단에 포함하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S018",
+      "requirements": [
+        "R25"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "패키지 앱의 첫 실행·연결·인증 실패·전송·오류 보기·설정을 네트워크 capture로 검사한다.",
+      "expected": "앱 통신은 선택 SSH endpoint와 필요한 OS DNS뿐이다. 검색/AI/analytics/crash upload/update/font/CDN/HTTP fetch가 없고 renderer 웹 요청은 차단한다. OS 보안 통신과 앱 통신을 구분한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S019",
+      "requirements": [
+        "R03",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "clean client/server에서 앱 시작·뷰어·선택 파일 실행·PTY를 사용하며 앱 설치물과 자체 listener를 비교한다.",
+      "expected": "시오스가 원격 전용 helper·agent·DB·runtime·HTTP 서비스를 설치하지 않고 로컬 관리 HTTP listener도 열지 않는다. 사용자가 명시적으로 실행한 기존 원격 프로그램의 동작을 시오스 설치나 무조건 금지 대상과 혼동하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S020",
+      "requirements": [
+        "R10",
+        "R24",
+        "R25",
+        "R34",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "파일명·배너·오류·텍스트 뷰어와 프로그램/PTY 출력에 HTML·ANSI·제어문자·URL·shell metacharacter를 넣는다.",
+      "expected": "일반 UI는 문자로 표시하고 실행하지 않는다. PTY만 정해진 터미널 parser로 허용 escape를 해석하며 클립보드·외부 URL·HTML/OS 실행 등 금지 부수효과는 차단한다. 출력 내용을 신규 shell 명령으로 재실행하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S021",
+      "requirements": [
+        "R03",
+        "R09",
+        "R20",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "OS 탐지·probe·GUI exec·PTY를 함께 수행하고 각 목적의 SSH channel 요청과 사용자 metacharacter 처리를 관측한다.",
+      "expected": "os-release는 SFTP read, probe는 고정 /bin/true만 사용한다. 명시적 GUI exec와 PTY는 해당 전용 계약으로 허용된다. probe 제한을 앱 전체 exec 금지로 확대하지 않으며 X11·agent forwarding·원격 전용 helper를 추가하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S022",
+      "requirements": [
+        "R29"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "공개 후보의 LICENSE·copyright·third-party notices·CycloneDX JSON SBOM·전이 의존성·소스/lock/빌드명령을 대조한다.",
+      "expected": "프로젝트 AGPL-3.0-only와 실제 dependency license 의무를 이행한다. license unknown/incompatible은 차단하며 exact version·source revision/hash와 binary 버전이 대응한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S023",
+      "requirements": [
+        "R29",
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "고정 버전 보안 scanner 결과와 high/critical 제외 판단 및 공개 판정을 검토한다.",
+      "expected": "적용 가능한 미해결 high/critical은 출시 차단이다. false positive 제외는 version·도달 가능성·근거·검토자를 기록하며 severity를 임의 낮추지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S024",
+      "requirements": [
+        "R24",
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "서명된 production binary의 @electron/fuses 값을 읽고 Node 환경변수·inspect·대체 app 로드를 시도한다.",
+      "expected": "RunAsNode/EnableNodeOptionsEnvironmentVariable/EnableNodeCliInspectArguments/GrantFileProtocolExtraPrivileges=false, EnableEmbeddedAsarIntegrityValidation/OnlyLoadAppFromAsar=true다. asar metadata가 유효하고 Playwright용 inspector 빌드를 배포하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S025",
+      "requirements": [
+        "R07",
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "큰 key 파일과 느린 key parse·bcrypt rounds 0/1/100/101·동시 키 선택·5초 초과를 주입하며 기존 SSH event loop를 관측한다.",
+      "expected": "main은 fstat 후 최대 512KiB+1 제한 읽기만 수행한다. parser는 별도 worker_thread 최대 1개이고 5초 초과 시 해당 thread만 종료한다. rounds 1–100만 허용하며 main/event loop를 막지 않는다. 성공 결과는 내부 PKCS#8 PEM이며 클래스 인스턴스를 MessagePort로 보내지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S026",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "내부 BaseAgent에 다른 pubKey, RSA hash sha256/sha512/sha1/undefined/기타와 Ed25519 요청을 전달한다.",
+      "expected": "선택 공개키 하나만 제공하며 불일치·허용 밖 RSA hash는 서명 없이 error다. 허용 RSA는 RSA_PKCS1_PADDING raw Buffer, Ed25519는 crypto.sign(null)이고 callback 정확히 1회·authHandler 소진 후 false다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S027",
+      "requirements": [
+        "R23",
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "decryptStringAsync의 result/shouldReEncrypt true·false·Promise reject와 재암호화 저장 실패를 주입한다.",
+      "expected": "result만 인증에 사용한다. true면 같은 secretId를 재암호화해 단일 writer 저장 후 사용한다. 교체 실패는 기존 암호문 유지·STORAGE_FAILED·그 비밀의 새 인증 중지이며 reject는 SECRET_UNAVAILABLE, 무한 재호출 없음이다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S028",
+      "requirements": [
+        "R24",
+        "R11",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "control IPC·인증·목록·뷰어 content·GUI output·PTY input/output의 frame/batch/전체 buffer 한도를 경계값과 초과로 시험한다.",
+      "expected": "v6의 종류별 한도를 적용한다. 목록·본문·출력은 지정 방식으로 분할하고 backpressure를 유지하며 전체 파일/출력을 단일 snapshot에 넣지 않는다. 큰 paste/이미지를 묵시적 truncation으로 성공 처리하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S029",
+      "requirements": [
+        "R24",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "원격 text/image bytes에 HTML/JavaScript·외부 resource URL·SVG/HTML 위장·잘못된 signature를 넣어 viewer를 연다.",
+      "expected": "텍스트는 문자로만, 이미지는 허용 decoder/포맷으로만 처리한다. 외부 요청·script 실행·HTML 삽입·로컬 경로 읽기·OS 앱 실행이 발생하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S030",
+      "requirements": [
+        "R24",
+        "R27",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "2MiB text/20MiB image·16384px·40MP 경계/초과, malformed header·길이overflow·5초 decode 초과와 동시viewer 한도를 시험한다.",
+      "expected": "metadata뿐 아니라 실제 byte를 제한하고 bitmap decode 전에 header치수/구조를 검사한다. renderer Web Worker+createImageBitmap의 timeout에서 해당 worker를 terminate한다. bounded content stream을 지키고 다른 SSH기능을 decode로 중단하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S031",
+      "requirements": [
+        "R24",
+        "R25",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "OSC52 read/write·OSC8·원격 title/icon·URI·파일전송 escape·bell을 정상/분할/손상 sequence로 PTY에 보내고 허용 ANSI cursor/color와 비교한다.",
+      "expected": "금지 sequence를 consume해 builtin 부수효과까지 막고 원격 output만으로 clipboard/URL/파일/OS권한을 실행하지 않는다. WebLinksAddon/ClipboardAddon과 plain URL 클릭 이동이 없다. 허용 terminal parser 동작은 유지한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S032",
+      "requirements": [
+        "R23",
+        "R24",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "키/paste/resize를 서버 focus 변경·세대교체·닫기와 경합시키고 sequence/token을 위조하거나 재전송한다.",
+      "expected": "입력은 terminalToken의 고정 서버/세대/자원에만 전달한다. 이미 승인된 paste의 focus 변경은 대상을 재지정하지 않고 단절/세대변경은 취소한다. 중복 input을 replay하거나 다른 터미널/로컬 OS shell에 보내지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S033",
+      "requirements": [
+        "R10",
+        "R24",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "GUI 실행 요청의 file token·server·cwd·argv·confirmation·requestId를 변조하고 선택 후 대상 변경도 주입한다.",
+      "expected": "허용 schema·승인 바인딩·세대와 실제 대상 검사를 지키고 stdout/파일명으로 실행 대상을 결정하지 않는다. 원격 path 기반 TOCTOU 한계를 숨기거나 임의 로컬 exec 권한으로 우회하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S034",
+      "requirements": [
+        "R23",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "원격 프로그램이 credential 모양 문자열과 제어문자를 출력하고 사용자가 터미널에 비밀을 입력한 뒤 종료·diagnostics·재실행을 수행한다.",
+      "expected": "명세의 휘발성 출력/입력 정책을 지킨다. raw 본문을 자동 영구 저장/진단 내보내기하지 않으며 인증 비밀 저장 선택과 사용자 terminal 내용을 혼동하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S035",
+      "requirements": [
+        "R24",
+        "R33",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "창 이동/활성화·GUI 실행·PTY bridge에 임의 채널명·OS command·로컬 path·다른 frame payload를 전달한다.",
+      "expected": "내부 WindowManager와 명시된 remote action만 동작한다. renderer의 Node/fs/net 권한과 로컬 shell 실행 API를 열지 않고 sandbox·origin 검증을 유지한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S036",
+      "requirements": [
+        "R24",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "GUI exec·PTY·뷰어를 포함한 signed package에서 네트워크·remote install·SSH forwarding·원격 watcher 요청을 관측한다.",
+      "expected": "앱 자체의 통신·설치·forwarding은 v6 허용 경계 안에 있다. X11·agent forwarding·타 사용자 변경 watcher·온라인 검색/AI가 없으며 사용자 명시 명령과 앱의 자동 동작을 구분한다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S037",
+      "requirements": [
+        "R19",
+        "R22",
+        "R23",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "file_transfer/file_mutation/gui_exec/pty receipt의 시작 intent·중지·단절·저장 실패·current/backup 복구를 시험한다.",
+      "expected": "resourceId와 kind별 discriminated schema를 검증하고 파일 단계와 실행/PTY 상태를 혼용하지 않는다. argv/stdin/출력/명령hash를 저장하지 않는다. 시작 intent 실패는 dispatch 금지, backup은 최신성 불명 우선이다. 자동 재실행/원격정리가 없고 PTY 시작 기록을 입력 명령의 감사 journal로 설명하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "S038",
+      "requirements": [
+        "R24",
+        "R27",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "긴 OSC/DCS·결합문자·REP500/501/거대수치를 출력하고 renderer 메모리1536MiB 경계·연속 표본·UI 응답 불가를 시험한다.",
+      "expected": "REP500 초과는 public handler가 consume하고 제한을 표시한다. main이1초마다 renderer RSS/working set을 측정해1536MiB 초과2회 연속이면 모든 PTY pause/입력잠금/xterm dispose를 요청한다. UI 재생성은 원격 재실행이 아니며 문제 ring 자동재생 없이 사용자 새 표시 시작에서 비운다. scrollback byte상한/OOM 선제차단을 절대 보장하지 않는다.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {}
+    }
+  ],
+  "domain": {
+    "framework": "Electron",
+    "internal_desktop": "included",
+    "text_image_viewers": "included",
+    "user_remote_exec": "included",
+    "ssh_pty": "included",
+    "online_error_search": "excluded",
+    "ai_summary": "excluded",
+    "remote_gui": "excluded",
+    "server_agent": "excluded",
+    "application_database": "excluded",
+    "external_change_auto_sync": "excluded",
+    "probe_command": "/bin/true",
+    "probe_only_allowlist": true,
+    "implementation_started": false,
+    "product_version": "0.1.0",
+    "current_task": "document_revision_only",
+    "document_revision_authorization": {
+      "source": "user_message",
+      "original_quote": "문서 전수 점검하고 지금까지 대화한 세션을 토대로 계획서 및 개발 계획서등 모든 문서를 전면 수정해"
+    },
+    "implementation_prerequisites": [
+      "Actual implementation instruction",
+      "Authorized target and fixture environments",
+      "Signing/notarization resources for public binaries",
+      "Actual remote for push"
+    ],
+    "release_gate": "All required technical checks before external delivery; Q019-Q021 research is nonblocking and must not be represented as passed when untested.",
+    "document_rule": "Latest user instruction, current product scope, detailed development and desktop contracts; resolve conflicts before dependent implementation.",
+    "planned_artifact_note": "P-prefixed artifacts do not exist yet.",
+    "constraints_origin": "User directions versus v6 design choices are separated in docs/10-session-decisions.md.",
+    "normative_contract_hashes": {
+      "docs/01-product-plan.md": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
+      "docs/02-development-plan.md": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
+      "docs/09-desktop-interaction-spec.md": "de84d2cb0dd741b2c5aabdc76d144abb17cba329be316facf330c4f7888cf003",
+      "docs/06-quality-security-checklist.md": "9285e3a52938ad904153d6dbae038e41d61bd74356f3d2eadd19573029897541",
+      "docs/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d"
+    }
+  },
+  "changes": [
+    {
+      "from": "v5",
+      "to": "v6",
+      "archive": "docs/history/v5-before-desktop-20261115/archive-manifest.json",
+      "affected_requirements": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "summary": "Replace file-only restrictions with desktop/viewers/remote exec/PTY; synchronize all contracts and checks.",
+      "previous_approval_inherited": false
+    }
+  ]
+}

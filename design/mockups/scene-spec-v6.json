@@ -1,0 +1,87 @@
+{
+  "spec_version": "v6",
+  "purpose": "Future concept scenes, not product test evidence",
+  "contract": "docs/09-desktop-interaction-spec.md",
+  "canvas": [
+    1600,
+    1000
+  ],
+  "chrome": {
+    "top": 44,
+    "transfer_shelf": 60,
+    "taskbar": 56,
+    "fixed_left_sidebar": false
+  },
+  "desktop_icons": [
+    "연결",
+    "파일",
+    "터미널",
+    "설정"
+  ],
+  "scenes": [
+    {
+      "id": "desktop",
+      "shows": [
+        "overlapping file/image/terminal windows",
+        "drag",
+        "minimize",
+        "same-position restore",
+        "server-bound titles"
+      ]
+    },
+    {
+      "id": "connection",
+      "shows": [
+        "password/key authentication",
+        "host fingerprint confirmation",
+        "OS/capability limitations"
+      ]
+    },
+    {
+      "id": "file-open",
+      "shows": [
+        "tree and list in one explorer",
+        "read-only UTF-8 viewer",
+        "static PNG/JPEG/WebP viewer",
+        "manual refresh timestamp"
+      ]
+    },
+    {
+      "id": "execution",
+      "shows": [
+        "server/path/cwd/mode/argv preview",
+        "stdout/stderr",
+        "exit code or unknown result",
+        "stop request distinct from confirmed exit"
+      ]
+    },
+    {
+      "id": "transfers",
+      "shows": [
+        "two independent server transfers",
+        "always-visible progress",
+        "verification stage",
+        "unknown result after disconnect"
+      ]
+    },
+    {
+      "id": "settings",
+      "shows": [
+        "secret saving opt-in",
+        "local record cleanup",
+        "version and license"
+      ]
+    }
+  ],
+  "excluded": [
+    "remote GUI forwarding",
+    "X11",
+    "server agent",
+    "DB management",
+    "AI",
+    "online error search",
+    "external filesystem auto-sync"
+  ],
+  "existing_motion_status": "concept-only subset; specification is authoritative",
+  "product_implementation_started": false
+}
