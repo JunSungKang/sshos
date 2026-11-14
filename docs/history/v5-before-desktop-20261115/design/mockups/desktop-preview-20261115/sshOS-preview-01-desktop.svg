@@ -1,0 +1,346 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="2000" viewBox="0 0 1600 1000"><title>sshOS(시오스) 메뉴별 예상 화면 01-desktop</title><desc>최근 논의한 기능을 포함한 검토용 UI 시안. 실제 앱 캡처와 승인된 개발 명세가 아님.</desc>
+<rect x="0" y="0" width="1600" height="1000" rx="0" fill="#DCE7EB" stroke="none" stroke-width="1"/>
+<rect x="0" y="0" width="88" height="1000" rx="0" fill="#102D35" stroke="none" stroke-width="1"/>
+<rect x="88" y="0" width="1512" height="56" rx="0" fill="#F8FAFB" stroke="none" stroke-width="1"/>
+<polyline points="88,56 1600,56" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="22" cy="28" r="5" fill="#EC786F" stroke="none"/>
+<circle cx="42" cy="28" r="5" fill="#E4BF68" stroke="none"/>
+<circle cx="62" cy="28" r="5" fill="#79BFA2" stroke="none"/>
+<text x="114" y="36" font-family="Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="600" fill="#16313B">sshOS</text>
+<polyline points="204,17 204,39" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="222" y="32" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="400" fill="#667D86">시오스</text>
+<rect x="341.75" y="20.5" width="16.5" height="11.25" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="350,31.75 350,35.5" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="346.25,35.5 353.75,35.5" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="369" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">열린 창 4</text>
+<text x="486" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">README.md</text>
+<text x="604" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">preview.png</text>
+<text x="730" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">터미널</text>
+<text x="824" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">report-worker</text>
+<rect x="12" y="87" width="64" height="71" rx="10" fill="#1E5157" stroke="none" stroke-width="1"/>
+<rect x="0" y="104" width="3" height="29" rx="1.5" fill="#78CFC3" stroke="none" stroke-width="1"/>
+<rect x="33" y="102" width="22" height="15" rx="2" fill="none" stroke="#E7FFFA" stroke-width="1"/>
+<polyline points="44,117 44,122" fill="none" stroke="#E7FFFA" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="39,122 49,122" fill="none" stroke="#E7FFFA" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="24.105" y="143.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">데스크톱</text>
+<rect x="33" y="190" width="22" height="8" rx="2" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<rect x="33" y="202" width="22" height="8" rx="2" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<circle cx="37" cy="194" r="1.2" fill="#A3BBC1" stroke="none"/>
+<circle cx="37" cy="206" r="1.2" fill="#A3BBC1" stroke="none"/>
+<polyline points="44,194 51,194" fill="none" stroke="#A3BBC1" stroke-width="1.4" stroke-linejoin="round"/>
+<polyline points="44,206 51,206" fill="none" stroke="#A3BBC1" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="32.755" y="233" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">연결</text>
+<polygon points="34,281 41,281 43,284 54,284 54,297 34,297" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="32.755" y="321" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">파일</text>
+<rect x="34" y="366" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,368 54,368" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="34" y="374" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,376 54,376" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="34" y="382" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,384 54,384" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="32.755" y="409" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">작업</text>
+<circle cx="44" cy="814" r="7" fill="none" stroke="#A3BBC1"/>
+<circle cx="44" cy="814" r="2.6" fill="none" stroke="#A3BBC1"/>
+<polyline points="52,814 55,814" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="49.65685424949238,819.6568542494924 51.77817459305202,821.778174593052" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="44,822 44,825" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="38.34314575050762,819.6568542494924 36.22182540694798,821.778174593052" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="36,814 33,814" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="38.34314575050762,808.3431457505076 36.22182540694798,806.221825406948" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="44,806 44,803" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="49.65685424949238,808.3431457505076 51.77817459305202,806.221825406948" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="32.755" y="847" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">설정</text>
+<text x="29.727500000000003" y="978" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#829FA7">시오스</text>
+<rect x="1236" y="9" width="340" height="38" rx="8" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<circle cx="1252" cy="28" r="3.5" fill="#087F78" stroke="none"/>
+<text x="1264" y="25" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">production-01</text>
+<text x="1264" y="40.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#087F78">연결됨 · SSH 응답 84 ms</text>
+<polyline points="1551,25 1556,30 1561,25" fill="none" stroke="#087F78" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="88" y="888" width="1512" height="112" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<polyline points="88,888 1600,888" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="118" y="108" font-family="Apple SD Gothic Neo, sans-serif" font-size="25" font-weight="600" fill="#16313B">데스크톱</text>
+<text x="118" y="133" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">production-01 · 열린 창 4</text>
+<rect x="127" y="181" width="66" height="64" rx="14" fill="#F4F9FA" stroke="#D1E1E3" stroke-width="1"/>
+<polygon points="149.16666666666666,203.41666666666666 156.75,203.41666666666666 158.91666666666666,206.66666666666666 170.83333333333334,206.66666666666666 170.83333333333334,220.75 149.16666666666666,220.75" fill="none" stroke="#087F78" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="148.755" y="268" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">파일</text>
+<rect x="127" y="294" width="66" height="64" rx="14" fill="#F4F9FA" stroke="#D1E1E3" stroke-width="1"/>
+<polygon points="152.41666666666666,313.1666666666667 163.25,313.1666666666667 169.75,319.6666666666667 169.75,334.8333333333333 152.41666666666666,334.8333333333333" fill="none" stroke="#087F78" stroke-width="1.5" stroke-linejoin="round"/>
+<polyline points="163.25,313.1666666666667 163.25,319.6666666666667 169.75,319.6666666666667" fill="none" stroke="#087F78" stroke-width="1.3" stroke-linejoin="round"/>
+<polyline points="155.66666666666666,325.0833333333333 165.41666666666666,325.0833333333333" fill="none" stroke="#087F78" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="155.66666666666666,329.4166666666667 163.25,329.4166666666667" fill="none" stroke="#087F78" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="143.1325" y="381" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">텍스트</text>
+<rect x="127" y="407" width="66" height="64" rx="14" fill="#F4F9FA" stroke="#D1E1E3" stroke-width="1"/>
+<rect x="148.08333333333334" y="426.1666666666667" width="23.833333333333332" height="21.666666666666664" rx="2" fill="none" stroke="#087F78" stroke-width="1"/>
+<circle cx="154.58333333333334" cy="432.6666666666667" r="2.1666666666666665" fill="none" stroke="#087F78"/>
+<polyline points="150.25,445.6666666666667 157.83333333333334,437 162.16666666666666,441.3333333333333 166.5,435.9166666666667 170.83333333333334,442.4166666666667" fill="none" stroke="#087F78" stroke-width="1.5" stroke-linejoin="round"/>
+<text x="143.1325" y="494" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">이미지</text>
+<rect x="127" y="520" width="66" height="64" rx="14" fill="#F4F9FA" stroke="#D1E1E3" stroke-width="1"/>
+<rect x="148.08333333333334" y="539.1666666666666" width="23.833333333333332" height="21.666666666666664" rx="3" fill="none" stroke="#087F78" stroke-width="1"/>
+<polyline points="152.41666666666666,544.5833333333334 157.83333333333334,550 152.41666666666666,555.4166666666666" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="161.08333333333334,555.4166666666666 167.58333333333334,555.4166666666666" fill="none" stroke="#087F78" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="143.1325" y="607" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">터미널</text>
+<text x="119" y="761" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">창을 전환해도</text>
+<text x="119" y="780" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">작업은 유지됩니다.</text>
+<rect x="236" y="168" width="638" height="304" rx="12" fill="#CDDBDE" stroke="none" stroke-width="1"/>
+<rect x="232" y="160" width="638" height="304" rx="11" fill="#FFFFFF" stroke="#C6D8DC" stroke-width="1"/>
+<rect x="233" y="161" width="636" height="44" rx="10" fill="#F7FAFB" stroke="none" stroke-width="1"/>
+<polyline points="232,205 870,205" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<polygon points="251.75,175.5 259.25,175.5 263.75,180 263.75,190.5 251.75,190.5" fill="none" stroke="#667D86" stroke-width="1.5" stroke-linejoin="round"/>
+<polyline points="259.25,175.5 259.25,180 263.75,180" fill="none" stroke="#667D86" stroke-width="1.3" stroke-linejoin="round"/>
+<polyline points="254,183.75 260.75,183.75" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="254,186.75 259.25,186.75" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="279" y="187" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">README.md</text>
+<polyline points="785,183 795,183" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="812" y="178" width="10" height="10" rx="1" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="841,178 851,188" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="851,178 841,188" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="249" y="228.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#667D86">production-01 · /home/ubuntu/workspace/README.md</text>
+<polyline points="233,244 869,244" fill="none" stroke="#E6EDF0" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="249" y="271" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">1</text>
+<text x="285" y="270.5" font-family="Menlo, monospace" font-size="13.5" font-weight="600" fill="#087F78"># Workspace notes</text>
+<text x="249" y="295" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">2</text>
+<text x="285" y="294.5" font-family="Menlo, monospace" font-size="13.5" font-weight="400" fill="#16313B"></text>
+<text x="249" y="319" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">3</text>
+<text x="285" y="318.5" font-family="Menlo, monospace" font-size="13.5" font-weight="400" fill="#16313B">Assets live in ./assets</text>
+<text x="249" y="343" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">4</text>
+<text x="285" y="342.5" font-family="Menlo, monospace" font-size="13.5" font-weight="400" fill="#16313B">Run checks before generating a report.</text>
+<text x="249" y="367" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">5</text>
+<text x="285" y="366.5" font-family="Menlo, monospace" font-size="13.5" font-weight="400" fill="#16313B"></text>
+<text x="249" y="391" font-family="Menlo, monospace" font-size="12" font-weight="400" fill="#8B9EA5">6</text>
+<text x="285" y="390.5" font-family="Menlo, monospace" font-size="13.5" font-weight="400" fill="#16313B">Owner: content-team</text>
+<polyline points="233,427 869,427" fill="none" stroke="#E6EDF0" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="249" y="450" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">읽기 전용 · UTF-8 · 6.2 KiB</text>
+<circle cx="819.25" cy="444.25" r="3.75" fill="none" stroke="#667D86"/>
+<polyline points="822.375,447.375 826.75,451.75" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="852.5,443 850.625,440.5 845.625,439.875 842.5,443 842.5,448 845.625,451.125 850.625,450.5 853.125,447.375" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="852.5,439.25 852.5,443 848.75,443" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<rect x="920" y="134" width="628" height="374" rx="12" fill="#CDDBDE" stroke="none" stroke-width="1"/>
+<rect x="916" y="126" width="628" height="374" rx="11" fill="#FFFFFF" stroke="#C6D8DC" stroke-width="1"/>
+<rect x="917" y="127" width="626" height="44" rx="10" fill="#F7FAFB" stroke="none" stroke-width="1"/>
+<polyline points="916,171 1544,171" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="932.75" y="141.5" width="16.5" height="15" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<circle cx="937.25" cy="146" r="1.5" fill="none" stroke="#667D86"/>
+<polyline points="934.25,155 939.5,149 942.5,152 945.5,148.25 948.5,152.75" fill="none" stroke="#667D86" stroke-width="1.5" stroke-linejoin="round"/>
+<text x="963" y="153" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">preview.png</text>
+<polyline points="1459,149 1469,149" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="1486" y="144" width="10" height="10" rx="1" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="1515,144 1525,154" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="1525,144 1515,154" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="933" y="194.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#667D86">production-01 · /home/ubuntu/workspace/preview.png</text>
+<polyline points="917,210 1543,210" fill="none" stroke="#E6EDF0" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="936" y="226" width="588" height="219" rx="4" fill="#D8E9E7" stroke="none" stroke-width="1"/>
+<rect x="936" y="226" width="588" height="1" rx="0" fill="#d1e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="227" width="588" height="1" rx="0" fill="#d1e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="228" width="588" height="1" rx="0" fill="#d1e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="229" width="588" height="1" rx="0" fill="#d0e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="230" width="588" height="1" rx="0" fill="#d0e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="231" width="588" height="1" rx="0" fill="#d0e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="232" width="588" height="1" rx="0" fill="#d0e5e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="233" width="588" height="1" rx="0" fill="#d0e4e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="234" width="588" height="1" rx="0" fill="#d0e4e2" stroke="none" stroke-width="1"/>
+<rect x="936" y="235" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="236" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="237" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="238" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="239" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="240" width="588" height="1" rx="0" fill="#cfe4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="241" width="588" height="1" rx="0" fill="#cee4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="242" width="588" height="1" rx="0" fill="#cee4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="243" width="588" height="1" rx="0" fill="#cee4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="244" width="588" height="1" rx="0" fill="#cee4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="245" width="588" height="1" rx="0" fill="#cee4e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="246" width="588" height="1" rx="0" fill="#cee3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="247" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="248" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="249" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="250" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="251" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="252" width="588" height="1" rx="0" fill="#cde3e1" stroke="none" stroke-width="1"/>
+<rect x="936" y="253" width="588" height="1" rx="0" fill="#cce3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="254" width="588" height="1" rx="0" fill="#cce3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="255" width="588" height="1" rx="0" fill="#cce3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="256" width="588" height="1" rx="0" fill="#cce3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="257" width="588" height="1" rx="0" fill="#cce3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="258" width="588" height="1" rx="0" fill="#cbe3e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="259" width="588" height="1" rx="0" fill="#cbe2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="260" width="588" height="1" rx="0" fill="#cbe2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="261" width="588" height="1" rx="0" fill="#cbe2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="262" width="588" height="1" rx="0" fill="#cbe2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="263" width="588" height="1" rx="0" fill="#cbe2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="264" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="265" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="266" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="267" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="268" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="269" width="588" height="1" rx="0" fill="#cae2e0" stroke="none" stroke-width="1"/>
+<rect x="936" y="270" width="588" height="1" rx="0" fill="#c9e2df" stroke="none" stroke-width="1"/>
+<rect x="936" y="271" width="588" height="1" rx="0" fill="#c9e2df" stroke="none" stroke-width="1"/>
+<rect x="936" y="272" width="588" height="1" rx="0" fill="#c9e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="273" width="588" height="1" rx="0" fill="#c9e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="274" width="588" height="1" rx="0" fill="#c9e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="275" width="588" height="1" rx="0" fill="#c9e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="276" width="588" height="1" rx="0" fill="#c8e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="277" width="588" height="1" rx="0" fill="#c8e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="278" width="588" height="1" rx="0" fill="#c8e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="279" width="588" height="1" rx="0" fill="#c8e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="280" width="588" height="1" rx="0" fill="#c8e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="281" width="588" height="1" rx="0" fill="#c7e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="282" width="588" height="1" rx="0" fill="#c7e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="283" width="588" height="1" rx="0" fill="#c7e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="284" width="588" height="1" rx="0" fill="#c7e1df" stroke="none" stroke-width="1"/>
+<rect x="936" y="285" width="588" height="1" rx="0" fill="#c7e0df" stroke="none" stroke-width="1"/>
+<rect x="936" y="286" width="588" height="1" rx="0" fill="#c7e0df" stroke="none" stroke-width="1"/>
+<rect x="936" y="287" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="288" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="289" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="290" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="291" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="292" width="588" height="1" rx="0" fill="#c6e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="293" width="588" height="1" rx="0" fill="#c5e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="294" width="588" height="1" rx="0" fill="#c5e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="295" width="588" height="1" rx="0" fill="#c5e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="296" width="588" height="1" rx="0" fill="#c5e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="297" width="588" height="1" rx="0" fill="#c5e0de" stroke="none" stroke-width="1"/>
+<rect x="936" y="298" width="588" height="1" rx="0" fill="#c5dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="299" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="300" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="301" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="302" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="303" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="304" width="588" height="1" rx="0" fill="#c4dfde" stroke="none" stroke-width="1"/>
+<rect x="936" y="305" width="588" height="1" rx="0" fill="#c3dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="306" width="588" height="1" rx="0" fill="#c3dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="307" width="588" height="1" rx="0" fill="#c3dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="308" width="588" height="1" rx="0" fill="#c3dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="309" width="588" height="1" rx="0" fill="#c3dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="310" width="588" height="1" rx="0" fill="#c2dfdd" stroke="none" stroke-width="1"/>
+<rect x="936" y="311" width="588" height="1" rx="0" fill="#c2dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="312" width="588" height="1" rx="0" fill="#c2dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="313" width="588" height="1" rx="0" fill="#c2dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="314" width="588" height="1" rx="0" fill="#c2dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="315" width="588" height="1" rx="0" fill="#c2dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="316" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="317" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="318" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="319" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="320" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="321" width="588" height="1" rx="0" fill="#c1dedd" stroke="none" stroke-width="1"/>
+<rect x="936" y="322" width="588" height="1" rx="0" fill="#c0dedc" stroke="none" stroke-width="1"/>
+<rect x="936" y="323" width="588" height="1" rx="0" fill="#c0dedc" stroke="none" stroke-width="1"/>
+<rect x="936" y="324" width="588" height="1" rx="0" fill="#c0dddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="325" width="588" height="1" rx="0" fill="#c0dddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="326" width="588" height="1" rx="0" fill="#c0dddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="327" width="588" height="1" rx="0" fill="#c0dddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="328" width="588" height="1" rx="0" fill="#bfdddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="329" width="588" height="1" rx="0" fill="#bfdddc" stroke="none" stroke-width="1"/>
+<rect x="936" y="330" width="588" height="1" rx="0" fill="#bfdddc" stroke="none" stroke-width="1"/>
+<circle cx="1401" cy="268" r="18" fill="#FAF3D7" stroke="none"/>
+<polygon points="936,347 1026,283 1106,356 1218,266 1325,364 1436,295 1524,359 1524,393 936,393" fill="#8CAEB0" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1152,322 1218,266 1277,320 1243,304 1219,312 1199,299" fill="#E8F2EE" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="989,314 1026,283 1063,318 1035,306 1019,307" fill="#E8F2EE" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="936,379 1013,341 1070,367 1142,338 1240,384 1351,328 1439,376 1524,349 1524,410 936,410" fill="#5D8D8D" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<rect x="936" y="391" width="588" height="54" rx="0" fill="#86B4B2" stroke="none" stroke-width="1"/>
+<polyline points="976,402 1469,402" fill="none" stroke="#79A6A4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="997,406 1439,406" fill="none" stroke="#A7C9C4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1018,410 1409,410" fill="none" stroke="#79A6A4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1039,414 1379,414" fill="none" stroke="#A7C9C4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1060,418 1349,418" fill="none" stroke="#79A6A4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1081,422 1319,422" fill="none" stroke="#A7C9C4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1102,426 1289,426" fill="none" stroke="#79A6A4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1123,430 1259,430" fill="none" stroke="#A7C9C4" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="1144,434 1229,434" fill="none" stroke="#79A6A4" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="936,392 1002,382 1041,401 1088,445 936,445" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1406,445 1455,402 1524,385 1524,445" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="945,351 936,379 954,379" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="956,354 947,382 965,382" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="967,357 958,385 976,385" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="978,360 969,388 987,388" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="989,363 980,391 998,391" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1000,366 991,394 1009,394" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<polygon points="1011,369 1002,397 1020,397" fill="#285F60" stroke="none" stroke-width="1" stroke-linejoin="round"/>
+<text x="936" y="479" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">1920 × 720 · 2.8 MiB</text>
+<rect x="1291" y="457" width="82" height="28" rx="6" fill="#EEF4F5" stroke="none" stroke-width="1"/>
+<text x="1311.5235" y="474" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="600" fill="#16313B">화면 맞춤</text>
+<text x="1392" y="479" font-family="Apple SD Gothic Neo, sans-serif" font-size="20" font-weight="400" fill="#667D86">−</text>
+<text x="1424" y="475" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#16313B">31%</text>
+<text x="1491" y="479" font-family="Apple SD Gothic Neo, sans-serif" font-size="20" font-weight="400" fill="#667D86">+</text>
+<rect x="236" y="508" width="638" height="350" rx="12" fill="#CDDBDE" stroke="none" stroke-width="1"/>
+<rect x="232" y="500" width="638" height="350" rx="11" fill="#FFFFFF" stroke="#C6D8DC" stroke-width="1"/>
+<rect x="233" y="501" width="636" height="44" rx="10" fill="#F7FAFB" stroke="none" stroke-width="1"/>
+<polyline points="232,545 870,545" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="248.75" y="515.5" width="16.5" height="15" rx="3" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="251.75,519.25 255.5,523 251.75,526.75" fill="none" stroke="#667D86" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="257.75,526.75 262.25,526.75" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="279" y="527" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">터미널 · vi notes.txt</text>
+<polyline points="785,523 795,523" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="812" y="518" width="10" height="10" rx="1" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="841,518 851,528" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="851,518 841,528" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="249" y="568.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#667D86">production-01 · ubuntu · /home/ubuntu/workspace</text>
+<polyline points="233,584 869,584" fill="none" stroke="#E6EDF0" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="233" y="585" width="636" height="228" rx="0" fill="#153039" stroke="none" stroke-width="1"/>
+<text x="253" y="614.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6">Server notes</text>
+<text x="253" y="637.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6"></text>
+<text x="253" y="660.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6">Upload assets before running the report.</text>
+<text x="253" y="683.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6">Check report.json after the job completes.</text>
+<text x="253" y="706.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6"></text>
+<text x="253" y="729.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#D4E5E6">Maintenance window: 22:00-22:30 KST</text>
+<text x="253" y="755" font-family="Menlo, monospace" font-size="13" font-weight="400" fill="#8DB5CC">~</text>
+<text x="253" y="778" font-family="Menlo, monospace" font-size="13" font-weight="400" fill="#8DB5CC">~</text>
+<rect x="253" y="602" width="7" height="16" rx="0" fill="#80C6B8" stroke="none" stroke-width="1"/>
+<text x="253" y="614.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#153039">S</text>
+<text x="253" y="802" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#B6CDD0">&quot;notes.txt&quot; 6L, 148B</text>
+<text x="792" y="802" font-family="Menlo, monospace" font-size="11" font-weight="400" fill="#B6CDD0">1,1</text>
+<circle cx="253" cy="833" r="3" fill="#087F78" stroke="none"/>
+<text x="265" y="835" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="600" fill="#087F78">키보드 입력 연결됨</text>
+<text x="754" y="835" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">SSH 터미널</text>
+<rect x="920" y="544" width="628" height="314" rx="12" fill="#CDDBDE" stroke="none" stroke-width="1"/>
+<rect x="916" y="536" width="628" height="314" rx="11" fill="#FFFFFF" stroke="#86B9B0" stroke-width="1"/>
+<rect x="917" y="537" width="626" height="44" rx="10" fill="#F1F8F6" stroke="none" stroke-width="1"/>
+<polyline points="916,581 1544,581" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="932.75" y="551.5" width="16.5" height="15" rx="3" fill="none" stroke="#087F78" stroke-width="1"/>
+<polyline points="935.75,555.25 939.5,559 935.75,562.75" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="941.75,562.75 946.25,562.75" fill="none" stroke="#087F78" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="963" y="563" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">실행 출력 · report-worker</text>
+<polyline points="1459,559 1469,559" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<rect x="1486" y="554" width="10" height="10" rx="1" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="1515,554 1525,564" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<polyline points="1525,554 1515,564" fill="none" stroke="#667D86" stroke-width="1.2" stroke-linejoin="round"/>
+<text x="933" y="604.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#667D86">production-01 · /home/ubuntu/workspace</text>
+<polyline points="917,620 1543,620" fill="none" stroke="#E6EDF0" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="917" y="621" width="626" height="175" rx="0" fill="#132E36" stroke="none" stroke-width="1"/>
+<text x="937" y="649.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#E2EEEE">$ ./report-worker --input ./assets --output ./report.json</text>
+<text x="937" y="677.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#BDD0D3">09:42:12  report-worker started</text>
+<text x="937" y="705.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#BDD0D3">09:42:13  scan 183 files</text>
+<text x="937" y="733.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#E6C58B">09:42:15  warn 2 missing thumbnails</text>
+<text x="937" y="761.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#86CEBB">09:42:17  writing report</text>
+<circle cx="938" cy="822" r="3.5" fill="#087F78" stroke="none"/>
+<text x="950" y="825" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#087F78">실행 중</text>
+<text x="1035" y="825" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#667D86">종료 코드 대기</text>
+<rect x="1390" y="804" width="132" height="31" rx="6" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<text x="1423.282" y="823" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">작업에서 보기</text>
+<polygon points="1491,828 1491,851 1497,845 1503,856 1507,854 1501,843 1510,842" fill="#17313B" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+<text x="112" y="921" font-family="Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="600" fill="#16313B">전송 작업</text>
+<text x="112" y="948" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">진행 2 · 대기 0</text>
+<text x="112" y="969" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#087F78">파일 실행 1 · 터미널 1</text>
+<polyline points="248,907 248,982" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="270" y="909" width="32" height="32" rx="8" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<polyline points="286,919.6666666666666 286,930.3333333333334" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="281.3333333333333,924.3333333333334 286,919.6666666666666 290.6666666666667,924.3333333333334" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<text x="316" y="917" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">release-assets.zip</text>
+<text x="316" y="939" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">production-01 · 업로드</text>
+<text x="316" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">348 / 512 MiB · 전송 중 68%</text>
+<text x="738" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">12.4 MiB/s</text>
+<rect x="316" y="978" width="510" height="5" rx="2.5" fill="#E3EAED" stroke="none" stroke-width="1"/>
+<rect x="316" y="978" width="346.8" height="5" rx="2.5" fill="#087F78" stroke="none" stroke-width="1"/>
+<polyline points="870,907 870,982" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="895" y="909" width="32" height="32" rx="8" fill="#EDF3FC" stroke="none" stroke-width="1"/>
+<polyline points="911,919.6666666666666 911,930.3333333333334" fill="none" stroke="#3868AD" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="906.3333333333334,925.6666666666666 911,930.3333333333334 915.6666666666666,925.6666666666666" fill="none" stroke="#3868AD" stroke-width="1.8" stroke-linejoin="round"/>
+<text x="942" y="917" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">backup-2026-11-15.tar.gz</text>
+<text x="942" y="939" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">archive-01 · 다운로드 · 16 GiB</text>
+<text x="942" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#3868AD">전송 16 / 16 GiB · 내용 확인 6.88 / 16 GiB (43%)</text>
+<text x="1430" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">검증 128 MiB/s</text>
+<rect x="942" y="978" width="619" height="5" rx="2.5" fill="#E3EAED" stroke="none" stroke-width="1"/>
+<rect x="942" y="978" width="266.17" height="5" rx="2.5" fill="#3868AD" stroke="none" stroke-width="1"/>
+</svg>

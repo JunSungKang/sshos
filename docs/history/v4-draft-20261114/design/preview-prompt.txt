@@ -1,0 +1,7 @@
+sshOS(시오스) v4 UI preview specification — framework pending
+Purpose: A future UI mockup, not an implemented or benchmarked product.
+Use an original OS-like GUI workspace: 56px top bar, 88px left launcher, central tabbed Files view, 112px always-visible task shelf. Apps are 홈, 연결, 파일, 작업, 설정. No floating overlapping windows, server metrics dashboard, deployment wizard, database, Python helper or HTTP-service rollback screen.
+Top right must show active server production-01, 연결됨, SSH 응답 84 ms. 84 ms is illustrative. This is SSH command-response time, not ICMP ping; show a tooltip for network plus server processing time. Changing server tabs changes the displayed server sample. Include a separate example state 측정 불가 without marking SFTP disconnected.
+File explorer uses an integrated directory tree and list, with server identity and absolute path visible. Show generic Ubuntu Server 24.04 LTS files under /home/deploy, with upload/download controls. Persistent shelf shows two ordinary file transfers with server, direction, byte progress, rate, and cancellation. Transfer completion is separate from connection state.
+Palette: background #DCE7EB, launcher #102D35, panel #F8FAFB, text #16313B, accent #087F78. Clean Korean system typography.
+Architecture diagram is delivered separately as design/sshOS-v4-architecture.svg and .png. This UI preview has not been generated. No current approval permits the built-in image generator to write outside the workspace. Framework choice does not change the shared visual goals.

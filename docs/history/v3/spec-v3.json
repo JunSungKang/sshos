@@ -1,0 +1,1886 @@
+{
+  "schema_version": 1,
+  "id": "sshOS",
+  "version": "v3",
+  "goal": "sshOS(시오스)를 Linux 서버용 OS형 SSH 작업 공간으로 만들되 1.0은 준비된 Ubuntu24.04 단일 systemd HTTP 서비스의 단일 파일 전달·명시적 교체·재시작·관측·파일 복원에 집중하고 실제 사용자 비교로 가치를 검증한다.",
+  "excluded": [
+    "범용 콘솔 대체·터미널·임의 명령",
+    "일반 시스템/프로세스/전체서비스 관리",
+    "재귀 파일 업로드·삭제·폴더 배포·DB migration",
+    "외부writer 동시변경 무손실 보장",
+    "HTTP200으로 새버전 기능검증 보장",
+    "무중단·자동롤백·대량배포",
+    "agent/jump host/MFA/SSH agent",
+    "자유 겹침 내부창",
+    "다른 서버OS·Linux/모바일 client",
+    "중앙클라우드·팀동기화·플러그인·AI실행",
+    "자동업데이트·다국어 선택"
+  ],
+  "assumptions": [
+    "사용자 확정 U와 신규 전략제안 S·구현값 D·가설 H는 제품1절에서 구분한다.",
+    "단일 artifact 전략은 이번 연구에서 제안했으며 이전 사용자 동의를 그 전략의 승인으로 기록하지 않는다.",
+    "전용 슬롯의 외부writer 없음과 데이터migration 없음은 운영 전제이며 사전검사로 증명하지 못한다.",
+    "논문과 저장소 조사는 수요·비교 성능·장기 채택을 입증하지 않는다.",
+    "현재는 계획 작업으로 코드·Git·서버 작업은 미착수다."
+  ],
+  "open_questions": [],
+  "approval": {
+    "status": "pending",
+    "spec_version": "v3",
+    "evidence": "",
+    "spec_sha256": ""
+  },
+  "requirements": [
+    {
+      "id": "R3-01",
+      "priority": "must",
+      "statement": "역할과 범위",
+      "acceptance": "단일 파일·등록 서비스 흐름만 구현하고 제외 기능이 메뉴·IPC·helper에 노출되지 않는다. 제품 §2–5,8의 범위와 실제 task 적합성 기록을 대조한다.",
+      "checks": [
+        "C3-01"
+      ]
+    },
+    {
+      "id": "R3-02",
+      "priority": "must",
+      "statement": "OS형 공통 작업 공간",
+      "acceptance": "5개 앱·6개 탭·112px 상시 작업 선반, immutable target, 탭 종료 중 전송 지속이 제품 §6과 일치한다. 1600×1000 및 최소1120×760에서 검증한다.",
+      "checks": [
+        "C3-02"
+      ]
+    },
+    {
+      "id": "R3-03",
+      "priority": "must",
+      "statement": "지원 환경",
+      "acceptance": "client3종×server2종의 6조합에서 핵심 흐름을 실행한다. OS·systemd·Python·filesystem·권한·slot 부적합은 조건별 차단한다.",
+      "checks": [
+        "C3-03"
+      ]
+    },
+    {
+      "id": "R3-04",
+      "priority": "must",
+      "statement": "프로필과 SSH 인증",
+      "acceptance": "최대10저장/3연결, 비밀번호와 encrypted/unencrypted OpenSSH Ed25519·RSA/PEM RSA, 실패·미지원 형식·취소를 개발 §4–5대로 처리한다.",
+      "checks": [
+        "C3-04"
+      ]
+    },
+    {
+      "id": "R3-05",
+      "priority": "must",
+      "statement": "호스트 신뢰",
+      "acceptance": "최초 키 확인 전 인증 금지, 기존키 일치, 변경 차단, 명시적 신뢰 교체, transfer 연결 동일키 검증을 F01로 확인한다.",
+      "checks": [
+        "C3-05"
+      ]
+    },
+    {
+      "id": "R3-06",
+      "priority": "must",
+      "statement": "secret 저장",
+      "acceptance": "선택 저장만 safeStorage async로 암호화하며 복호화불가·삭제·저장해제·plaintext fallback 금지·비밀로그미기록을 확인한다.",
+      "checks": [
+        "C3-06"
+      ]
+    },
+    {
+      "id": "R3-07",
+      "priority": "must",
+      "statement": "연결 수명",
+      "acceptance": "개발 §5의 timeout/keepalive/cancel/disconnect, control/transfer 영향 분리, 명시 재연결 후 조회만 수행을 검증한다.",
+      "checks": [
+        "C3-07"
+      ]
+    },
+    {
+      "id": "R3-08",
+      "priority": "must",
+      "statement": "서비스 슬롯 계약",
+      "acceptance": "제품 §5 및 개발 §6의 소유권·경로·메타데이터·unit·health·외부writer 전제와 등록·import·거절을 F02/F09로 확인한다.",
+      "checks": [
+        "C3-08"
+      ]
+    },
+    {
+      "id": "R3-09",
+      "priority": "must",
+      "statement": "통합 파일 탐색",
+      "acceptance": "slot 범위 트리/목록 동기화·10,000개 한도·symlink/비UTF8/특수파일·숨김·검색·정렬과 읽기 전용 범위를 검증한다.",
+      "checks": [
+        "C3-09"
+      ]
+    },
+    {
+      "id": "R3-10",
+      "priority": "must",
+      "statement": "단일 파일 양방향 전송",
+      "acceptance": "1byte–2GiB stage 업로드,0byte 포함 다운로드, 지원 로컬 목적지의 기존 파일 보존,폴더·범위밖쓰기 거절을 F03/F15로 검증한다.",
+      "checks": [
+        "C3-10"
+      ]
+    },
+    {
+      "id": "R3-11",
+      "priority": "must",
+      "statement": "비동기·상시 진행",
+      "acceptance": "2전송 중 탐색·탭·접속 가능,≤4Hz event와≤1s표시,byte/검증단계 분리,ACK를디스크저장률로표현하지 않음을 확인한다.",
+      "checks": [
+        "C3-11"
+      ]
+    },
+    {
+      "id": "R3-12",
+      "priority": "must",
+      "statement": "queue·취소·재시도",
+      "acceptance": "전역 2개/서버별 1개/FIFO/queue 20개, 5초 내 취소 요청 표시와 원격 취소 commit의 구분, 취소·NO_CHANGE 뒤 예약 해제, 늦은 verify/apply 거절, 새 task로 0 byte 재전송과 자동 mutation 재시도 없음을 검증한다.",
+      "checks": [
+        "C3-12"
+      ]
+    },
+    {
+      "id": "R3-13",
+      "priority": "must",
+      "statement": "파일 내용 동일성",
+      "acceptance": "snapshot·전송bytes·원격stage SHA256과fsync,다운로드전후hash,내용변경감지·동일metadata검사의한계를 F04/F05/F18로 확인한다.",
+      "checks": [
+        "C3-13"
+      ]
+    },
+    {
+      "id": "R3-14",
+      "priority": "must",
+      "statement": "적용 사전 확인",
+      "acceptance": "30초token·대상/hash/mode/중단/복원범위 확인,lock내재검사,revision불일치·만료·UI대상변경 시 변경0회를 검증한다.",
+      "checks": [
+        "C3-14"
+      ]
+    },
+    {
+      "id": "R3-15",
+      "priority": "must",
+      "statement": "백업·원자 파일 교체",
+      "acceptance": "verified backup·지원metadata·동일fs replace·file/dir fsync·durable intent 순서와old=new NO_CHANGE의변경0회를 F05/F06/F09/F18로 검증한다.",
+      "checks": [
+        "C3-15"
+      ]
+    },
+    {
+      "id": "R3-16",
+      "priority": "must",
+      "statement": "재시작·관측 구분",
+      "acceptance": "정확unit의명시restart,receipt/boot/InvocationID/Job/HTTP3회 관측,정상성문구조건,PID재사용·HTTP만성공·timeout의오판없음을 F10/F11로 확인한다.",
+      "checks": [
+        "C3-16"
+      ]
+    },
+    {
+      "id": "R3-17",
+      "priority": "must",
+      "statement": "범위가 제한된 파일 복원",
+      "acceptance": "최신task·현재hash·backup검증 뒤새operation으로비소비복사복원,restore의toHash기준판정,DB/외부효과제외,HTTP실패별도를F12로 확인한다.",
+      "checks": [
+        "C3-17"
+      ]
+    },
+    {
+      "id": "R3-18",
+      "priority": "must",
+      "statement": "단절·영속기록·reconcile",
+      "acceptance": "SQLite 단계·포인터 transaction, F06의 각 경계 단절/ACK 유실/kill/재부팅과 local 저장 실패에서 artifact/systemctl 자동 재실행 0회, 관측과 과거 결과 불명 분리, 저장소 자체 crash recovery를 검증한다.",
+      "checks": [
+        "C3-18"
+      ]
+    },
+    {
+      "id": "R3-19",
+      "priority": "must",
+      "statement": "동시 작업과 충돌",
+      "acceptance": "같은 lock inode, activeTask/activeOperation/latestFileOperation/revision, CREATED boot 기록, operation별 fromHash/toHash 계약으로 다른 클라이언트·alias·외부 변경·과거 복원 차단과 허용된 단절 복원을 검증한다.",
+      "checks": [
+        "C3-19"
+      ]
+    },
+    {
+      "id": "R3-20",
+      "priority": "must",
+      "statement": "이벤트 정체성",
+      "acceptance": "workerEpoch·sessionGeneration·sequence·snapshot handoff로재시작/gap/구event를처리하여다른대상상태가섞이지않음을 F07/F14로 확인한다.",
+      "checks": [
+        "C3-20"
+      ]
+    },
+    {
+      "id": "R3-21",
+      "priority": "must",
+      "statement": "작업 문맥 로그",
+      "acceptance": "해당unit200줄/1MiB한도와새로고침·권한실패·잘림,원격문자열text처리,타서버/unit이벤트차단을 확인한다.",
+      "checks": [
+        "C3-21"
+      ]
+    },
+    {
+      "id": "R3-22",
+      "priority": "must",
+      "statement": "설정·기록·cleanup",
+      "acceptance": "local 100건/30일과 unresolved 예외, remote apply backup 5개·최신 보호·자동 삭제 없음, ID tombstone 보존, 파손 차단, export 기본 log 제외, 선택 cleanup을 F13/F16으로 확인한다.",
+      "checks": [
+        "C3-22"
+      ]
+    },
+    {
+      "id": "R3-23",
+      "priority": "must",
+      "statement": "프로세스·IPC·실행 경계",
+      "acceptance": "고정IPC/schema/sender검증·renderer격리·고정helper소스·shell인자분리·악성문자열실행금지·비밀미노출을 F17로 검증한다.",
+      "checks": [
+        "C3-23"
+      ]
+    },
+    {
+      "id": "R3-24",
+      "priority": "must",
+      "statement": "반응성·접근성",
+      "acceptance": "개발 §11 지정부하에서반응p95 100ms/탭200ms·longtask한도·RSS≤1GiB,키보드/대비4.5/200%확대를 실제측정한다.",
+      "checks": [
+        "C3-24"
+      ]
+    },
+    {
+      "id": "R3-25",
+      "priority": "must",
+      "statement": "기술 예외와 완성 시나리오",
+      "acceptance": "F01–F18의모든하위case와6환경핵심흐름을실행하고원본손실·거짓성공·오대상변경0건. powercut과processkill증거를구분한다.",
+      "checks": [
+        "C3-25"
+      ]
+    },
+    {
+      "id": "R3-26",
+      "priority": "must",
+      "statement": "수요·비교·반복 사용",
+      "acceptance": "제품 §9의G0/G1/G2/G3정의와분모를그대로실행해익명기록을남긴다.기회부족은관찰부족,가설미달은출시보류다.",
+      "checks": [
+        "C3-26"
+      ]
+    },
+    {
+      "id": "R3-27",
+      "priority": "must",
+      "statement": "프로젝트 copyleft",
+      "acceptance": "AGPL-3.0-only 원문/SPDX/앱고지일치와적용범위설명이독립서버코드/사용자파일의공개를요구하지않음을 검토한다.",
+      "checks": [
+        "C3-27"
+      ]
+    },
+    {
+      "id": "R3-28",
+      "priority": "must",
+      "statement": "의존성·OSS 기여",
+      "acceptance": "MIT우선근거·정확버전·전이/번들/자산license·고지·호환성·출처를검토하고CONTRIBUTING/upstream절차에실제검증명령을 기록한다.",
+      "checks": [
+        "C3-28"
+      ]
+    },
+    {
+      "id": "R3-29",
+      "priority": "must",
+      "statement": "대응 소스",
+      "acceptance": "3패키지와동일commit sourcearchive/manifest를포함·내보내기hash일치·깨끗한승인경로에서재빌드·secret제외를 검증한다.",
+      "checks": [
+        "C3-29"
+      ]
+    },
+    {
+      "id": "R3-30",
+      "priority": "must",
+      "statement": "서명된 배포",
+      "acceptance": "3설치패키지의macOS서명/공증및Windows서명검증·첫실행·secret재실행·지원환경검사를마친다.미서명alpha는완료가아니다.",
+      "checks": [
+        "C3-30"
+      ]
+    },
+    {
+      "id": "R3-31",
+      "priority": "must",
+      "statement": "로컬 Git 절차",
+      "acceptance": "착수후실제작성자·로컬bareorigin·단계commit/push/merge·정확한head branch cleanup을증거로기록하고GitHub전환시guardedflow를적용한다.",
+      "checks": [
+        "C3-31"
+      ]
+    },
+    {
+      "id": "R3-32",
+      "priority": "must",
+      "statement": "명세·승인·증거 추적",
+      "acceptance": "R3/T3/A3/C3쌍방향연결·문서hash·실제승인digest·변경영향·검사증거를보존한다.미검사제품검사를pass로바꾸지않는다.",
+      "checks": [
+        "C3-32"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T3-01",
+      "requirements": [
+        "R3-26"
+      ],
+      "artifacts": [
+        "A3-14",
+        "A3-15"
+      ]
+    },
+    {
+      "id": "T3-02",
+      "requirements": [
+        "R3-23",
+        "R3-27",
+        "R3-28",
+        "R3-31",
+        "R3-32"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-03",
+        "A3-06",
+        "A3-10",
+        "A3-12",
+        "A3-13",
+        "A3-14",
+        "A3-15",
+        "A3-16",
+        "A3-17",
+        "A3-18",
+        "A3-19",
+        "A3-20",
+        "A3-21",
+        "A3-28",
+        "A3-29",
+        "A3-31"
+      ]
+    },
+    {
+      "id": "T3-03",
+      "requirements": [
+        "R3-01",
+        "R3-02",
+        "R3-11",
+        "R3-20",
+        "R3-24"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-03",
+        "A3-05",
+        "A3-06",
+        "A3-07",
+        "A3-09",
+        "A3-10",
+        "A3-11",
+        "A3-12",
+        "A3-13",
+        "A3-14",
+        "A3-15",
+        "A3-32"
+      ]
+    },
+    {
+      "id": "T3-04",
+      "requirements": [
+        "R3-03",
+        "R3-04",
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-08",
+        "R3-20",
+        "R3-23"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-02",
+        "A3-03",
+        "A3-06",
+        "A3-08",
+        "A3-09",
+        "A3-10",
+        "A3-13",
+        "A3-14",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-30"
+      ]
+    },
+    {
+      "id": "T3-05",
+      "requirements": [
+        "R3-08",
+        "R3-15",
+        "R3-18",
+        "R3-19",
+        "R3-23",
+        "R3-25",
+        "R3-26"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-03",
+        "A3-06",
+        "A3-07",
+        "A3-08",
+        "A3-09",
+        "A3-10",
+        "A3-13",
+        "A3-14",
+        "A3-15",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-30"
+      ]
+    },
+    {
+      "id": "T3-06",
+      "requirements": [
+        "R3-09",
+        "R3-10",
+        "R3-11",
+        "R3-12",
+        "R3-13"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-04",
+        "A3-05",
+        "A3-06",
+        "A3-08",
+        "A3-11",
+        "A3-13",
+        "A3-14",
+        "A3-32"
+      ]
+    },
+    {
+      "id": "T3-07",
+      "requirements": [
+        "R3-01",
+        "R3-13",
+        "R3-14",
+        "R3-15",
+        "R3-16",
+        "R3-17",
+        "R3-19",
+        "R3-21"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-05",
+        "A3-06",
+        "A3-07",
+        "A3-08",
+        "A3-10",
+        "A3-11",
+        "A3-13",
+        "A3-14",
+        "A3-15"
+      ]
+    },
+    {
+      "id": "T3-08",
+      "requirements": [
+        "R3-06",
+        "R3-07",
+        "R3-11",
+        "R3-12",
+        "R3-15",
+        "R3-16",
+        "R3-17",
+        "R3-18",
+        "R3-19",
+        "R3-20",
+        "R3-21",
+        "R3-22",
+        "R3-23",
+        "R3-24",
+        "R3-25",
+        "R3-32"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-02",
+        "A3-03",
+        "A3-05",
+        "A3-06",
+        "A3-07",
+        "A3-08",
+        "A3-09",
+        "A3-10",
+        "A3-11",
+        "A3-12",
+        "A3-13",
+        "A3-14",
+        "A3-15",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-28",
+        "A3-29",
+        "A3-32"
+      ]
+    },
+    {
+      "id": "T3-09",
+      "requirements": [
+        "R3-27",
+        "R3-28",
+        "R3-29"
+      ],
+      "artifacts": [
+        "A3-12",
+        "A3-16",
+        "A3-17",
+        "A3-18",
+        "A3-19",
+        "A3-20",
+        "A3-21",
+        "A3-22",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-26",
+        "A3-27",
+        "A3-28",
+        "A3-33"
+      ]
+    },
+    {
+      "id": "T3-10",
+      "requirements": [
+        "R3-03",
+        "R3-25",
+        "R3-29",
+        "R3-30",
+        "R3-31",
+        "R3-32"
+      ],
+      "artifacts": [
+        "A3-03",
+        "A3-06",
+        "A3-13",
+        "A3-14",
+        "A3-15",
+        "A3-16",
+        "A3-22",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-26",
+        "A3-27",
+        "A3-28",
+        "A3-29",
+        "A3-30",
+        "A3-31",
+        "A3-33"
+      ]
+    },
+    {
+      "id": "T3-11",
+      "requirements": [
+        "R3-01",
+        "R3-26",
+        "R3-32"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-06",
+        "A3-07",
+        "A3-11",
+        "A3-14",
+        "A3-15",
+        "A3-28",
+        "A3-29"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "A3-01",
+      "path": "src/renderer/shell/Workspace.tsx",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-02",
+      "path": "src/main/credentials.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-03",
+      "path": "src/worker/sessions.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-04",
+      "path": "src/renderer/apps/files/FilesApp.tsx",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-05",
+      "path": "src/worker/transfers.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-06",
+      "path": "src/remote/helper.py",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-07",
+      "path": "src/worker/operations.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-08",
+      "path": "src/worker/reconcile.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-09",
+      "path": "src/main/storage.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-10",
+      "path": "src/shared/contracts.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-11",
+      "path": "src/renderer/apps/tasks/TasksApp.tsx",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-12",
+      "path": "src/renderer/apps/settings/SettingsApp.tsx",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-13",
+      "path": "tests/fixtures/scenarios.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-14",
+      "path": "evidence/technical/report.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-15",
+      "path": "evidence/usability/report.md",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-16",
+      "path": "package.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-17",
+      "path": "LICENSE",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-18",
+      "path": "THIRD_PARTY_NOTICES",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-19",
+      "path": "CONTRIBUTING.md",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-20",
+      "path": "docs/dependency-licenses.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-21",
+      "path": "docs/upstream-contributions.md",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-22",
+      "path": "src/main/source-archive.ts",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-23",
+      "path": ".local/dist/sshOS-1.0.0-arm64.dmg",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-24",
+      "path": ".local/dist/sshOS-1.0.0-x64.dmg",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-25",
+      "path": ".local/dist/sshOS-1.0.0-x64.exe",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-26",
+      "path": ".local/dist/sshOS-1.0.0-source.tar.gz",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-27",
+      "path": ".local/dist/source-manifest.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-28",
+      "path": ".local/dist/release-manifest.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-29",
+      "path": "docs/implementation-state.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-30",
+      "path": "docs/server-prerequisites.md",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-31",
+      "path": "evidence/technical/git-workflow.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-32",
+      "path": "evidence/technical/ui-quality.json",
+      "version": "1.0.0",
+      "sha256": ""
+    },
+    {
+      "id": "A3-33",
+      "path": "evidence/release/source-build.json",
+      "version": "1.0.0",
+      "sha256": ""
+    }
+  ],
+  "checks": [
+    {
+      "id": "C3-01",
+      "requirements": [
+        "R3-01"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-06",
+        "A3-07",
+        "A3-11",
+        "A3-15"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-02",
+      "requirements": [
+        "R3-02"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-11",
+        "A3-32"
+      ],
+      "method": "visual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-03",
+      "requirements": [
+        "R3-03"
+      ],
+      "artifacts": [
+        "A3-03",
+        "A3-06",
+        "A3-14",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-30"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-04",
+      "requirements": [
+        "R3-04"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-03",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-05",
+      "requirements": [
+        "R3-05"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-03",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-06",
+      "requirements": [
+        "R3-06"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-09",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-07",
+      "requirements": [
+        "R3-07"
+      ],
+      "artifacts": [
+        "A3-03",
+        "A3-08",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-08",
+      "requirements": [
+        "R3-08"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-14",
+        "A3-30"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-09",
+      "requirements": [
+        "R3-09"
+      ],
+      "artifacts": [
+        "A3-04",
+        "A3-06",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-10",
+      "requirements": [
+        "R3-10"
+      ],
+      "artifacts": [
+        "A3-04",
+        "A3-05",
+        "A3-06",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-11",
+      "requirements": [
+        "R3-11"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-05",
+        "A3-11",
+        "A3-32"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-12",
+      "requirements": [
+        "R3-12"
+      ],
+      "artifacts": [
+        "A3-05",
+        "A3-08",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-13",
+      "requirements": [
+        "R3-13"
+      ],
+      "artifacts": [
+        "A3-05",
+        "A3-06",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-14",
+      "requirements": [
+        "R3-14"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-10",
+        "A3-11",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-15",
+      "requirements": [
+        "R3-15"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-16",
+      "requirements": [
+        "R3-16"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-11",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-17",
+      "requirements": [
+        "R3-17"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-11",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-18",
+      "requirements": [
+        "R3-18"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-08",
+        "A3-09",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-19",
+      "requirements": [
+        "R3-19"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-07",
+        "A3-08",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-20",
+      "requirements": [
+        "R3-20"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-03",
+        "A3-09",
+        "A3-10",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-21",
+      "requirements": [
+        "R3-21"
+      ],
+      "artifacts": [
+        "A3-06",
+        "A3-11",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-22",
+      "requirements": [
+        "R3-22"
+      ],
+      "artifacts": [
+        "A3-08",
+        "A3-09",
+        "A3-12",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-23",
+      "requirements": [
+        "R3-23"
+      ],
+      "artifacts": [
+        "A3-02",
+        "A3-03",
+        "A3-06",
+        "A3-10",
+        "A3-13",
+        "A3-14"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-24",
+      "requirements": [
+        "R3-24"
+      ],
+      "artifacts": [
+        "A3-01",
+        "A3-05",
+        "A3-11",
+        "A3-12",
+        "A3-32"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-25",
+      "requirements": [
+        "R3-25"
+      ],
+      "artifacts": [
+        "A3-13",
+        "A3-14",
+        "A3-23",
+        "A3-24",
+        "A3-25"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-26",
+      "requirements": [
+        "R3-26"
+      ],
+      "artifacts": [
+        "A3-14",
+        "A3-15"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-27",
+      "requirements": [
+        "R3-27"
+      ],
+      "artifacts": [
+        "A3-16",
+        "A3-17",
+        "A3-12"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-28",
+      "requirements": [
+        "R3-28"
+      ],
+      "artifacts": [
+        "A3-18",
+        "A3-19",
+        "A3-20",
+        "A3-21"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-29",
+      "requirements": [
+        "R3-29"
+      ],
+      "artifacts": [
+        "A3-22",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-26",
+        "A3-27",
+        "A3-28",
+        "A3-33"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-30",
+      "requirements": [
+        "R3-30"
+      ],
+      "artifacts": [
+        "A3-14",
+        "A3-23",
+        "A3-24",
+        "A3-25",
+        "A3-28"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-31",
+      "requirements": [
+        "R3-31"
+      ],
+      "artifacts": [
+        "A3-16",
+        "A3-29",
+        "A3-31"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    },
+    {
+      "id": "C3-32",
+      "requirements": [
+        "R3-32"
+      ],
+      "artifacts": [
+        "A3-29",
+        "A3-14",
+        "A3-15",
+        "A3-28"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "evidence": "",
+      "reason": "계획 개정만 수행했다. 구현·대상 환경 검사·사용자 조사는 미실시다.",
+      "artifact_hashes": {}
+    }
+  ],
+  "domain": {
+    "methodology": {
+      "recommended": "SDD",
+      "status": "proposed"
+    },
+    "workspace_root": "/Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS",
+    "product_names": {
+      "english": "sshOS",
+      "korean": "시오스",
+      "document_display": "sshOS(시오스)",
+      "directory": "sshOS"
+    },
+    "client_targets": [
+      "macOS>=14 arm64",
+      "macOS>=14 x64",
+      "Windows11 x64"
+    ],
+    "server_targets": [
+      "Ubuntu Server 24.04 LTS amd64",
+      "Ubuntu Server 24.04 LTS arm64"
+    ],
+    "ui_language": "ko-KR",
+    "release": "1.0.0",
+    "local_origin": "/Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS/.local/git-origin.git",
+    "strategy": {
+      "status": "proposed_pending_user_acceptance",
+      "wedge": "prepared single-file systemd HTTP service maintenance",
+      "not_proven": [
+        "demand",
+        "competitive superiority",
+        "repeat adoption"
+      ],
+      "normative_documents": [
+        "docs/01-product-plan.md",
+        "docs/02-development-plan.md"
+      ],
+      "research_document": "docs/03-research-and-positioning.md",
+      "study_definition_authority": "docs/01-product-plan.md section 9"
+    },
+    "source_documents": [
+      {
+        "path": "docs/01-product-plan.md",
+        "sha256": "4028c9894a1a984932a96e0cde0e5489d4fcd815cf6688cb2a72158a17c3ffe3"
+      },
+      {
+        "path": "docs/02-development-plan.md",
+        "sha256": "6728991a2e861c018eaf8d1f547a7968f340029ed7008ae2c4e91f1ca1b16402"
+      },
+      {
+        "path": "docs/03-research-and-positioning.md",
+        "sha256": "394bec85f9747c2cbe750cf4402a558ff8bd5e6a6aad922c9f4f04229793397e"
+      },
+      {
+        "path": "design/preview-prompt.txt",
+        "sha256": "7717208bf3671043c51d5a5b2990b0f4eff4edfb1e8fda4737cd22536c082dde"
+      }
+    ],
+    "preview": {
+      "path": "design/sshOS-v3-preview.png",
+      "prompt": "design/preview-prompt.txt",
+      "purpose": "v3 전략 예상 화면; 생성 미실시",
+      "status": "pending_external_output_path_permission",
+      "blocked_path": "/Users/kkkk/.codex/generated_images",
+      "reason": "Current writable roots exclude the built-in image generator default output path. Requested exception has not been granted."
+    },
+    "test_status": "implementation_and_user_study_not_started",
+    "project_license": "AGPL-3.0-only",
+    "license_decision": {
+      "origin": "planner_selected_to_meet_user_copyleft_goal",
+      "status": "planned",
+      "alternatives_not_offered": [
+        "MIT OR AGPL-3.0-only"
+      ],
+      "trigger_scope": "covered-work conveyance and modified-version remote network interaction per AGPL",
+      "dependency_policy": "MIT preferred; otherwise OSI-approved and compatible under the concrete integration and distribution model"
+    },
+    "user_decisions": [
+      {
+        "date": "2026-11-14",
+        "scope": [
+          "Electron",
+          "macOS and Windows",
+          "Ubuntu 24",
+          "MIT-first dependencies with open-source fallback",
+          "copyleft goal",
+          "open-source contribution"
+        ],
+        "evidence": "일렉트론으로 개발하면 두 OS 다 지원가능하고, 지원 서버는 우분투 24, 앞으로 사용할 라이센스는 MIT 라이선스를 사용하되 없는 경우에는 오픈소스 라이선스를 기준으로 사용하면 된다. 이 프로젝트는 향 후 오픈소스에 기여하는 오픈소스가 될 것이며, 이 코드를 사용하는 코드는 반드시 오픈소스화를 하도록 라이선스를 정할 것이다. 이 내용을 고려해서 계획을 다시 해줘",
+        "effect": "requirements update only; implementation approval pending"
+      },
+      {
+        "date": "2026-11-14",
+        "scope": [
+          "product name"
+        ],
+        "evidence": "시오스로 하자. 영문은 sshOS로 쓰고, 계획서에도 sshOS(시오스)로 반영해줘.",
+        "effect": "English name sshOS, Korean name 시오스, document display sshOS(시오스)."
+      },
+      {
+        "date": "2026-11-14",
+        "scope": [
+          "research",
+          "planning revision",
+          "clear purpose and trade-offs"
+        ],
+        "evidence": "계획서를 다시 한번 훑어... 리서치를 통해 자료조사를 하고... 트레이드 오프를 확실하게... 계획서 및 명세 작업을 다시 진행해줘.",
+        "effect": "research and planning authorized; new strategy and implementation not pre-approved"
+      }
+    ],
+    "task_dependencies": {
+      "T3-01": [],
+      "T3-02": [
+        "T3-01"
+      ],
+      "T3-03": [
+        "T3-02"
+      ],
+      "T3-04": [
+        "T3-02"
+      ],
+      "T3-05": [
+        "T3-04"
+      ],
+      "T3-06": [
+        "T3-03",
+        "T3-04"
+      ],
+      "T3-07": [
+        "T3-05",
+        "T3-06"
+      ],
+      "T3-08": [
+        "T3-07"
+      ],
+      "T3-09": [
+        "T3-08"
+      ],
+      "T3-10": [
+        "T3-09"
+      ],
+      "T3-11": [
+        "T3-10"
+      ]
+    },
+    "task_gates": {
+      "T3-02": "G0 satisfied before implementation",
+      "T3-07": "G1 satisfied before full workflow implementation",
+      "T3-11": "signed packages and required technical checks passed; G2 before G3"
+    },
+    "research_trace": {
+      "R3-01": [
+        "P01",
+        "P03",
+        "O07",
+        "O08"
+      ],
+      "R3-02": [
+        "P01",
+        "O07"
+      ],
+      "R3-03": [
+        "O01",
+        "O07"
+      ],
+      "R3-04": [
+        "O01",
+        "O02"
+      ],
+      "R3-05": [
+        "P05"
+      ],
+      "R3-06": [
+        "O02"
+      ],
+      "R3-07": [
+        "E01",
+        "E03"
+      ],
+      "R3-08": [
+        "T01",
+        "T03",
+        "T04",
+        "T08"
+      ],
+      "R3-09": [
+        "O01",
+        "O05"
+      ],
+      "R3-10": [
+        "O05",
+        "O06"
+      ],
+      "R3-11": [
+        "O01",
+        "O05",
+        "T07"
+      ],
+      "R3-12": [
+        "E01",
+        "E02",
+        "E03"
+      ],
+      "R3-13": [
+        "T01",
+        "T07"
+      ],
+      "R3-14": [
+        "P01",
+        "P03"
+      ],
+      "R3-15": [
+        "T01",
+        "T03",
+        "T04",
+        "T07"
+      ],
+      "R3-16": [
+        "P03",
+        "T05",
+        "T06"
+      ],
+      "R3-17": [
+        "P06",
+        "O08",
+        "T02"
+      ],
+      "R3-18": [
+        "P01",
+        "P03",
+        "P06"
+      ],
+      "R3-19": [
+        "T08"
+      ],
+      "R3-20": [
+        "P01",
+        "E04"
+      ],
+      "R3-21": [
+        "P03",
+        "E04"
+      ],
+      "R3-22": [
+        "P06"
+      ],
+      "R3-23": [
+        "E04"
+      ],
+      "R3-24": [
+        "P01"
+      ],
+      "R3-25": [
+        "E01",
+        "E02",
+        "E03",
+        "E04",
+        "E05"
+      ],
+      "R3-26": [
+        "P01",
+        "P02",
+        "P03",
+        "P04",
+        "O07"
+      ],
+      "R3-27": [],
+      "R3-28": [
+        "O03"
+      ],
+      "R3-29": [],
+      "R3-30": [],
+      "R3-31": [],
+      "R3-32": []
+    },
+    "previous_spec": {
+      "version": "v2",
+      "path": "docs/history/v2/spec-v2.json",
+      "sha256": "789ffb1a2ca5da5f71bb24de9710da9bfb6fde8e650c014b113df5ce0e6a8f44",
+      "status": "superseded draft; exact bytes archived"
+    },
+    "migration": {
+      "policy": "All v3 requirements have new IDs; no v2 ID is silently repurposed.",
+      "mapping_document": "docs/02-development-plan.md section 13",
+      "retired_v2_ids": [
+        "R01",
+        "R02",
+        "R03",
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28",
+        "R29",
+        "R30",
+        "R31",
+        "R32",
+        "R33",
+        "R34"
+      ],
+      "removed_scope": [
+        "12 freely movable windows",
+        "general system monitoring",
+        "process termination",
+        "arbitrary file mutation",
+        "recursive transfers",
+        "all-service controls"
+      ],
+      "retained_user_constraints": [
+        "sshOS(시오스)",
+        "Electron macOS Windows",
+        "Ubuntu24 initially",
+        "SSH password/private key",
+        "asynchronous SFTP with persistent progress",
+        "OS-like app workspace",
+        "copyleft and OSS contribution"
+      ]
+    },
+    "remote_state": {
+      "authority": "Python3.12 stdlib sqlite3",
+      "sqlite_version": "3.45 <= version < 4",
+      "journal_mode": "DELETE",
+      "synchronous": "EXTRA (3)",
+      "flock": "fixed inode, cooperating clients only",
+      "atomicity_limit": "DB transaction does not include artifact replace or systemctl",
+      "reconcile_limit": "SQLite storage crash recovery permitted; no automatic artifact mutation, systemctl or business-success promotion",
+      "initial_boot_evidence": "tasks.reserve and operations.CREATED persist createdBootId"
+    }
+  },
+  "changes": [
+    {
+      "version": "v2",
+      "date": "2026-11-14",
+      "reason": "사용자 환경 확정과 의존성 MIT 우선·프로젝트 copyleft·기여 목표 반영",
+      "changed_requirements": [
+        "R23",
+        "R26",
+        "R28"
+      ],
+      "added_requirements": [
+        "R31",
+        "R32",
+        "R33",
+        "R34"
+      ],
+      "affected_tasks": [
+        "T01",
+        "T08",
+        "T09",
+        "T10"
+      ],
+      "affected_checks": [
+        "C23",
+        "C26",
+        "C28",
+        "C31",
+        "C32",
+        "C33",
+        "C34"
+      ],
+      "approval_effect": "v1 was pending; v2 remains pending for implementation. Latest user message records only the specified requirement changes.",
+      "unaffected_requirement_policy": "기능·동작 요구는 v1에서 이어받고 문서 판본만 갱신한다.",
+      "evidence_effect": "제품 검사 결과가 없으므로 모든 C 상태는 untested다."
+    },
+    {
+      "version": "v2",
+      "date": "2026-11-14",
+      "kind": "editorial",
+      "reason": "사용자 확정에 따라 한글 이름 시오스와 계획서 표기 sshOS(시오스)를 반영한다.",
+      "changed_fields": [
+        "domain.product_names",
+        "goal",
+        "product plan U01 and product mentions",
+        "development plan naming rule and product mentions"
+      ],
+      "changed_requirements": [],
+      "evidence_effect": "명칭 표기만 갱신하며 제품 검사는 untested 상태다."
+    },
+    {
+      "version": "v3",
+      "date": "2026-11-14",
+      "reason": "논문6편·도구8종·실제예외 조사와 v2감사를 바탕으로 단일 서비스 파일 작업에 집중한다. 사용자 확정과 전략 가설을 분리한다.",
+      "replaced_requirement_set": "R01–R34 archived",
+      "added_requirements": [
+        "R3-01",
+        "R3-02",
+        "R3-03",
+        "R3-04",
+        "R3-05",
+        "R3-06",
+        "R3-07",
+        "R3-08",
+        "R3-09",
+        "R3-10",
+        "R3-11",
+        "R3-12",
+        "R3-13",
+        "R3-14",
+        "R3-15",
+        "R3-16",
+        "R3-17",
+        "R3-18",
+        "R3-19",
+        "R3-20",
+        "R3-21",
+        "R3-22",
+        "R3-23",
+        "R3-24",
+        "R3-25",
+        "R3-26",
+        "R3-27",
+        "R3-28",
+        "R3-29",
+        "R3-30",
+        "R3-31",
+        "R3-32"
+      ],
+      "affected_tasks": [
+        "T3-01",
+        "T3-02",
+        "T3-03",
+        "T3-04",
+        "T3-05",
+        "T3-06",
+        "T3-07",
+        "T3-08",
+        "T3-09",
+        "T3-10",
+        "T3-11"
+      ],
+      "affected_checks": [
+        "C3-01",
+        "C3-02",
+        "C3-03",
+        "C3-04",
+        "C3-05",
+        "C3-06",
+        "C3-07",
+        "C3-08",
+        "C3-09",
+        "C3-10",
+        "C3-11",
+        "C3-12",
+        "C3-13",
+        "C3-14",
+        "C3-15",
+        "C3-16",
+        "C3-17",
+        "C3-18",
+        "C3-19",
+        "C3-20",
+        "C3-21",
+        "C3-22",
+        "C3-23",
+        "C3-24",
+        "C3-25",
+        "C3-26",
+        "C3-27",
+        "C3-28",
+        "C3-29",
+        "C3-30",
+        "C3-31",
+        "C3-32"
+      ],
+      "approval_effect": "v3 remains pending; no implementation approval inferred",
+      "evidence_effect": "All product checks untested; documentation validation is separate"
+    }
+  ]
+}

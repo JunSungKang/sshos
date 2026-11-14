@@ -1,0 +1,118 @@
+{
+  "date": "2026-11-14",
+  "version": "v5",
+  "status": "planning_checks_passed",
+  "structural_validation": {
+    "planning_valid": true,
+    "version": "v5",
+    "requirements": 32,
+    "tasks": 10,
+    "checks": 112,
+    "product_checks": "untested",
+    "planning_artifacts": 15,
+    "scope_digest": "cbaed368c297bb55e3b937b18894fc287f5be45db69f486d36918ece78c67b12",
+    "errors": [],
+    "limitation": "Structural and documentation checks only; no product or security certification."
+  },
+  "sdd_validator": {
+    "phase": "draft",
+    "structural_valid": true,
+    "approval_certified": false
+  },
+  "document_review": {
+    "independent_agents": 3,
+    "resolved_findings": [
+      {
+        "id": "DOC-01",
+        "resolution": "Electron confirmed; online search and AI entirely excluded in active documents"
+      },
+      {
+        "id": "DOC-02",
+        "resolution": "SFTP and local exclusive hardlink finalization; unsupported has no rename/overwrite fallback"
+      },
+      {
+        "id": "DOC-03",
+        "resolution": "RSA SHA1 blocked using public in-process BaseAgent signing adapter; target tests remain untested"
+      },
+      {
+        "id": "DOC-04",
+        "resolution": "Backup receipt recovery is conservative result_unknown regardless of saved phase"
+      },
+      {
+        "id": "DOC-05",
+        "resolution": "finalize_intent_pending is memory only; durable finalizing intent precedes dispatch; cancel race serialized"
+      },
+      {
+        "id": "DOC-06",
+        "resolution": "Upload and download temp creation both follow durable intent then wx then created record"
+      },
+      {
+        "id": "DOC-07",
+        "resolution": "Control request timeout quarantines/closes connection and retains unresolved path restriction"
+      },
+      {
+        "id": "DOC-08",
+        "resolution": "Foreground active-server probe condition corrected; late callbacks cannot create new samples"
+      },
+      {
+        "id": "DOC-09",
+        "resolution": "Windows Node fs detection guarantees limited to detectable symlink/junction; other special locations explicitly unsupported"
+      },
+      {
+        "id": "DOC-10",
+        "resolution": "safeStorage async result and rotation contract specified; bounded key read and parser thread timeout specified"
+      },
+      {
+        "id": "DOC-11",
+        "resolution": "Production security fuses and Playwright instrumentation build distinguished"
+      },
+      {
+        "id": "DOC-12",
+        "resolution": "Technical pre-pilot gate and post-pilot user acceptance gate separated"
+      }
+    ],
+    "known_blocking_document_findings": []
+  },
+  "archive": {
+    "v4_files": 11,
+    "exact_hash_check": "pass"
+  },
+  "research_urls_preserved": {
+    "03-research-and-positioning.md": 64,
+    "05-framework-comparison.md": 24
+  },
+  "architecture": {
+    "path": "design/sshOS-v5-architecture.png",
+    "pixels": [
+      2000,
+      1260
+    ],
+    "visual_review": "pass; final role labels checked by author agent"
+  },
+  "implementation_started": false,
+  "product_checks": {
+    "pass": 0,
+    "fail": 0,
+    "untested": 112
+  },
+  "temporary_artifacts": [],
+  "artifact_hashes": {
+    "README.md": "72409536b03ec42aa1a884041d31393bb8848757344628c99e70dba4c6bdd509",
+    "docs/01-product-plan.md": "a34d9f9a1f9092618f93cac0f0ba264bddbc8755441927f9481ef58c71de5849",
+    "docs/02-development-plan.md": "89e781c91bf9747652407bc7a082412c77dc03af13b1b6000542327cf5ddc327",
+    "docs/03-research-and-positioning.md": "86035499f47d35e2c2d8b6ce9401747fcecda4d4ef64621de67f371948735713",
+    "docs/04-system-architecture.md": "e5906867ff2eaabaa34b7e7d7dc7db43a9f4d22cc1654bde151e1cbe77e452dc",
+    "docs/05-framework-comparison.md": "999ee4935ec09fde2b0051884d155ed60220be1e7109d4ca3195f6c80824ba19",
+    "docs/06-quality-security-checklist.md": "0d5ec5bb69a6b1f58b703e9dea9cde0960639cc4d62458f7cc53cd5e4d7a1008",
+    "docs/07-implementation-handoff.md": "0693efdff697d15daa8007413eaf2c204a4f7a770f1575a456379e291591fa82",
+    "docs/08-requirement-traceability.md": "d9fd622da2a7869aee230f43ed07629e6a986eef0515cb5aaa828615ec7147a9",
+    "docs/dependency-baseline-v5.json": "cb10856109dc56bebd3029183554973cee2879bf2aa960976a368c780ddedee3",
+    "docs/validate-plan.py": "a639667511a183271d8b4b8f6beea73abf1553729cffb722244f15cdce06ae60",
+    "design/sshOS-v5-architecture.svg": "5c99a53a41cde286689cf3656fc768766ac216c67f4bd37f847c6d01f3b2b722",
+    "design/sshOS-v5-architecture.png": "a88f6660b7106fe26b7e6ab76f8ba28aecd78b22d17e4dd76be619dbf35738e1",
+    "design/architecture-render.js": "b33d3dedab746791927cfa60808bf7b4c498059a157a2e4443383865866bd977",
+    "design/preview-prompt.txt": "47fb24394cc7373d448ab90608dc8d6dab5d5f8b64b092f696cbbb5b7b38f9fa",
+    "docs/spec-v5.json": "70e070bac30257002424e891e04f48cf9100b74c01d7eb3b1a9496068222e234"
+  },
+  "limitation": "문서 구조·추적·일관성 검수다. 제품 구현, 제품 성능, 기능·보안 무결함을 검증한 결과가 아니다."
+}

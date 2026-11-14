@@ -1,0 +1,37 @@
+{
+  "artifact_type": "directly_rendered_UI_mockups",
+  "actual_application_capture": false,
+  "baseline": "v5",
+  "window_chrome": "macOS",
+  "logical_canvas": [
+    1600,
+    1000
+  ],
+  "visual_review": {
+    "all_three_images_inspected": true,
+    "text_clipping_or_overlap_found": false,
+    "transfer_and_verification_distinguished": true,
+    "unknown_outcome_not_marked_complete": true
+  },
+  "artifacts": [
+    {
+      "file": "sshOS-v5-01-connect.png",
+      "width": 3200,
+      "height": 2000,
+      "sha256": "21b4d379f61b2dade4edb1c7372581753d59b22f6474fa0ed7a5b5e566a1ad35"
+    },
+    {
+      "file": "sshOS-v5-02-files-transfers.png",
+      "width": 3200,
+      "height": 2000,
+      "sha256": "40226f33d1a7d003adb8f1e3cf2a5211159d8e6a9ef1845aeba53cd2ef7ea1f8"
+    },
+    {
+      "file": "sshOS-v5-03-result-unknown.png",
+      "width": 3200,
+      "height": 2000,
+      "sha256": "c4016b8c371050e1d15cd5bf35729f6cb5497ad9ffb10c2a90576b718041ad2c"
+    }
+  ],
+  "temporary_artifacts_remaining": []
+}

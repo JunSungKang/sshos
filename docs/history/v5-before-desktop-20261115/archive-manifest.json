@@ -1,0 +1,247 @@
+{
+  "version": "v5",
+  "archived_on": "2026-11-15",
+  "reason": "User requested full document revision from conversation; preserve prior plans and concept assets",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "72409536b03ec42aa1a884041d31393bb8848757344628c99e70dba4c6bdd509",
+      "bytes": 1373
+    },
+    {
+      "path": "design/sshOS-v4-architecture.svg",
+      "sha256": "29b096c13581d193fdc8b2b81502c3939b645d660d62d288ca870527babd5573",
+      "bytes": 15703
+    },
+    {
+      "path": "design/architecture-render.js",
+      "sha256": "b33d3dedab746791927cfa60808bf7b4c498059a157a2e4443383865866bd977",
+      "bytes": 11535
+    },
+    {
+      "path": "design/sshOS-v5-architecture.png",
+      "sha256": "a88f6660b7106fe26b7e6ab76f8ba28aecd78b22d17e4dd76be619dbf35738e1",
+      "bytes": 362220
+    },
+    {
+      "path": "design/sshOS-v5-architecture.svg",
+      "sha256": "5c99a53a41cde286689cf3656fc768766ac216c67f4bd37f847c6d01f3b2b722",
+      "bytes": 16314
+    },
+    {
+      "path": "design/sshOS-v4-architecture.png",
+      "sha256": "fff8b28a53e4661b508e9de7699516049652f50c71c05fdebe6ec1cff7cfe116",
+      "bytes": 349723
+    },
+    {
+      "path": "design/preview-prompt.txt",
+      "sha256": "47fb24394cc7373d448ab90608dc8d6dab5d5f8b64b092f696cbbb5b7b38f9fa",
+      "bytes": 682
+    },
+    {
+      "path": "design/mockups/sshOS-v5-02-files-transfers.png",
+      "sha256": "40226f33d1a7d003adb8f1e3cf2a5211159d8e6a9ef1845aeba53cd2ef7ea1f8",
+      "bytes": 417693
+    },
+    {
+      "path": "design/mockups/mockup-validation.json",
+      "sha256": "069c2a6e3b46150dd6862db3e1535de77676e0909e9bc4b60f09eee08d9575c4",
+      "bytes": 1014
+    },
+    {
+      "path": "design/mockups/sshOS-v5-02-files-transfers.svg",
+      "sha256": "b309b3e5c429d6302f0f729b3921d6a5fd3a6c230e72a155a0b8b3d74498dc9e",
+      "bytes": 29858
+    },
+    {
+      "path": "design/mockups/render-ui.js",
+      "sha256": "9f304643990d2c74b95b3ee98d41162f9a2662dac9c775bfd22ba36e72385d5f",
+      "bytes": 21760
+    },
+    {
+      "path": "design/mockups/sshOS-v5-03-result-unknown.svg",
+      "sha256": "65293a00c529c60d66623279f13810e16b1205bb097fa5c263ebae2347c254de",
+      "bytes": 19568
+    },
+    {
+      "path": "design/mockups/sshOS-v5-01-connect.png",
+      "sha256": "21b4d379f61b2dade4edb1c7372581753d59b22f6474fa0ed7a5b5e566a1ad35",
+      "bytes": 394727
+    },
+    {
+      "path": "design/mockups/scene-spec-v5.json",
+      "sha256": "109126b587e35d1be38ebe0dc57ab4079d692652bd8f6a936621bd481cc0be91",
+      "bytes": 2484
+    },
+    {
+      "path": "design/mockups/sshOS-v5-01-connect.svg",
+      "sha256": "4aeeb5ea9df98544fb0e71e0b24470e85071d2867c2cac100e756bb69c9a5518",
+      "bytes": 18415
+    },
+    {
+      "path": "design/mockups/sshOS-v5-03-result-unknown.png",
+      "sha256": "c4016b8c371050e1d15cd5bf35729f6cb5497ad9ffb10c2a90576b718041ad2c",
+      "bytes": 460928
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-05-settings.svg",
+      "sha256": "527e11d2b508d51a36188c09a669d4afdeaa47adbf2d760a7f2ed54743f2cdd9",
+      "bytes": 18144
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/preview-manifest.json",
+      "sha256": "58ee2ed875bbd547ba39a1ab5fa55008475f52cdd659c248167328da6e33d2df",
+      "bytes": 2987
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-01-desktop.svg",
+      "sha256": "fcd27bc4d6b3bd8452951857213d4da7037115ca241fdb43c01e47c8bda91fb6",
+      "bytes": 40212
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-01-desktop.png",
+      "sha256": "9fe24f086ebcca226bc4de9ad1ee300465bc715983aa15aad000ec2c51bb997e",
+      "bytes": 505184
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/scene-desktop.js",
+      "sha256": "e808ea52ac645b343c7d3e6e6d5ad6e1d60bd6bdc892e3e3264f22181d36168e",
+      "bytes": 4382
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-05-settings.png",
+      "sha256": "784b78450d236e86cd047b008a3e4083e6e042da13e6b248edd30f0a0280a189",
+      "bytes": 405962
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/render-preview.js",
+      "sha256": "7541a35e10070518764f1603780089ec9f72874b857dadb8a4b469addc129cf2",
+      "bytes": 13401
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/scene-connections-settings.js",
+      "sha256": "3c9a6e7d3c439a3cf5ff05b0adfed83f1294291d9f38a694d1114e2efa8afb16",
+      "bytes": 6219
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-04-tasks.svg",
+      "sha256": "20112fb995d08dfa8f550d8e464cbcb18a3be9e410d97276d61a7558612b7a9c",
+      "bytes": 21398
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-03-files.png",
+      "sha256": "580f3e032b0c8d3da70ef08e8c29068017f61eee0d0b5d41675c473a1b75755a",
+      "bytes": 508882
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-02-connections.svg",
+      "sha256": "3099e71e9ea171ef7d7c7d5d281966d1307856c8fffaff5f6dadd76d0c1707ec",
+      "bytes": 22231
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/scene-files-tasks.js",
+      "sha256": "6a84a2d5f40d589a499aed3c0e06d70b2149576ad395ff4e14badf3968ea8469",
+      "bytes": 10152
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-02-connections.png",
+      "sha256": "af570d7ae27e34a89b16d0209a9ab10a6f330f4590718c2f52a904e40e428e81",
+      "bytes": 452404
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-03-files.svg",
+      "sha256": "69cabe9ae418ffc215f0661ad4f8076fb9be48e39cc627c9375d7451b3eb44e6",
+      "bytes": 34673
+    },
+    {
+      "path": "design/mockups/desktop-preview-20261115/sshOS-preview-04-tasks.png",
+      "sha256": "7ec0696916411eb513b8e4c543b43485ebc993c7bd5a6686c2d19143de5dd02a",
+      "bytes": 474833
+    },
+    {
+      "path": "design/mockups/desktop-motion-20261115/sshOS-desktop-motion.gif",
+      "sha256": "94d97f154fa59354f56a3b2c679c10cb1ba85cc902f931727372d72ae0356d40",
+      "bytes": 814673
+    },
+    {
+      "path": "design/mockups/desktop-motion-20261115/motion-validation.json",
+      "sha256": "40c73240c9e6ab9b5227a07876a9d4e91dd0c9b81766924716ea8a2c6f2006dd",
+      "bytes": 953
+    },
+    {
+      "path": "design/mockups/desktop-motion-20261115/render-motion.js",
+      "sha256": "09f25c7197268d625c0a66ce02db419d02fdfae7cbcb7f5f8fb03142faa5428c",
+      "bytes": 19402
+    },
+    {
+      "path": "design/mockups/desktop-motion-20261115/sshOS-desktop-poster.png",
+      "sha256": "9331d4726aa2266725ab3257b2d901a58db9d3ea677ec3fb1972b26af0e1793b",
+      "bytes": 437276
+    },
+    {
+      "path": "docs/05-framework-comparison.md",
+      "sha256": "999ee4935ec09fde2b0051884d155ed60220be1e7109d4ca3195f6c80824ba19",
+      "bytes": 16464
+    },
+    {
+      "path": "docs/07-implementation-handoff.md",
+      "sha256": "0693efdff697d15daa8007413eaf2c204a4f7a770f1575a456379e291591fa82",
+      "bytes": 6225
+    },
+    {
+      "path": "docs/08-requirement-traceability.md",
+      "sha256": "d9fd622da2a7869aee230f43ed07629e6a986eef0515cb5aaa828615ec7147a9",
+      "bytes": 5757
+    },
+    {
+      "path": "docs/dependency-baseline-v5.json",
+      "sha256": "cb10856109dc56bebd3029183554973cee2879bf2aa960976a368c780ddedee3",
+      "bytes": 6697
+    },
+    {
+      "path": "docs/planning-status.json",
+      "sha256": "5f53565d5ca7943e172d236065c9982ebd02627950639b4822120c72fab7aa1d",
+      "bytes": 3583
+    },
+    {
+      "path": "docs/validate-plan.py",
+      "sha256": "a639667511a183271d8b4b8f6beea73abf1553729cffb722244f15cdce06ae60",
+      "bytes": 6017
+    },
+    {
+      "path": "docs/planning-validation.json",
+      "sha256": "b52c48b05e2bc45413f52a0ea1fc143180fa5dc35b0ed13446c19179ecf7692b",
+      "bytes": 4997
+    },
+    {
+      "path": "docs/spec-v5.json",
+      "sha256": "70e070bac30257002424e891e04f48cf9100b74c01d7eb3b1a9496068222e234",
+      "bytes": 112975
+    },
+    {
+      "path": "docs/02-development-plan.md",
+      "sha256": "89e781c91bf9747652407bc7a082412c77dc03af13b1b6000542327cf5ddc327",
+      "bytes": 66584
+    },
+    {
+      "path": "docs/04-system-architecture.md",
+      "sha256": "e5906867ff2eaabaa34b7e7d7dc7db43a9f4d22cc1654bde151e1cbe77e452dc",
+      "bytes": 6292
+    },
+    {
+      "path": "docs/06-quality-security-checklist.md",
+      "sha256": "0d5ec5bb69a6b1f58b703e9dea9cde0960639cc4d62458f7cc53cd5e4d7a1008",
+      "bytes": 46072
+    },
+    {
+      "path": "docs/01-product-plan.md",
+      "sha256": "a34d9f9a1f9092618f93cac0f0ba264bddbc8755441927f9481ef58c71de5849",
+      "bytes": 20869
+    },
+    {
+      "path": "docs/03-research-and-positioning.md",
+      "sha256": "86035499f47d35e2c2d8b6ce9401747fcecda4d4ef64621de67f371948735713",
+      "bytes": 41428
+    }
+  ]
+}

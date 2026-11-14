@@ -1,0 +1,77 @@
+{
+  "purpose": "Menu-by-menu concept previews based on the latest conversation",
+  "status": "design_preview_only; not an approved implementation specification",
+  "actual_application_capture": false,
+  "method": "AppKit/JXA direct GUI rendering using existing project drawing primitives",
+  "logical_canvas": [
+    1600,
+    1000
+  ],
+  "png_pixels": [
+    3200,
+    2000
+  ],
+  "window_chrome": "macOS",
+  "fictitious_example_data": true,
+  "plan_files_modified": false,
+  "excluded": [
+    "remote GUI forwarding",
+    "X11",
+    "server-side sshOS agent",
+    "database",
+    "multi-user automatic change monitoring",
+    "AI/search"
+  ],
+  "visual_review": {
+    "all_five_images_inspected": true,
+    "significant_clipping_or_overlap_found": false,
+    "host_trust_state_reviewed": true,
+    "transfer_verification_distinguished": true,
+    "interactive_terminal_and_program_output_distinguished": true,
+    "file_execution_and_terminal_counts_distinguished": true
+  },
+  "artifacts": [
+    {
+      "scene": "01-desktop",
+      "png": "sshOS-preview-01-desktop.png",
+      "svg": "sshOS-preview-01-desktop.svg",
+      "png_sha256": "9fe24f086ebcca226bc4de9ad1ee300465bc715983aa15aad000ec2c51bb997e",
+      "svg_sha256": "fcd27bc4d6b3bd8452951857213d4da7037115ca241fdb43c01e47c8bda91fb6"
+    },
+    {
+      "scene": "02-connections",
+      "png": "sshOS-preview-02-connections.png",
+      "svg": "sshOS-preview-02-connections.svg",
+      "png_sha256": "af570d7ae27e34a89b16d0209a9ab10a6f330f4590718c2f52a904e40e428e81",
+      "svg_sha256": "3099e71e9ea171ef7d7c7d5d281966d1307856c8fffaff5f6dadd76d0c1707ec"
+    },
+    {
+      "scene": "03-files",
+      "png": "sshOS-preview-03-files.png",
+      "svg": "sshOS-preview-03-files.svg",
+      "png_sha256": "580f3e032b0c8d3da70ef08e8c29068017f61eee0d0b5d41675c473a1b75755a",
+      "svg_sha256": "69cabe9ae418ffc215f0661ad4f8076fb9be48e39cc627c9375d7451b3eb44e6"
+    },
+    {
+      "scene": "04-tasks",
+      "png": "sshOS-preview-04-tasks.png",
+      "svg": "sshOS-preview-04-tasks.svg",
+      "png_sha256": "7ec0696916411eb513b8e4c543b43485ebc993c7bd5a6686c2d19143de5dd02a",
+      "svg_sha256": "20112fb995d08dfa8f550d8e464cbcb18a3be9e410d97276d61a7558612b7a9c"
+    },
+    {
+      "scene": "05-settings",
+      "png": "sshOS-preview-05-settings.png",
+      "svg": "sshOS-preview-05-settings.svg",
+      "png_sha256": "784b78450d236e86cd047b008a3e4083e6e042da13e6b248edd30f0a0280a189",
+      "svg_sha256": "527e11d2b508d51a36188c09a669d4afdeaa47adbf2d760a7f2ed54743f2cdd9"
+    }
+  ],
+  "sources_sha256": {
+    "render-preview.js": "7541a35e10070518764f1603780089ec9f72874b857dadb8a4b469addc129cf2",
+    "scene-connections-settings.js": "3c9a6e7d3c439a3cf5ff05b0adfed83f1294291d9f38a694d1114e2efa8afb16",
+    "scene-desktop.js": "e808ea52ac645b343c7d3e6e6d5ad6e1d60bd6bdc892e3e3264f22181d36168e",
+    "scene-files-tasks.js": "6a84a2d5f40d589a499aed3c0e06d70b2149576ad395ff4e14badf3968ea8469"
+  },
+  "temporary_artifacts_remaining": []
+}

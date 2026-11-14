@@ -1,0 +1,36 @@
+{
+  "date": "2026-11-14",
+  "reason": "v4 user-directed removal of DB and server runtime prerequisites, portable Electron packaging and SSH response indicator",
+  "files": [
+    {
+      "original": "docs/01-product-plan.md",
+      "archive": "docs/history/v3/01-product-plan.md",
+      "sha256": "4028c9894a1a984932a96e0cde0e5489d4fcd815cf6688cb2a72158a17c3ffe3"
+    },
+    {
+      "original": "docs/02-development-plan.md",
+      "archive": "docs/history/v3/02-development-plan.md",
+      "sha256": "6728991a2e861c018eaf8d1f547a7968f340029ed7008ae2c4e91f1ca1b16402"
+    },
+    {
+      "original": "docs/03-research-and-positioning.md",
+      "archive": "docs/history/v3/03-research-and-positioning.md",
+      "sha256": "394bec85f9747c2cbe750cf4402a558ff8bd5e6a6aad922c9f4f04229793397e"
+    },
+    {
+      "original": "docs/spec-v3.json",
+      "archive": "docs/history/v3/spec-v3.json",
+      "sha256": "b96b635c930853436686755435d97f42e643c8865ca702de843d4eee7ecb6924"
+    },
+    {
+      "original": "docs/planning-validation.json",
+      "archive": "docs/history/v3/planning-validation.json",
+      "sha256": "d2524c63615aded0d6f4566186fe37069e7b62d670eee5ae069450c11a7f4037"
+    },
+    {
+      "original": "design/preview-prompt.txt",
+      "archive": "docs/history/v3/preview-prompt.txt",
+      "sha256": "7717208bf3671043c51d5a5b2990b0f4eff4edfb1e8fda4737cd22536c082dde"
+    }
+  ]
+}

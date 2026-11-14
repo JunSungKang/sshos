@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="2000" viewBox="0 0 1600 1000"><title>sshOS(시오스) 메뉴별 예상 화면 02-connections</title><desc>최근 논의한 기능을 포함한 검토용 UI 시안. 실제 앱 캡처와 승인된 개발 명세가 아님.</desc>
+<rect x="0" y="0" width="1600" height="1000" rx="0" fill="#DCE7EB" stroke="none" stroke-width="1"/>
+<rect x="0" y="0" width="88" height="1000" rx="0" fill="#102D35" stroke="none" stroke-width="1"/>
+<rect x="88" y="0" width="1512" height="56" rx="0" fill="#F8FAFB" stroke="none" stroke-width="1"/>
+<polyline points="88,56 1600,56" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="22" cy="28" r="5" fill="#EC786F" stroke="none"/>
+<circle cx="42" cy="28" r="5" fill="#E4BF68" stroke="none"/>
+<circle cx="62" cy="28" r="5" fill="#79BFA2" stroke="none"/>
+<text x="114" y="36" font-family="Apple SD Gothic Neo, sans-serif" font-size="23" font-weight="600" fill="#16313B">sshOS</text>
+<polyline points="204,17 204,39" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="222" y="32" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="400" fill="#667D86">시오스</text>
+<rect x="341.75" y="20.5" width="16.5" height="11.25" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<polyline points="350,31.75 350,35.5" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="346.25,35.5 353.75,35.5" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="369" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">열린 창 4</text>
+<text x="486" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">README.md</text>
+<text x="604" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">preview.png</text>
+<text x="730" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">터미널</text>
+<text x="824" y="30" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#667D86">report-worker</text>
+<rect x="33" y="102" width="22" height="15" rx="2" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="44,117 44,122" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="39,122 49,122" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="24.105" y="143.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#B5C8CE">데스크톱</text>
+<rect x="12" y="175" width="64" height="71" rx="10" fill="#1E5157" stroke="none" stroke-width="1"/>
+<rect x="0" y="192" width="3" height="29" rx="1.5" fill="#78CFC3" stroke="none" stroke-width="1"/>
+<rect x="33" y="190" width="22" height="8" rx="2" fill="none" stroke="#E7FFFA" stroke-width="1"/>
+<rect x="33" y="202" width="22" height="8" rx="2" fill="none" stroke="#E7FFFA" stroke-width="1"/>
+<circle cx="37" cy="194" r="1.2" fill="#E7FFFA" stroke="none"/>
+<circle cx="37" cy="206" r="1.2" fill="#E7FFFA" stroke="none"/>
+<polyline points="44,194 51,194" fill="none" stroke="#E7FFFA" stroke-width="1.4" stroke-linejoin="round"/>
+<polyline points="44,206 51,206" fill="none" stroke="#E7FFFA" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="32.755" y="233" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF">연결</text>
+<polygon points="34,281 41,281 43,284 54,284 54,297 34,297" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="32.755" y="321" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">파일</text>
+<rect x="34" y="366" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,368 54,368" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="34" y="374" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,376 54,376" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="34" y="382" width="4" height="4" rx="1" fill="none" stroke="#A3BBC1" stroke-width="1"/>
+<polyline points="42,384 54,384" fill="none" stroke="#A3BBC1" stroke-width="1.6" stroke-linejoin="round"/>
+<text x="32.755" y="409" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">작업</text>
+<circle cx="44" cy="814" r="7" fill="none" stroke="#A3BBC1"/>
+<circle cx="44" cy="814" r="2.6" fill="none" stroke="#A3BBC1"/>
+<polyline points="52,814 55,814" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="49.65685424949238,819.6568542494924 51.77817459305202,821.778174593052" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="44,822 44,825" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="38.34314575050762,819.6568542494924 36.22182540694798,821.778174593052" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="36,814 33,814" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="38.34314575050762,808.3431457505076 36.22182540694798,806.221825406948" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="44,806 44,803" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="49.65685424949238,808.3431457505076 51.77817459305202,806.221825406948" fill="none" stroke="#A3BBC1" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="32.755" y="847" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="400" fill="#B5C8CE">설정</text>
+<text x="29.727500000000003" y="978" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#829FA7">시오스</text>
+<rect x="1236" y="9" width="340" height="38" rx="8" fill="#FFF5E2" stroke="none" stroke-width="1"/>
+<circle cx="1252" cy="28" r="3.5" fill="#9C6817" stroke="none"/>
+<text x="1264" y="25" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#16313B">staging-01</text>
+<text x="1264" y="40.5" font-family="Apple SD Gothic Neo, sans-serif" font-size="11.5" font-weight="400" fill="#9C6817">호스트 승인 대기</text>
+<polyline points="1551,25 1556,30 1561,25" fill="none" stroke="#9C6817" stroke-width="1.5" stroke-linejoin="round"/>
+<rect x="88" y="888" width="1512" height="112" rx="0" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<polyline points="88,888 1600,888" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="112" y="80" width="288" height="784" rx="12" fill="#EFF4F6" stroke="#D6E1E5" stroke-width="1"/>
+<text x="132" y="127" font-family="Apple SD Gothic Neo, sans-serif" font-size="21" font-weight="600" fill="#16313B">내 서버</text>
+<rect x="218" y="109" width="28" height="27" rx="13" fill="#DFE8EC" stroke="none" stroke-width="1"/>
+<text x="228.784" y="125" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#667D86">3</text>
+<polyline points="362,113.33333333333333 362,126.66666666666667" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="355.3333333333333,120 368.6666666666667,120" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<rect x="132" y="164" width="248" height="98" rx="9" fill="#E8F0F2" stroke="none" stroke-width="1"/>
+<rect x="148.875" y="183.75" width="19.25" height="7" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<rect x="148.875" y="194.25" width="19.25" height="7" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<circle cx="152.375" cy="187.25" r="1.05" fill="#667D86" stroke="none"/>
+<circle cx="152.375" cy="197.75" r="1.05" fill="#667D86" stroke="none"/>
+<polyline points="158.5,187.25 164.625,187.25" fill="none" stroke="#667D86" stroke-width="1.4" stroke-linejoin="round"/>
+<polyline points="158.5,197.75 164.625,197.75" fill="none" stroke="#667D86" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="182" y="193" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">production-01</text>
+<text x="182" y="217.5" font-family="Menlo, monospace" font-size="11.5" font-weight="400" fill="#667D86">203.0.113.24 : 22</text>
+<rect x="148" y="230" width="66" height="27" rx="13" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<text x="165.43" y="246" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">연결됨</text>
+<rect x="132" y="278" width="248" height="98" rx="9" fill="#E8F0F2" stroke="none" stroke-width="1"/>
+<rect x="148.875" y="297.75" width="19.25" height="7" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<rect x="148.875" y="308.25" width="19.25" height="7" rx="2" fill="none" stroke="#667D86" stroke-width="1"/>
+<circle cx="152.375" cy="301.25" r="1.05" fill="#667D86" stroke="none"/>
+<circle cx="152.375" cy="311.75" r="1.05" fill="#667D86" stroke="none"/>
+<polyline points="158.5,301.25 164.625,301.25" fill="none" stroke="#667D86" stroke-width="1.4" stroke-linejoin="round"/>
+<polyline points="158.5,311.75 164.625,311.75" fill="none" stroke="#667D86" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="182" y="307" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">archive-01</text>
+<text x="182" y="331.5" font-family="Menlo, monospace" font-size="11.5" font-weight="400" fill="#667D86">203.0.113.42 : 22</text>
+<rect x="148" y="344" width="66" height="27" rx="13" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<text x="165.43" y="360" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">연결됨</text>
+<rect x="132" y="392" width="248" height="98" rx="9" fill="#FFFFFF" stroke="#A9C8C1" stroke-width="1"/>
+<rect x="148.875" y="411.75" width="19.25" height="7" rx="2" fill="none" stroke="#087F78" stroke-width="1"/>
+<rect x="148.875" y="422.25" width="19.25" height="7" rx="2" fill="none" stroke="#087F78" stroke-width="1"/>
+<circle cx="152.375" cy="415.25" r="1.05" fill="#087F78" stroke="none"/>
+<circle cx="152.375" cy="425.75" r="1.05" fill="#087F78" stroke="none"/>
+<polyline points="158.5,415.25 164.625,415.25" fill="none" stroke="#087F78" stroke-width="1.4" stroke-linejoin="round"/>
+<polyline points="158.5,425.75 164.625,425.75" fill="none" stroke="#087F78" stroke-width="1.4" stroke-linejoin="round"/>
+<text x="182" y="421" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">staging-01</text>
+<text x="182" y="445.5" font-family="Menlo, monospace" font-size="11.5" font-weight="400" fill="#667D86">203.0.113.60 : 22</text>
+<rect x="148" y="458" width="126" height="27" rx="13" fill="#FFF5E2" stroke="none" stroke-width="1"/>
+<text x="171.514" y="474" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#9C6817">호스트 승인 대기</text>
+<polyline points="132,752 380,752" fill="none" stroke="#D6E1E5" stroke-width="1" stroke-linejoin="round"/>
+<text x="132" y="789" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">연결됨 2 · 승인 대기 1</text>
+<text x="132" y="824" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">연결 정보는 이 PC에 저장됩니다.</text>
+<rect x="420" y="80" width="1156" height="784" rx="12" fill="#F8FAFB" stroke="#D6E1E5" stroke-width="1"/>
+<text x="452" y="135" font-family="Apple SD Gothic Neo, sans-serif" font-size="28" font-weight="600" fill="#16313B">서버 연결</text>
+<text x="452" y="166" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="400" fill="#667D86">staging-01의 호스트 지문을 확인하세요.</text>
+<rect x="452" y="195" width="472" height="44" rx="8" fill="#E7EEF0" stroke="none" stroke-width="1"/>
+<rect x="456" y="199" width="230" height="36" rx="6" fill="#FFFFFF" stroke="none" stroke-width="1"/>
+<circle cx="498.6666666666667" cy="213.66666666666666" r="3.541666666666667" fill="none" stroke="#087F78"/>
+<polyline points="501.5,216.5 508.5833333333333,223.58333333333334 508.5833333333333,219.33333333333334 505.75,219.33333333333334" fill="none" stroke="#087F78" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="521" y="221" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="600" fill="#087F78">SSH 개인키</text>
+<text x="762" y="221" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="400" fill="#667D86">비밀번호</text>
+<text x="452" y="275" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">연결 이름</text>
+<rect x="452" y="288" width="472" height="44" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="466" y="315" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="400" fill="#16313B">staging-01</text>
+<text x="452" y="369" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">서버 주소</text>
+<rect x="452" y="382" width="336" height="44" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="466" y="409" font-family="Menlo, monospace" font-size="15" font-weight="400" fill="#16313B">203.0.113.60</text>
+<text x="806" y="369" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">포트</text>
+<rect x="806" y="382" width="118" height="44" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="820" y="409" font-family="Menlo, monospace" font-size="15" font-weight="400" fill="#16313B">22</text>
+<text x="452" y="463" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">사용자 이름</text>
+<rect x="452" y="476" width="472" height="44" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="466" y="503" font-family="Menlo, monospace" font-size="15" font-weight="400" fill="#16313B">ubuntu</text>
+<text x="452" y="557" font-family="Apple SD Gothic Neo, sans-serif" font-size="13" font-weight="600" fill="#667D86">개인키 파일</text>
+<rect x="452" y="570" width="472" height="50" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<circle cx="475" cy="591" r="4.375" fill="none" stroke="#667D86"/>
+<polyline points="478.5,594.5 487.25,603.25 487.25,598 483.75,598" fill="none" stroke="#667D86" stroke-width="1.7" stroke-linejoin="round"/>
+<text x="500" y="599" font-family="Menlo, monospace" font-size="14" font-weight="400" fill="#16313B">staging_ed25519</text>
+<text x="838" y="598" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">파일 변경</text>
+<rect x="453" y="651" width="17" height="17" rx="3" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="481" y="662" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="400" fill="#16313B">비밀번호·개인키 암호 저장</text>
+<text x="452" y="694" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">선택한 경우에만 이 PC에 암호화하여 저장합니다.</text>
+<rect x="452" y="756" width="472" height="40" rx="7" fill="#F0F3F4" stroke="#D6E1E5" stroke-width="1"/>
+<text x="641.933" y="780" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="600" fill="#9BAAB0">호스트 승인 대기</text>
+<rect x="958" y="195" width="586" height="625" rx="12" fill="#FFFFFF" stroke="#C6D7D2" stroke-width="1"/>
+<rect x="986" y="223" width="50" height="50" rx="12" fill="#FFF5E2" stroke="none" stroke-width="1"/>
+<polygon points="1011.5,237.08333333333334 1021.9166666666666,241.25 1019.8333333333334,251.66666666666666 1011.5,258.9583333333333 1003.1666666666666,251.66666666666666 1001.0833333333334,241.25" fill="none" stroke="#9C6817" stroke-width="1.7" stroke-linejoin="round"/>
+<polyline points="1011.5,242.29166666666666 1011.5,248.54166666666666" fill="none" stroke="#9C6817" stroke-width="1.7" stroke-linejoin="round"/>
+<circle cx="1011.5" cy="252.70833333333334" r="0.9375000000000001" fill="#9C6817" stroke="none"/>
+<rect x="1414" y="232" width="102" height="27" rx="13" fill="#FFF5E2" stroke="none" stroke-width="1"/>
+<text x="1442.662" y="248" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#9C6817">처음 연결</text>
+<text x="986" y="318" font-family="Apple SD Gothic Neo, sans-serif" font-size="22" font-weight="600" fill="#16313B">서버의 호스트 키를 확인하세요.</text>
+<text x="986" y="352" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="400" fill="#667D86">서버 관리자가 제공한 지문과 비교하세요.</text>
+<polyline points="986,380 1516,380" fill="none" stroke="#D6E1E5" stroke-width="1" stroke-linejoin="round"/>
+<text x="986" y="417" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#667D86">연결 대상</text>
+<text x="986" y="450" font-family="Apple SD Gothic Neo, sans-serif" font-size="18" font-weight="600" fill="#16313B">staging-01</text>
+<text x="986" y="478" font-family="Menlo, monospace" font-size="14" font-weight="400" fill="#667D86">203.0.113.60 : 22</text>
+<text x="986" y="522" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#667D86">호스트 키 · ED25519</text>
+<rect x="986" y="538" width="530" height="73" rx="7" fill="#F2F6F7" stroke="none" stroke-width="1"/>
+<text x="1000" y="560" font-family="Menlo, monospace" font-size="12" font-weight="600" fill="#667D86">SHA256:</text>
+<text x="1000" y="587.3" font-family="Menlo, monospace" font-size="12.3" font-weight="400" fill="#16313B">vR8r7Q2KpL4eTs9mNc6UjW1bH0xF5dY3oAqZsGkIuE8</text>
+<text x="986" y="651" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="400" fill="#16313B">승인 전에는 로그인을 진행하지 않습니다.</text>
+<text x="986" y="678" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">서버의 운영체제와 SSH 응답은 연결 후 확인합니다.</text>
+<rect x="986" y="738" width="112" height="40" rx="7" fill="#FFFFFF" stroke="#D6E1E5" stroke-width="1"/>
+<text x="1029.89" y="762" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="600" fill="#16313B">취소</text>
+<rect x="1114" y="738" width="402" height="40" rx="7" fill="#087F78" stroke="#087F78" stroke-width="1"/>
+<text x="1276.829" y="762" font-family="Apple SD Gothic Neo, sans-serif" font-size="14" font-weight="600" fill="#FFFFFF">승인하고 연결</text>
+<polygon points="1399,765 1399,788 1405,782 1411,793 1415,791 1409,780 1418,779" fill="#17313B" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+<text x="112" y="921" font-family="Apple SD Gothic Neo, sans-serif" font-size="16" font-weight="600" fill="#16313B">전송 작업</text>
+<text x="112" y="948" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">진행 2 · 대기 0</text>
+<text x="112" y="969" font-family="Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="400" fill="#087F78">파일 실행 1 · 터미널 1</text>
+<polyline points="248,907 248,982" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="270" y="909" width="32" height="32" rx="8" fill="#E9F5F2" stroke="none" stroke-width="1"/>
+<polyline points="286,919.6666666666666 286,930.3333333333334" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="281.3333333333333,924.3333333333334 286,919.6666666666666 290.6666666666667,924.3333333333334" fill="none" stroke="#087F78" stroke-width="1.8" stroke-linejoin="round"/>
+<text x="316" y="917" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">release-assets.zip</text>
+<text x="316" y="939" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">production-01 · 업로드</text>
+<text x="316" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#087F78">348 / 512 MiB · 전송 중 68%</text>
+<text x="738" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">12.4 MiB/s</text>
+<rect x="316" y="978" width="510" height="5" rx="2.5" fill="#E3EAED" stroke="none" stroke-width="1"/>
+<rect x="316" y="978" width="346.8" height="5" rx="2.5" fill="#087F78" stroke="none" stroke-width="1"/>
+<polyline points="870,907 870,982" fill="none" stroke="#D6E1E5" stroke-width="1.6" stroke-linejoin="round"/>
+<rect x="895" y="909" width="32" height="32" rx="8" fill="#EDF3FC" stroke="none" stroke-width="1"/>
+<polyline points="911,919.6666666666666 911,930.3333333333334" fill="none" stroke="#3868AD" stroke-width="1.8" stroke-linejoin="round"/>
+<polyline points="906.3333333333334,925.6666666666666 911,930.3333333333334 915.6666666666666,925.6666666666666" fill="none" stroke="#3868AD" stroke-width="1.8" stroke-linejoin="round"/>
+<text x="942" y="917" font-family="Apple SD Gothic Neo, sans-serif" font-size="15" font-weight="600" fill="#16313B">backup-2026-11-15.tar.gz</text>
+<text x="942" y="939" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">archive-01 · 다운로드 · 16 GiB</text>
+<text x="942" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="600" fill="#3868AD">전송 16 / 16 GiB · 내용 확인 6.88 / 16 GiB (43%)</text>
+<text x="1430" y="964" font-family="Apple SD Gothic Neo, sans-serif" font-size="12" font-weight="400" fill="#667D86">검증 128 MiB/s</text>
+<rect x="942" y="978" width="619" height="5" rx="2.5" fill="#E3EAED" stroke="none" stroke-width="1"/>
+<rect x="942" y="978" width="266.17" height="5" rx="2.5" fill="#3868AD" stroke="none" stroke-width="1"/>
+</svg>
