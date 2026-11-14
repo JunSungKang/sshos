@@ -109,10 +109,20 @@ def validate(root):
     need({'electron','ssh2','@xterm/xterm','@xterm/addon-fit'}<=packages,'missing dependencies')
     need(not {'node-pty','react-rnd'}&packages,'unselected dependency')
     for p in baseline['packages']:need(bool(re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+',p['version'])),'nonexact dependency '+p['name'])
-    need(not (root/'src').exists() and not (root/'node_modules').exists(),'unexpected implementation/installation')
+    execution_path=root/'docs/implementation-status.json'
+    execution=json.loads(execution_path.read_text()) if execution_path.exists() else None
+    if execution is None:
+        need(not (root/'src').exists() and not (root/'node_modules').exists(),'unexpected implementation/installation')
+    else:
+        need(execution.get('implementation_started') is True and execution.get('approved_scope_digest')==digest(spec),'implementation does not bind approved scope')
+        need(bool(execution.get('authorization',{}).get('quote')),'implementation authorization missing')
     status=json.loads((root/'docs/planning-status.json').read_text())
     need(status['version']=='v6' and status['scope_digest']==digest(spec),'status version/digest mismatch')
-    need(status['implementation_started'] is False and spec['approval']['status']=='pending','implementation approval misrepresented')
+    if execution is None:
+        need(status['implementation_started'] is False and spec['approval']['status']=='pending','implementation approval misrepresented')
+    else:
+        need(status['implementation_started'] is True and spec['approval']['status']=='approved','implementation approval missing')
+        need(spec['approval']['spec_sha256']==digest(spec),'implementation approval digest mismatch')
     for name,h in status['document_hashes'].items():
         path=(root/name).resolve();need(path.is_relative_to(root) and path.is_file(),'status missing '+name)
         if path.is_file():need(sha(path)==h,'status stale hash '+name)

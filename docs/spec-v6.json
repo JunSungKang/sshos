@@ -22,10 +22,10 @@
   ],
   "open_questions": [],
   "approval": {
-    "status": "pending",
+    "status": "approved",
     "spec_version": "v6",
-    "evidence": "",
-    "spec_sha256": ""
+    "evidence": "2026-11-15 user: 그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라.",
+    "spec_sha256": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb"
   },
   "requirements": [
     {
@@ -1048,7 +1048,7 @@
       "id": "A01",
       "path": "README.md",
       "version": "v6",
-      "sha256": "431e7de0af66d85f42137c3ec570efe234f7eef63321d177ebc0eaf939353406",
+      "sha256": "394503aa1ec530ee6f483aa762d7a9ee34eacc561b58448eba8fbe7062090a24",
       "kind": "planning"
     },
     {
@@ -1139,7 +1139,7 @@
       "id": "A14",
       "path": "docs/validate-plan.py",
       "version": "v6",
-      "sha256": "fc23bdd2418ce0f9d5070a66fb9325daa8a9e4adaa94a59013dea309380af0f7",
+      "sha256": "a168c7fae9370ea97dc9edf8d88d18c973acfc8b311423188fdf48b2ecf47c5b",
       "kind": "planning"
     },
     {

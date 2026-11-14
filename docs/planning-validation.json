@@ -11,7 +11,7 @@
     "nonblocking_research_checks": 3,
     "product_checks": "all untested",
     "planning_artifacts": 17,
-    "local_links_checked": 79,
+    "local_links_checked": 80,
     "archived_file_hashes_verified": 69,
     "scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
     "errors": [],
@@ -46,10 +46,10 @@
     "runtime_executed": false,
     "final_followup": "All prior findings addressed; slots released only on channel-close event or socket termination."
   },
-  "product_tests": "all untested",
-  "implementation_started": false,
+  "product_tests": "All compound product acceptance checks remain untested; separate local D01 evidence in implementation-status.json.",
+  "implementation_started": true,
   "document_hashes": {
-    "README.md": "431e7de0af66d85f42137c3ec570efe234f7eef63321d177ebc0eaf939353406",
+    "README.md": "394503aa1ec530ee6f483aa762d7a9ee34eacc561b58448eba8fbe7062090a24",
     "docs/01-product-plan.md": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
     "docs/02-development-plan.md": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
     "docs/03-research-and-positioning.md": "bfd947769381b609bf03b7e2d4440aca5034bb43f751bdeb0434c397bbd5a47f",
@@ -62,16 +62,20 @@
     "docs/10-session-decisions.md": "a9bef4a9cc91acf3dc330a5159b4bf9a25dd9795c6b6d18cf32417fc452f5b3d",
     "docs/11-document-audit.md": "1b0c441ef5c951f9b5c21c1a054f0c40a1522dbf2745b5f7fddc5db20241c5d6",
     "docs/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
-    "docs/validate-plan.py": "fc23bdd2418ce0f9d5070a66fb9325daa8a9e4adaa94a59013dea309380af0f7",
+    "docs/validate-plan.py": "a168c7fae9370ea97dc9edf8d88d18c973acfc8b311423188fdf48b2ecf47c5b",
     "design/README.md": "90d6fba01e4ad898c24082d3e7e497ec35117a1f88fc6a95d83d80543da03d72",
     "design/preview-prompt.txt": "3a5b025b3ab6fd88ed3d63be43956c44f2d96d5e04f7490aa5dbe9014d21233e",
     "design/mockups/scene-spec-v6.json": "aeafe614dff09c88e8a058711e5d1afa3c51e81e4d3edf02a000706587fc857a",
-    "docs/spec-v6.json": "b00f0f216bc67fb04a16a7349fde72c025221b774889d6d092d373427d9d0d0c"
+    "docs/spec-v6.json": "319f8f888341cbb08fe0b8a137d0e507e022ee04459e5035231346d69e707ee0"
   },
   "temporary_artifacts": [],
   "limitations": [
-    "No product implementation, installation, target testing or deployment was performed.",
-    "Document validation is not proof of zero defects or license/legal certification.",
-    "Current 4-second GIF is a concept subset, not v6 runtime evidence."
-  ]
+    "Local D01 implementation and macOS arm64 smoke exist; other targets, real SSH fixtures and signed packages remain untested.",
+    "Planning validation is documentation consistency only."
+  ],
+  "sdd_ready_validation": {
+    "structural_valid": true,
+    "phase": "ready",
+    "limitation": "Actual user implementation instruction bound to original unchanged v6 scope; not product completion."
+  }
 }

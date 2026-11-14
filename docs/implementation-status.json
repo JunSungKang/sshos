@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "spec_version": "v6",
+  "approved_scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+  "implementation_started": true,
+  "started_on": "2026-11-15",
+  "authorization": {
+    "source": "actual_user_message",
+    "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
+  },
+  "stage": "D01",
+  "stage_status": "in_progress",
+  "release_ready": false,
+  "completed_stages": [],
+  "first_push": {
+    "branch": "work/import-plans",
+    "head": "32c6206",
+    "original_root_preserved": "609936e07db67734d204169801c251e8839ae4a4"
+  },
+  "implemented": [
+    "Sandboxed Electron startup and local app protocol",
+    "Restricted preload lifecycle snapshot API with sender/origin/schema/budget validation",
+    "utilityProcess loads ssh2 and reports its epoch without connecting",
+    "React foundation screen with honest development status",
+    "Workspace-local toolchain, install/runtime/cache scripts",
+    "Local protocol and IPC security tests, actual Electron smoke and xterm CSP fixture"
+  ],
+  "local_verification": {
+    "typecheck": "pass",
+    "unit_tests": {
+      "status": "pass",
+      "tests": 15
+    },
+    "build": "pass",
+    "electron_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "versions": {
+        "electron": "45.3.2",
+        "node": "24.22.2",
+        "chrome": "156.0.8078.100"
+      },
+      "assertions": [
+        "main/preload/renderer/utilityProcess handshake",
+        "sandbox, contextIsolation and Node isolation",
+        "renderer external fetch and eval denied",
+        "xterm DOM renderer and addon-fit under production CSP"
+      ],
+      "limitation": "Development executable on current machine only; no signing or Windows/Ubuntu result."
+    },
+    "host_os": {
+      "name": "macOS",
+      "version": "26.6.2",
+      "build": "25G83",
+      "architecture": "arm64",
+      "official_macOS14_matrix": "untested"
+    },
+    "clean_install": "pass",
+    "audit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 0,
+      "critical": 0,
+      "total": 6
+    }
+  },
+  "remaining_D01": [
+    "macOS14arm64 native target validation (current host is macOS26.6.2)",
+    "Windows11x64 and macOS14x64 native launch tests",
+    "Ubuntu24.04amd64/arm64 SSH key and hosttrust/SFTP hardlink fixtures",
+    "safeStorage OS encryption and signing continuity tests",
+    "Production package fuses/signatures and license/SBOM validation"
+  ],
+  "known_issues": [
+    {
+      "id": "DEP-001",
+      "severity": "moderate",
+      "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
+    }
+  ],
+  "next_action": "Complete remaining D01 technical prerequisites, then D02 JSON persistence/profile/hosttrust. Do not claim cross-platform or production readiness.",
+  "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
+  "evidence_directory": "evidence/d01"
+}
