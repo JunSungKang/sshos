@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, protocol, session, utilityProcess } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, protocol, session, utilityProcess, safeStorage } from 'electron';
 import { readFile, mkdir, realpath } from 'node:fs/promises';
 import { resolve, relative, isAbsolute, sep, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -7,6 +7,10 @@ import { CSP, isAppOrigin, RequestBudget, resolveAsset } from './security';
 import { runtimeSnapshotSchema, workerEventSchema, type RuntimeSnapshot } from '../shared/contracts';
 import { StateRepository } from './persistence/state-repository';
 import { ProfileController } from './profiles';
+import { ConnectionController } from './connections';
+import { EngineGateway } from './engine-gateway';
+import { SecretVault } from './persistence/secrets';
+import { DesktopController } from './desktop';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -64,12 +68,13 @@ async function main(): Promise<void> {
   const dataRoot = resolve(app.getPath('userData'), 'data');
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
+  let connections: ConnectionController | null = null;
   let repositoryOpening: Promise<void> | null = null;
   const openRepository = (): Promise<void> => {
     if (repositoryOpening) return repositoryOpening;
     repositoryOpening = (async () => {
       if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot);
-      profiles = new ProfileController(repository, () => win, () => false);
+      profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false);
     })().finally(() => { repositoryOpening = null; });
     return repositoryOpening;
   };
@@ -77,11 +82,14 @@ async function main(): Promise<void> {
   const epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
+  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot));
+  connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage));
+  const desktop = new DesktopController(connections);
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
   });
-  worker.on('exit', () => { engine = 'stopped'; });
+  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped(); });
   const budget = new RequestBudget();
   const validateSender = (event: Electron.IpcMainInvokeEvent) => {
     if (!win || win.isDestroyed() || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || !isAppOrigin(event.senderFrame.url)) throw new Error('IPC_DENIED');
@@ -98,6 +106,25 @@ async function main(): Promise<void> {
       catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }
+  for (const action of ['session:list', 'session:connect', 'session:disconnect', 'session:confirmOS', 'trust:approve', 'trust:reject']) {
+    ipcMain.handle(action, async (event, payload: unknown) => {
+      validateSender(event);
+      try {
+        if (!connections || engine !== 'ready') throw new Error('ENGINE_STOPPED');
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        return await connections.handle(action, payload);
+      } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
+    });
+  }
+  for (const action of ['desktop:getWindowSnapshot', 'desktop:registerWindow', 'desktop:updateWindowLayout', 'desktop:closeWindow']) {
+    ipcMain.handle(action, (event, payload: unknown) => {
+      validateSender(event);
+      try {
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        return desktop.handle(action, payload);
+      } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
+    });
+  }
   ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
     try { await openRepository(); } catch { throw new Error('STORAGE_FAILED'); }
@@ -105,7 +132,7 @@ async function main(): Promise<void> {
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);
     if (payload !== undefined) throw new Error('INPUT_INVALID');
-    return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: 0,
+    return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: connections.views().filter(row => row.status === 'connected').length,
       storage: { status: !repository || repository.store.faulted ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
       appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
