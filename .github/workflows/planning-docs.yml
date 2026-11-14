@@ -14,3 +14,10 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 -B docs/validate-plan.py --root "$GITHUB_WORKSPACE"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.3'
+      - run: node scripts/install.mjs
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
