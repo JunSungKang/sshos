@@ -12,6 +12,8 @@ import { EngineGateway } from './engine-gateway';
 import { SecretVault } from './persistence/secrets';
 import { DesktopController } from './desktop';
 import { FileController } from './files';
+import { ReceiptRepository } from './persistence/receipts';
+import { MutationController } from './mutations';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -80,6 +82,8 @@ async function main(): Promise<void> {
     return repositoryOpening;
   };
   try { await openRepository(); } catch { /* Keep a locked, visible recovery UI instead of resetting data. */ }
+  let receipts:ReceiptRepository|null=null;
+  try { receipts=await ReceiptRepository.open(dataRoot); } catch { /* Keep changes locked and reads available. */ }
   const epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
@@ -87,6 +91,7 @@ async function main(): Promise<void> {
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
@@ -139,15 +144,24 @@ async function main(): Promise<void> {
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }
+  for (const action of ['file:previewMutation','file:startMutation','task:list','task:inspect','task:previewRecordAction','task:applyRecordAction']) {
+    ipcMain.handle(action,async (event,payload:unknown) => {
+      validateSender(event);
+      try {
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536) throw new Error('INPUT_INVALID');
+        return await mutations.handle(action,payload);
+      } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
+    });
+  }
   ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
-    try { await openRepository(); } catch { throw new Error('STORAGE_FAILED'); }
+    try { await mutations.settled(); await receipts?.settled(); await openRepository(); receipts=await ReceiptRepository.open(dataRoot); } catch { throw new Error('STORAGE_FAILED'); }
   });
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);
     if (payload !== undefined) throw new Error('INPUT_INVALID');
     return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: connections.views().filter(row => row.status === 'connected').length,
-      storage: { status: !repository || repository.store.faulted ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
+      storage: { status: !repository || repository.store.faulted || !receipts || receipts.faulted ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
       appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {

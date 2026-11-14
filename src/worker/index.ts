@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { SessionManager } from './connection/session-manager';
 import { engineRequestSchema, type EngineRequest, type EngineEvent } from '../shared/engine-protocol';
 import { FileBrowser } from './files/browser';
+import { FileMutations } from './files/mutations';
+import { PathLocks } from './files/path-locks';
 
 const epoch = z.uuid().parse(process.argv[2]);
 if (!process.parentPort) throw new Error('Utility process parent port required');
@@ -12,6 +14,8 @@ process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary:
 let sequence = 0;
 const sessions = new SessionManager(snapshot => process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot }));
 const files = new FileBrowser((serverId, generation) => sessions.control(serverId, generation));
+const locks=new PathLocks();
+const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
 const inFlight = new Map<string, Promise<EngineEvent>>();
 const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {
@@ -23,7 +27,11 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'session:confirmOS') sessions.confirmOS(request.serverId, request.generation);
     else if (request.action === 'file:list') result = await files.list(request.serverId, request.generation, request.browserId, request.path);
     else if (request.action === 'file:page') result = files.page(request.serverId, request.generation, request.browserId, request.offset, request.snapshotId);
-    else files.close(request.browserId);
+    else if (request.action === 'file:close') files.close(request.browserId);
+    else if (request.action === 'mutation:inspect') result=await mutations.inspect(request.serverId,request.generation,request.spec);
+    else if (request.action === 'mutation:prepare') result=await mutations.prepare(request.serverId,request.generation,request.taskId,request.spec,request.expected);
+    else if (request.action === 'mutation:step') result=await mutations.step(request.serverId,request.generation,request.taskId,request.stage);
+    else mutations.finish(request.taskId,request.keepRestriction);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: true, result };
   } catch (error) {
     const errorCode = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';

@@ -31,6 +31,7 @@ export class FileController {
   resolveEntry(token: string): EntryCapability {
     const entry = this.entries.get(token); if (!entry) throw new Error('TOKEN_EXPIRED'); this.check(entry.browser); return entry;
   }
+  resolveDirectory(token:string):Directory { const value=this.directories.get(token); if (!value) throw new Error('TOKEN_EXPIRED'); this.check(value.browser); return value; }
   private async list(directory: Directory): Promise<DirectoryPage> {
     const { browser, path } = directory; this.check(browser);
     const response = filePageSchema.parse(await this.gateway.request({ action: 'file:list', serverId: browser.serverId, generation: browser.generation, browserId: browser.browserId, path }));
