@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 4,
+  "workSlug": "import-plans",
+  "flowType": "bootstrap",
+  "branch": "work/import-plans",
+  "targetBranch": "main",
+  "baseSha": "609936e07db67734d204169801c251e8839ae4a4",
+  "mergeMethod": "merge",
+  "governance": {
+    "prAuthorLogin": "JunSungKang",
+    "assigneeLogin": "JunSungKang",
+    "pushActorLogin": "JunSungKang",
+    "reviewerLogin": "junsung-bot[bot]",
+    "commitAuthor": {
+      "name": "jun-sung, Kang",
+      "email": "kjuns1@naver.com"
+    },
+    "coAuthors": [
+      {
+        "name": "Codex",
+        "email": "noreply@openai.com"
+      },
+      {
+        "name": "junsung-bot[bot]",
+        "email": "302617028+junsung-bot[bot]@users.noreply.github.com"
+      }
+    ],
+    "requiredChecks": [
+      "planning-docs"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "G01",
+      "expectedPaths": [
+        ".gitignore",
+        ".gitattributes",
+        ".github/**",
+        "docs/**",
+        "design/**",
+        "README.md"
+      ],
+      "forbiddenPaths": [
+        "src/**",
+        "node_modules/**",
+        ".local/**",
+        "release/**"
+      ],
+      "acceptanceCriteria": [
+        "Keep original remote root commit unchanged; import existing plan/history assets using current real timestamps.",
+        "Require human author/assignee, current-head App APPROVED, provider-bound planning-docs check and verified branch cleanup.",
+        "No application code or dependency installation before first guarded push."
+      ],
+      "validationCommands": [
+        "python3 -B docs/validate-plan.py --root .",
+        "node ~/.codex/scripts/github-app-plan-validate.mjs docs/governance/import-plans.json",
+        "node ~/.codex/scripts/github-app-workflow-guard.mjs --verify-server docs/governance/import-plans.json"
+      ],
+      "documentation": {
+        "paths": [
+          "docs/governance/repository-setup.md"
+        ]
+      }
+    }
+  ]
+}
