@@ -20,7 +20,8 @@
     "test:security": "vitest run tests/unit/security.test.ts",
     "test:performance": "node scripts/require-fixture.mjs performance",
     "package:win": "node scripts/package.mjs win",
-    "package:mac": "node scripts/package.mjs mac"
+    "package:mac": "node scripts/package.mjs mac",
+    "pretest:unit": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "react": "19.3.1",
