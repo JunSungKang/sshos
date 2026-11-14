@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D05",
+  "stage": "D06",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -41,14 +41,17 @@
     "Single-use sixty-second file mutation preview, durable pre-dispatch intent, SFTP mkdir0700/unlink/rmdir and hardlink-then-unlink rename",
     "Path locks, partial/unknown outcomes, strict receipt recovery and explicit acknowledgement/local-record deletion",
     "Task manager pages and detail dialogs, bounded task IPC payloads and aggregate directory paging budget",
-    "Future-schema JSON refusal prevents fallback downgrade over newer data"
+    "Future-schema JSON refusal prevents fallback downgrade over newer data",
+    "Strict UTF8 viewer decoding and line indexing with byte/scalar limits",
+    "Predecode PNG/JPEG/EXIF/WebP structure/dimension validation",
+    "Pinned ssh2 read-channel cancellation adapter and bounded FIFO viewer read pool"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 73,
-      "evidence": "evidence/d05-mutations/test-unit.txt"
+      "tests": 83,
+      "evidence": "evidence/d06-core/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -161,14 +164,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D06 bounded text/image viewers. Final integration must add late ACK observation records, complete lifecycle shutdown/restart rules and whole-application storage-fault guards alongside remaining modules.",
+  "next_action": "Wire D06 per-viewer SFTP bounded reads, renderer-consumption backpressure, isolated decode Worker and DOM viewer windows. Format and channel core is implemented; end-user viewer flow remains in progress.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d05-mutations",
+  "latest_evidence_directory": "evidence/d06-core",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D05 browsing/mutation foundations implemented; D06 viewers next",
+    "current_stage": "D06 format/channel core implemented; viewer streaming and UI wiring in progress",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed single-file mutations and task receipts. Viewers/transfer/exec/PTY still in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
