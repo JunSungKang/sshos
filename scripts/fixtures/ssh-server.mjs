@@ -57,10 +57,10 @@ export async function startSSHFixture(directory, options = {}) {
         stream.on('REMOVE',(id,path) => run(id,async () => {metrics.mutations.push({operation:'unlink',path});await fs.unlink(resolveRemote(path));stream.status(id,status.OK);}));
         stream.on('RMDIR',(id,path) => run(id,async () => {metrics.mutations.push({operation:'rmdir',path});await fs.rmdir(resolveRemote(path));stream.status(id,status.OK);}));
         stream.on('CLOSE',(id,handle) => run(id,async () => { const value = getHandle(handle); handles.delete(handle.toString('hex')); await (value.kind === 'file' ? value.file.close() : value.dir.close()); stream.status(id,status.OK); }));
-        stream.on('close',() => { for (const value of handles.values()) void (value.kind === 'file' ? value.file.close() : value.dir.close()).catch(() => {}); handles.clear(); });
+        stream.on('close',() => { stream.end(); for (const value of handles.values()) void (value.kind === 'file' ? value.file.close() : value.dir.close()).catch(() => {}); handles.clear(); });
       });
     });
   });
   await new Promise((done,reject) => { server.once('error',reject); server.listen(0,'127.0.0.1',done); });
-  return { port:server.address().port, metrics, publicKey:ssh2.utils.parseKey(host.private).getPublicSSH(), async close() { for (const connection of connections) connection.destroy(); await new Promise(done => server.close(done)); } };
+  return { port:server.address().port, metrics, publicKey:ssh2.utils.parseKey(host.private).getPublicSSH(), async close() { for (const connection of connections) connection.end(); await new Promise(done => server.close(done)); } };
 }
