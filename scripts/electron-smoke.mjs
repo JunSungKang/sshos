@@ -17,7 +17,16 @@ try {
   const isolation = await page.evaluate(() => ({ require: typeof window.require, process: typeof window.process, keys: Object.keys(window.sshOS) }));
   assert.equal(isolation.require, 'undefined');
   assert.equal(isolation.process, 'undefined');
-  assert.deepEqual(isolation.keys, ['lifecycle']);
+  assert.deepEqual([...isolation.keys].sort(), ['lifecycle', 'profile', 'settings']);
+  const savedId = await page.evaluate(async () => {
+    const created = await window.sshOS.profile.create({ name: '로컬 저장 검사', host: 'example.invalid', port: 22, username: 'fixture', authentication: 'password' });
+    const profiles = await window.sshOS.profile.list();
+    if (!profiles.some(row => row.id === created.id)) throw new Error('Profile not saved');
+    return created.id;
+  });
+  await page.reload();
+  assert.equal(await page.evaluate(async id => (await window.sshOS.profile.list()).some(row => row.id === id), savedId), true);
+  await page.evaluate(id => window.sshOS.profile.delete(id), savedId);
   const settings = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
   assert.equal(settings.nodeIntegration, false);
   assert.equal(settings.contextIsolation, true);

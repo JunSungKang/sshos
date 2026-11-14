@@ -5,6 +5,8 @@ import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { CSP, isAppOrigin, RequestBudget, resolveAsset } from './security';
 import { runtimeSnapshotSchema, workerEventSchema, type RuntimeSnapshot } from '../shared/contracts';
+import { StateRepository } from './persistence/state-repository';
+import { ProfileController } from './profiles';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -59,6 +61,19 @@ async function main(): Promise<void> {
     } catch { return new Response(null, { status: 404 }); }
   });
   let win: BrowserWindow | null = null;
+  const dataRoot = resolve(app.getPath('userData'), 'data');
+  let repository: StateRepository | null = null;
+  let profiles: ProfileController | null = null;
+  let repositoryOpening: Promise<void> | null = null;
+  const openRepository = (): Promise<void> => {
+    if (repositoryOpening) return repositoryOpening;
+    repositoryOpening = (async () => {
+      if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot);
+      profiles = new ProfileController(repository, () => win, () => false);
+    })().finally(() => { repositoryOpening = null; });
+    return repositoryOpening;
+  };
+  try { await openRepository(); } catch { /* Keep a locked, visible recovery UI instead of resetting data. */ }
   const epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
@@ -68,10 +83,31 @@ async function main(): Promise<void> {
   });
   worker.on('exit', () => { engine = 'stopped'; });
   const budget = new RequestBudget();
-  ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
+  const validateSender = (event: Electron.IpcMainInvokeEvent) => {
     if (!win || win.isDestroyed() || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || !isAppOrigin(event.senderFrame.url)) throw new Error('IPC_DENIED');
-    if (payload !== undefined || !budget.take()) throw new Error('INPUT_INVALID');
-    return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: 0, appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
+    if (!budget.take()) throw new Error('INPUT_INVALID');
+  };
+  for (const action of ['profile:list', 'profile:create', 'profile:update', 'profile:delete', 'profile:pickKey']) {
+    ipcMain.handle(action, async (event, payload: unknown) => {
+      validateSender(event);
+      try {
+        if (!profiles) throw new Error('STORAGE_FAILED');
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        return await profiles.handle(action, payload);
+      }
+      catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
+    });
+  }
+  ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
+    validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
+    try { await openRepository(); } catch { throw new Error('STORAGE_FAILED'); }
+  });
+  ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
+    validateSender(event);
+    if (payload !== undefined) throw new Error('INPUT_INVALID');
+    return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: 0,
+      storage: { status: !repository || repository.store.faulted ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
+      appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {
     win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
