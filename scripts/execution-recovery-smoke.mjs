@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { randomUUID,createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { root,localPath,runtimeEnvironment } from './environment.mjs';
+import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 const base=localPath(`fixtures/execution-recovery-${randomUUID()}`),env=runtimeEnvironment(`execution-recovery-${randomUUID()}`);Object.assign(process.env,env);const {default:executablePath}=await import('electron');let application,fixture,ptyStream,guiStream;const inputs=[],signals=[];
 try{
@@ -39,4 +39,4 @@ app.whenReady().then(async()=>{const dataRoot=join(process.env.SSHOS_RUNTIME_ROO
  ptyStream.exit(0);ptyStream.end();await expect.poll(async()=>(await snapshot()).execution.active).toBe(false);await expect.poll(async()=>(await snapshot()).execution.recordPending).toBe(false);const final=await snapshot();assert.equal(final.execution.receipt.phase,'result_unknown');assert.equal(final.execution.receipt.recoveryUncertain,true);assert.equal(final.execution.receipt.exitCode,0);assert.equal(final.execution.recordError,false);assert.equal(fixture.metrics.shells,1);assert.equal(fixture.metrics.authenticationRequests,2);assert.equal((await request({action:'session:snapshot'}))[0].status,'connected');
  const disk=await application.evaluate(({app},id)=>app.__fixture.repo.get(id),terminalId);assert.equal(disk.phase,'result_unknown');assert.equal(disk.exitCode,0);assert.equal(disk.channelClosed,true);
  const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['actual main JSON/worker storage fault barrier and reconciliation with active exec and PTY','same-epoch current receipts preserve live running phase and later actual exit7','established PTY inputs continue across storage faults and explicit verification without new shell','backup uncertainty dominates live observations and remains unknown after observed exit0 and close','reconciled receipts persist and recordError clears only after ACK; control and shared socket remain'],limitation:'Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain.'};await fs.writeFile(join(localPath('evidence'),'d10-execution-recovery.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
-}finally{if(application)await application.close();if(fixture)await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}
+}finally{if(application)await closeTestApplication(application);if(fixture)await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}

@@ -4,7 +4,7 @@ import { randomUUID,createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { root,localPath,runtimeEnvironment } from './environment.mjs';
+import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 
 const require=createRequire(import.meta.url);const {inspectLocalFile,inspectLocalDirectory}=require(join(root,'dist/worker/transfers/local.js'));
@@ -46,4 +46,4 @@ let worker;app.whenReady().then(async()=>{const dataRoot=join(process.env.SSHOS_
   await expect.poll(()=>application.evaluate(({app})=>app.__sshosTransferFixture.repo.snapshots().filter(row=>row.phase==='completed').length),{timeout:30000}).toBe(3);assert.deepEqual(await fs.readFile(join(remoteRoot,'home/fixture/after-storage-reset.bin')),data);assert.equal(fixture.metrics.authenticationRequests,4);
   const versions=await application.evaluate(() => ({electron:process.versions.electron,node:process.versions.node,chrome:process.versions.chrome}));
   const report={status:'pass',platform:process.platform,architecture:process.arch,versions,assertions:['one actual Electron utilityProcess transfer engine','main-only durable JSON writer with worker ACK before each mutation phase','stage all tasks without SSH transfer or temp creation until commit','two FIFO tasks on one server with fresh per-task authentication','actual3MiB upload/download with full SHA256 read-back and exclusive final links','metadata-only progress events and terminal resource release','control SSH survives both transfers','explicit fault barrier, JSON reopen and writer reset allow only a newly confirmed task without replay'],limitation:'Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested.'};await fs.writeFile(join(localPath('evidence'),'d07-engine.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
-} finally {if (application) await application.close();if (fixture) await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}
+} finally {if (application) await closeTestApplication(application);if (fixture) await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}
