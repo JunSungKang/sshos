@@ -20,6 +20,7 @@ export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action:z.literal('viewer:open'), viewerId:z.uuid(), readGeneration:z.int().min(1), path:remotePathSchema, parent:remotePathSchema, kind:viewerReadKindSchema }).strict(),
   z.object({ ...identity, action:z.literal('viewer:next'), viewerId:z.uuid(), readGeneration:z.int().min(1), sequence:z.int().nonnegative() }).strict(),
   z.object({ ...identity, action:z.literal('viewer:cancel'), viewerId:z.uuid(), readGeneration:z.int().min(1) }).strict(),
+  z.object({ ...identity,action:z.literal('transfer:inspect'),direction:z.enum(['upload','download']),path:remotePathSchema,parent:remotePathSchema }).strict(),
   z.object({ ...identity, action:z.literal('transfer:reserve'), reservationToken:z.uuid(),count:z.int().min(1).max(100) }).strict(),
   z.object({ ...identity, action:z.literal('transfer:stage'), reservationToken:z.uuid(),index:z.int().min(0).max(99),spec:stagedTransferSchema }).strict(),
   z.object({ ...identity, action:z.literal('transfer:commit'), reservationToken:z.uuid() }).strict(),

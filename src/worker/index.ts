@@ -8,6 +8,7 @@ import { PathLocks } from './files/path-locks';
 import { ViewerReader } from './viewers/reader';
 import { WorkerReceiptWriter } from './receipt-writer';
 import { TransferCoordinator } from './transfers/coordinator';
+import { TransferInspector } from './transfers/inspect';
 
 const epoch = z.uuid().parse(process.argv[2]);
 if (!process.parentPort) throw new Error('Utility process parent port required');
@@ -28,6 +29,7 @@ const files = new FileBrowser((serverId, generation) => sessions.control(serverI
 const locks=new PathLocks();
 let transferSequence=0;
 transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
+const transferInspector=new TransferInspector((serverId,generation) => sessions.control(serverId,generation,true));
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
 const inFlight = new Map<string, Promise<EngineEvent>>();
 const completed = new Map<string, EngineEvent>();
@@ -48,6 +50,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'viewer:open') readers!.open(request);
     else if (request.action === 'viewer:next') result=await readers!.next(request.serverId,request.generation,request.viewerId,request.readGeneration,request.sequence);
     else if (request.action === 'viewer:cancel') readers!.close(request.serverId,request.generation,request.viewerId,request.readGeneration);
+    else if (request.action === 'transfer:inspect') result=await transferInspector.inspect(request.serverId,request.generation,request.direction,request.path,request.parent);
     else if (request.action === 'transfer:reserve') transfers!.reserve(request.serverId,request.generation,request.reservationToken,request.count);
     else if (request.action === 'transfer:stage') transfers!.stage(request.serverId,request.generation,request.reservationToken,request.index,request.spec);
     else if (request.action === 'transfer:commit') result=transfers!.commit(request.serverId,request.generation,request.reservationToken);

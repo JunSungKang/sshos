@@ -1,0 +1,9 @@
+{
+  "src/main/transfer-previews.ts": "95d348ffbdb3eb18630bc32b58e0cddd6e4603363b505c46feb8b30d3d94e6f1",
+  "src/shared/transfer-preview.ts": "30925bcec5671ac023e1de893cc388dbaf0e578a05dc4c95061715179338dcd9",
+  "src/worker/transfers/inspect.ts": "02f90777e7a0a64be12211f5b5ab603a8e64256cf5115e3156a82df498bffffc",
+  "src/shared/engine-protocol.ts": "9bc49394944dfc4d4618f2bb2137218fede6f93a527ba89c16d973bab33a213c",
+  "src/worker/index.ts": "d368e927ce763d57ee48e8479744bb9e241f3e68915b7531e23b7e8eb4916676",
+  "tests/unit/transfer-previews.test.ts": "9885b34b29325973a0e83fe99994438a9d85ddb3cc6280edbe1c20775396bb77",
+  "scripts/transfer-engine-smoke.mjs": "9be877ea67b4add79431bfb49faaf6945cc87dd334d06819728e46b18a49a982"
+}

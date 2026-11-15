@@ -70,14 +70,15 @@
     "Bounded metadata-only runtime events and100-row snapshots report active resource ownership separately from terminal operation outcome",
     "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation",
     "Shared per-frame native dialog gate used by profile key selection and the transfer selection service",
-    "Main-only native upload/directory capabilities with120s expiry, immutable filesystem identity, explicit unsupported rows, whole101-file rejection and renderer-generation invalidation"
+    "Main-only native upload/directory capabilities with120s expiry, immutable filesystem identity, explicit unsupported rows, whole101-file rejection and renderer-generation invalidation",
+    "Main-owned readonly transfer previews with bounded pages, explicit conflict/unsupported rows, editable destinations, selection-bound single-use confirmation and native path privacy"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 155,
-      "evidence": "evidence/d07-selections/test-unit.txt"
+      "tests": 162,
+      "evidence": "evidence/d07-previews/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -241,10 +242,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Connect native selection service to bounded transfer preview/confirmation/enqueue controller, then file explorer multi-selection and upload/download dialog, persistent transfer shelf and task actions. Storage reset/worker lifecycle integration remains outstanding.",
+  "next_action": "Connect confirmed transfer batches to main enqueue controller and native selection bridge, then renderer multi-selection/dialog, persistent shelf and task cancel. Storage reset/worker lifecycle integration remains outstanding.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-selections",
+  "latest_evidence_directory": "evidence/d07-previews",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,

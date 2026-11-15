@@ -95,3 +95,9 @@ main 소유 파일/폴더 선택 서비스는 실제 경로·stat·canonical par
 155개 단위 검사·타입/build와 Electron 회귀가 통과했다. native OS dialog 자체는 unit fixture로 대체하고 실제 workspace 파일 metadata와 symlink 거절을 검사했으므로 Windows/macOS native picker 실기 통과를 뜻하지 않는다. 파일 선택 서비스의 UI bridge와 transfer preview/confirmation은 다음 구현 대상이다. evidence/d07-selections에 출력을 보존했다.
 
 개인키 선택도120초 경계에서 만료한 capability를 정리해20개 선택 제한이 과거 만료 항목 때문에 영구 소진되지 않도록 수정하고 검사했다.
+
+## 전송 목록 사전 확인과 일회성 승인
+
+main 소유 preview는 native 선택 권한과 파일 창·서버·세대·epoch를 검증하고 control SFTP의 읽기 전용 stat으로 업로드 충돌과 다운로드 원본을 검사한다. 원격 변경·transfer socket 생성은 확인 단계에서 수행하지 않는다. 미지원·충돌 행도 목록에 남기며 이름 수정과 선택 변경은 기존 확인 token을 폐기한다. 유효하고 선택된 행만 최대60초 일회성 권한으로 확정하며 native 선택120초 시한을 넘기지 않는다. 실제 로컬 경로는 renderer에 전달하지 않는다. 최대100개 목록은60,000byte 이하 page로 나눈다.
+
+162개 단위 검사·타입/build와 실제 utilityProcess의 transfer:inspect 및 양방향 backend 전송 검사가 통과했다. Windows 다운로드 이름 제약은 주입한 정책 검사이며 Windows 실기 통과가 아니다. evidence/d07-previews에 출력을 보존했다. preview를 이용하는 enqueue bridge와 renderer 전송 화면은 다음 구현 대상이다.
