@@ -48,3 +48,5 @@
 | R38 실행/창 수명 | [executions](../../src/main/executions.ts), [terminals](../../src/main/terminals.ts), [shutdown](../../src/main/shutdown.ts) | 창만 닫기·출력 재열기·중지/채널 닫힘·단절·모든 자동 재실행 금지 |
 
 서명 자격증명 부재, native 시험, 지정 성능, 사용성 참여자, 공개 전 법률·공급망 검토를 코드 구현 완료와 합산해 완료율로 표시하지 않는다. 공개 준비 상태는 계속 false다.
+
+최종 수정 소스 `8b41e23211fcac17ca40a467cd5c93c7a2d89264`의 개발 패키지3개와 로컬 부분 성능은 [검증 manifest](../../evidence/d12-reviewed-development/artifacts.json) 및 [인계서](development-handoff.md)에 연결한다. 이후 문서·증거만 변경한 커밋의 현재-head 판정은 PR#1이 정본이다.

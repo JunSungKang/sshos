@@ -11,4 +11,4 @@
 
 지원 OS·실제 Ubuntu/OpenSSH·OS 암호화·IME/접근성·지정 장비/네트워크 성능은 사용자 시험 전까지 미검증이다. Windows는 unsigned, macOS는 ad-hoc이며 배포자 서명·공증이 없다. npm audit의 moderate6개를 유지하고 high/critical은 보고되지 않았다. G0/G2/G3 사용자 평가를 수행하지 않았으며 공개 준비 상태는 false다.
 
-현재 head의 독립 코드 검토와 GitHub App formal APPROVED 전에는 병합하지 않는다. 최종 근거는 `docs/implementation-status.json`, `docs/development/implementation-traceability.md`와 `evidence/`에 있다.
+현재 head의 독립 코드 검토와 GitHub App formal APPROVED 전에는 병합하지 않는다. 최종 실행물 소스는 `8b41e23211fcac17ca40a467cd5c93c7a2d89264`이며 이후 커밋은 문서·증거만 변경한다. 최종 근거는 `docs/implementation-status.json`, `docs/development/implementation-traceability.md`, `docs/development/development-handoff.md`와 `evidence/d12-reviewed-development/`에 있다.

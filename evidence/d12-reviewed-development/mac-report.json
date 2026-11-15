@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+  "sourceDirty": false,
+  "packageLockSHA256": "f9092e4d22f10ce0afa36022dbb2fd49110221c849335961b0ce42e04aa242c3",
+  "node": "24.22.3",
+  "electron": "45.3.2",
+  "kind": "development",
+  "publisherSigned": false,
+  "notarized": false,
+  "releaseReady": false,
+  "buildHost": {
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "reproductionCommands": [
+    "node scripts/install.mjs",
+    "npm run typecheck",
+    "npm run test:unit",
+    "npm run package:mac"
+  ],
+  "executedBuildSteps": [
+    "prepareLicenses",
+    "tsc -p tsconfig.json",
+    "vite build",
+    "electron-builder mac development targets"
+  ],
+  "builtAt": "2026-11-15T12:20:44.733Z",
+  "artifacts": [
+    {
+      "name": "sshOS-0.1.0-arm64-mac.zip",
+      "bytes": 120592957,
+      "sha256": "fd16dffa2dbcbc4d5024e7b03c185d96fa714ed290d94495fda355868ba52ef1",
+      "compressedSizeWithin250MiB": true
+    },
+    {
+      "name": "sshOS-0.1.0-mac.zip",
+      "bytes": 127800737,
+      "sha256": "1af5ee39791dcea9830939944cfc140e702b7796768175fe2bb3e1eb56f7946a",
+      "compressedSizeWithin250MiB": true
+    }
+  ],
+  "packageChecks": [
+    {
+      "target": "mac",
+      "embeddedAsarSHA256": "0b8486511cb48b66ac0552563deb270e7265d5ecd266dd90216904c507cfbe65",
+      "embeddedIntegrityMatches": true,
+      "verifiedAsarFiles": 926,
+      "unpackedBytes": 295205345,
+      "unpackedSizeWithin750MiB": true,
+      "scope": "Static package inspection only; no native launch/OS trust/notarization claim",
+      "architecture": "arm64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 14,
+      "publisherSignature": "ad-hoc only",
+      "nativeLaunch": "untested"
+    },
+    {
+      "target": "mac",
+      "embeddedAsarSHA256": "0b8486511cb48b66ac0552563deb270e7265d5ecd266dd90216904c507cfbe65",
+      "embeddedIntegrityMatches": true,
+      "verifiedAsarFiles": 926,
+      "unpackedBytes": 302439329,
+      "unpackedSizeWithin750MiB": true,
+      "scope": "Static package inspection only; no native launch/OS trust/notarization claim",
+      "architecture": "x64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 14,
+      "publisherSignature": "ad-hoc only",
+      "nativeLaunch": "untested"
+    }
+  ],
+  "sourceArchive": {
+    "name": "sshOS-0.1.0-8b41e23211fc-source.tar",
+    "sha256": "eb4c8131e4f3625a581a80b4e528dc65c87a4db7cfeba49dfa1bb72ca7b8ef0b"
+  },
+  "limitations": [
+    "Development artifacts only; no publisher certificate/notarization.",
+    "Cross-built files do not prove target OS launch, OpenSSH matrix, performance or accessibility.",
+    "Production inspector fuse is disabled; Playwright automation build is not distributed."
+  ]
+}

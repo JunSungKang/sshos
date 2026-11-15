@@ -344,3 +344,9 @@ All553 unit cases and per-file gates pass (aggregate statement96.08%,branch91.63
 
 
 The final security rerun passed61 focused cases plus the actual Electron/xterm process fixture. Security and integration reports contain identical current src/scripts/tests hashes. User explicitly authorized the one read-only independent reviewer; that same reviewer will re-review the correction commit, rather than treating the previous CHANGES_REQUESTED result or the implementer's tests as approval.
+
+### 독립 검토 수정본의 개발 산출물 인계
+
+`8b41e23211fcac17ca40a467cd5c93c7a2d89264` clean revision에서 Windows x64 portable, macOS arm64/x64 ZIP을 다시 만들고 세 산출물/SHA256/대응 소스를 대조했다. 각 ASAR926 member, embedded integrity, six fuses, 고지와 크기 검사 및 macOS ad-hoc deep/strict 검사가 통과했다. [검증 manifest](../../evidence/d12-reviewed-development/artifacts.json)를 최종 개발 실행물로 사용하고 이전 판본은 보존 기록으로 둔다. 단위553개·통합17개·보안61개가 현재 코드에 연결되며 GitHub CI도 통과했다.
+
+로컬 성능 재측정은 깨끗한 같은 소스에서 부분 측정만 통과했고 target acceptance는 미실시다.100개 durable 등록 p95 1135.61ms, warm 개발 앱5회 527.08–951.74ms,100 UI click p95 30.80ms이며 종료 코드2를 유지했다. owned runtime/fixture 디렉터리는 harness finally에서 제거됐다. 지원 OS/OpenSSH·OS 암호화·IME/접근성·지정 성능은 사용자의 수동 시험, 서명/공증·사용성·공개 전 판정은 별도 gate로 유지한다. 최종 현재-head 독립 검토와 App 승인·병합·정리는 PR#1에서 검증한다.

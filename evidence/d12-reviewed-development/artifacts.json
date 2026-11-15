@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+  "kind": "development",
+  "releaseReady": false,
+  "packages": [
+    {
+      "target": "win",
+      "workspacePath": ".local/packages/8b41e23211fc-win-a24506fe-5390-48b1-a56b-418f3b8fb4d8",
+      "report": "evidence/d12-reviewed-development/win-report.json",
+      "artifacts": [
+        {
+          "name": "sshOS 0.1.0.exe",
+          "bytes": 162144333,
+          "sha256": "cb91f2c0ca1e5f6a76d39ee01c4b1cd2fe6f2d7e931fe9815370cd56ced08a4f",
+          "compressedSizeWithin250MiB": true
+        }
+      ]
+    },
+    {
+      "target": "mac",
+      "workspacePath": ".local/packages/8b41e23211fc-mac-88069be5-6f3d-4e1b-9dae-266fcc49fcd3",
+      "report": "evidence/d12-reviewed-development/mac-report.json",
+      "artifacts": [
+        {
+          "name": "sshOS-0.1.0-arm64-mac.zip",
+          "bytes": 120592957,
+          "sha256": "fd16dffa2dbcbc4d5024e7b03c185d96fa714ed290d94495fda355868ba52ef1",
+          "compressedSizeWithin250MiB": true
+        },
+        {
+          "name": "sshOS-0.1.0-mac.zip",
+          "bytes": 127800737,
+          "sha256": "1af5ee39791dcea9830939944cfc140e702b7796768175fe2bb3e1eb56f7946a",
+          "compressedSizeWithin250MiB": true
+        }
+      ]
+    }
+  ],
+  "nativeLaunch": "untested",
+  "signing": "Windows unsigned; macOS ad-hoc, no publisher certificate/notarization",
+  "supersedes": "evidence/d12-final-development/artifacts.json"
+}

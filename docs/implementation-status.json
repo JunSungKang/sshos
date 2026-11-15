@@ -8,8 +8,8 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D11",
-  "stage_status": "implementation_in_progress_user_target_tests_separate",
+  "stage": "D13",
+  "stage_status": "development_implemented_user_acceptance_pending",
   "release_ready": false,
   "completed_stages": [],
   "first_push": {
@@ -535,36 +535,36 @@
       "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
     },
     "development_packages": {
-      "status": "superseded_pending_rebuild",
-      "sourceRevision": "da5cb45d59f6a6943bbd885cfd7960961b9625c4",
+      "status": "pass",
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
       "targets": [
         "win32-x64",
         "darwin-arm64",
         "darwin-x64"
       ],
-      "evidence": "evidence/d12-final-development/artifacts.json",
+      "evidence": "evidence/d12-reviewed-development/artifacts.json",
       "nativeLaunch": "untested",
       "publisherSignature": "unavailable; Windows unsigned/macOS ad-hoc",
       "notarization": "untested",
-      "reason": "Runtime-path, durability-observation and independent-review corrections changed application source after these historical artifacts."
+      "scope": "Clean committed runtime source; every ASAR member/header, six fuses, target notices, source archive/hash and size verified. Static verification does not prove supported target launch."
     },
     "local_performance": {
       "status": "partial",
       "localMeasurements": "pass",
       "targetAcceptance": "untested",
-      "sourceRevision": "891962eca195fa5cba6fe8f236d6757fd719e330",
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
       "sourceDirty": false,
-      "evidence": "evidence/d13-handoff/performance-partial.json",
-      "registration100P95Ms": 1001.0453749999997,
+      "evidence": "evidence/d12-reviewed-development/performance-partial.json",
+      "registration100P95Ms": 1135.606458,
       "warmLaunchMs": [
-        768.8879999999999,
-        522.2294579999998,
-        535.4031250000007,
-        534.7026659999992,
-        558.0463340000006
+        951.7378330000001,
+        537.1392920000008,
+        544.4608749999998,
+        527.0780410000007,
+        544.9829169999994
       ],
-      "uiClickP95Ms": 30.700000286102295,
-      "memory": "One586.28125MiB snapshot; not settled300-sample acceptance."
+      "uiClickP95Ms": 30.799999713897705,
+      "memory": "One586.015625MiB snapshot; not settled300-sample acceptance."
     },
     "pr_metadata": {
       "status": "updated_and_verified",
@@ -572,8 +572,9 @@
     },
     "ci": {
       "status": "pass",
-      "sourceRevision": "891962eca195fa5cba6fe8f236d6757fd719e330",
-      "scope": "GitHub planning-docs job: document validator, install, typecheck,534 unit cases and build."
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+      "evidence": "evidence/d12-reviewed-development/correction-ci.json",
+      "scope": "GitHub planning-docs: document validator, clean install, typecheck,553 unit cases and build. Subsequent head checks are authoritative on PR#1."
     }
   },
   "remaining_D01": [
@@ -581,7 +582,7 @@
     "Windows11x64 and macOS14x64 native launch tests",
     "Ubuntu24.04amd64/arm64 SSH key and hosttrust/SFTP hardlink fixtures",
     "safeStorage OS encryption and signing continuity tests",
-    "Production package fuses/signatures and license/SBOM validation"
+    "Publisher signatures/notarization and native launch/license/security public-release decision; static package checks are separately passed."
   ],
   "known_issues": [
     {
@@ -590,15 +591,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Commit/push corrections, request latest-head re-review from the authorized existing reviewer, rebuild three development artifacts, and update handoff evidence. Native/signing/usability gates remain untested.",
+  "next_action": "Finish current-head independent/App approval and guarded merge/branch cleanup through PR#1; then user performs native/OpenSSH/vault/IME/accessibility/controlled performance acceptance. Signing/usability/public-release gates remain open.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-review-corrections",
+  "latest_evidence_directory": "evidence/d12-reviewed-development",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "Independent review changes requested on91a81af; code corrections and553-unit/17-integration verification prepared",
-    "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and local license viewer. Per-file coverage passes; final package and traceability audit remain.",
+    "current_stage": "D13 development handoff prepared; current-head review and merge tracked on PR#1, compound product acceptance remains untested.",
+    "product_features_available": "All approved application feature groups have implementation and current-host automated evidence: profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and licenses. Three corrected-source development packages verified. Target acceptance is separate.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {
@@ -608,15 +609,28 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "Latest-head independent re-review/App APPROVED, final corrected-source development packages, guarded merge and branch cleanup.",
+    "Current-head independent/App review, guarded merge and verified branch cleanup are recorded by PR#1; do not infer them from this pre-merge manifest.",
     "User-owned native/OpenSSH/vault/IME/accessibility/controlled-network performance tests; signing resources and G0/G2/G3 participants unavailable. Public-release license/security gate remains separate."
   ],
   "independent_review": {
     "authorized": true,
     "authorizationQuote": "읽기 전용 리뷰 에이전트 허용",
-    "reviewedHead": "91a81af1f6570b3d803ed1824213f100bc58e7db",
-    "decision": "CHANGES_REQUESTED",
-    "formalEvidence": "evidence/d11-review-corrections/formal-changes-requested.json",
-    "corrections": "Implemented and locally verified; latest committed-head re-review still required."
+    "reviewedHead": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+    "decision": "APPROVE",
+    "evidence": "evidence/d12-reviewed-development/independent-code-review.json",
+    "previousChangesRequestedHead": "91a81af1f6570b3d803ed1824213f100bc58e7db",
+    "previousFormalEvidence": "evidence/d11-review-corrections/formal-changes-requested.json",
+    "corrections": "Both original major findings RESOLVED; no new findings on reviewed code head.",
+    "currentHeadFormalAuthority": "https://github.com/JunSungKang/sshos/pull/1; final metadata head must be independently rechecked before formal approval and merge."
+  },
+  "developer_delivery": {
+    "implementation": "implemented",
+    "automated_local_verification": "pass",
+    "development_packages": "pass",
+    "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+    "runtime_source_changes_after_packages": "none at handoff preparation",
+    "product_acceptance": "untested; user-owned targets",
+    "public_release": "not ready",
+    "workflow_authority": "https://github.com/JunSungKang/sshos/pull/1"
   }
 }

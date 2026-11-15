@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "kind": "read-only independent code review; not a GitHub formal review",
+  "reviewer": "/root/independent_review",
+  "authorizationQuote": "읽기 전용 리뷰 에이전트 허용",
+  "head": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+  "decision": "APPROVE",
+  "findings": [],
+  "previousMajorFindings": "both RESOLVED",
+  "scope": "Existing complete feature scope plus91a81af..8b41e23 delta;8 feature groups x8 review directions and final cross-check",
+  "evidenceChecks": {
+    "unitCases": 553,
+    "integrationSuites": 17,
+    "securityCases": 61,
+    "sourceHashesPerProcessReport": 245,
+    "sourceHashMismatches": 0,
+    "coverageTargets": 101,
+    "coverageTargetsPassing": 101
+  },
+  "importantNeedsContext": [],
+  "limitations": [
+    "No native OS/OpenSSH acceptance, publisher signing/notarization, usability study or specified target performance pass.",
+    "Final metadata/evidence-only head requires separate exact-head re-review."
+  ]
+}
