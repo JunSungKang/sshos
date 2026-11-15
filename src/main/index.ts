@@ -19,6 +19,8 @@ import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
 import { TransferSelections } from './transfer-selections';
 import { TransferPreviews } from './transfer-previews';
+import { TerminalController } from './terminals';
+import { TerminalPasteGesture } from './terminal-gestures';
 import { ExecutionPreviews } from './execution-previews';
 import { ExecutionController } from './executions';
 import { MainStorageRecovery } from './storage-recovery';
@@ -81,6 +83,7 @@ async function main(): Promise<void> {
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
   const dialogGate=new NativeDialogGate();
+  const pasteGesture=new TerminalPasteGesture();
   let connections: ConnectionController | null = null;
   let storageRecovering=false;
   let recoveryLocked=false;
@@ -103,7 +106,8 @@ async function main(): Promise<void> {
   const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   let executions:ExecutionController|null=null;
-  const gateway = new EngineGateway(worker, epoch, snapshot => {connections?.observe(snapshot);executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');},receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence));
+  let terminals:TerminalController|null=null;
+  const gateway = new EngineGateway(worker, epoch, snapshot => {connections?.observe(snapshot);executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');terminals?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');},receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>terminals?.observe(snapshot,gap,sequence));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted && !storageRecovering && !recoveryLocked));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
@@ -113,13 +117,15 @@ async function main(): Promise<void> {
   transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),() => receiptChannel.settled());
   const executionPreviews=new ExecutionPreviews(files,connections,gateway,()=>{if(!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked)throw new Error('STORAGE_FAILED');});
   executions=new ExecutionController(executionPreviews,connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),()=>receiptChannel.settled());
-  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id) || executions!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if('exitObserved' in row)await executions!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays()],id => transfers!.taskState(id));
+  terminals=new TerminalController(connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),()=>win,pasteGesture,()=>receiptChannel.settled());
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if(row.kind === 'gui_exec')await executions!.releaseRecord(row);else if(row.kind === 'pty')await terminals!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays(),...terminals!.overlays()],id => transfers!.taskState(id));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
   });
-  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped();void executions?.engineStopped(); });
+  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped();void executions?.engineStopped();void terminals?.engineStopped(); });
   const budget = new RequestBudget();
+  const terminalInputBudget=new RequestBudget(undefined,240,720);
   const viewerDataBudget=new RequestBudget(undefined,32,128);
   const validateSender = (event: Electron.IpcMainInvokeEvent,requestBudget=budget) => {
     if (!win || win.isDestroyed() || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || !isAppOrigin(event.senderFrame.url)) throw new Error('IPC_DENIED');
@@ -152,8 +158,9 @@ async function main(): Promise<void> {
       try {
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
         if(action === 'desktop:closeWindow' && typeof payload === 'string' && desktop.findWindow(payload)?.kind === 'execution' && executions!.needsCloseConfirmation(payload))throw new Error('CLOSE_CONFIRM_REQUIRED');
+        if(action === 'desktop:closeWindow' && typeof payload === 'string' && desktop.findWindow(payload)?.kind === 'terminal' && terminals!.needsCloseConfirmation(payload))throw new Error('CLOSE_CONFIRM_REQUIRED');
         const result = desktop.handle(action, payload);
-        if (action === 'desktop:closeWindow' && typeof payload === 'string') {executions?.detachWindow(payload);await viewers.closeWindow(payload);await files.closeWindow(payload).catch(() => {});}
+        if (action === 'desktop:closeWindow' && typeof payload === 'string') {executions?.detachWindow(payload);terminals?.detachWindow(payload);await viewers.closeWindow(payload);await files.closeWindow(payload).catch(() => {});}
         return result;
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
@@ -187,6 +194,9 @@ async function main(): Promise<void> {
   for(const action of ['execution:context','execution:preview','execution:releasePreview','execution:start','execution:get','execution:reopen','execution:next','execution:previewAction','execution:applyAction']) {
     ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'execution:next' ? viewerDataBudget:budget);try{if(payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536)throw new Error('INPUT_INVALID');return await executions!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
   }
+  for(const action of ['terminal:open','terminal:pause','terminal:get','terminal:input','terminal:next','terminal:restore','terminal:restoreAck','terminal:resize','terminal:previewPaste','terminal:paste','terminal:releasePaste','terminal:requestPaste','terminal:previewClose','terminal:close']) {
+    ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'terminal:input' ? terminalInputBudget:action === 'terminal:next' ? viewerDataBudget:budget);try{if(payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536)throw new Error('INPUT_INVALID');return await terminals!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
+  }
   for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
     ipcMain.handle(action,async (event,payload:unknown) => {
       validateSender(event,action === 'viewer:next' ? viewerDataBudget : budget);
@@ -200,7 +210,7 @@ async function main(): Promise<void> {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
     if (storageRecovering) throw new Error('REQUEST_BUSY');
     const faulted=!repository || repository.store.faulted || !receipts || receipts.faulted || recoveryLocked;
-    if (!faulted && (executions!.hasActive || mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
+    if (!faulted && (terminals!.hasActive || executions!.hasActive || mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
     storageRecovering=true;let barrier:string|null=null;
     try {
       await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
@@ -219,13 +229,14 @@ async function main(): Promise<void> {
   });
   const createWindow = (): void => {
     win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
+    pasteGesture.bind(win);
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
     let loaded=false;
-    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();}});
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
     win.webContents.on('did-finish-load',() => {loaded=true;});
-    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();});
+    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();});
     win.on('ready-to-show', () => win?.show());
     win.on('closed', () => { win = null; });
     void win.loadURL('app://ui/');

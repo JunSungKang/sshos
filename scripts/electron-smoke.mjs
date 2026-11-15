@@ -17,7 +17,7 @@ try {
   const isolation = await page.evaluate(() => ({ require: typeof window.require, process: typeof window.process, keys: Object.keys(window.sshOS) }));
   assert.equal(isolation.require, 'undefined');
   assert.equal(isolation.process, 'undefined');
-  assert.deepEqual([...isolation.keys].sort(), ['desktop', 'execution', 'file', 'lifecycle', 'profile', 'session', 'settings', 'task', 'transfer', 'trust', 'viewer']);
+  assert.deepEqual([...isolation.keys].sort(), ['desktop', 'execution', 'file', 'lifecycle', 'profile', 'session', 'settings', 'task', 'terminal', 'transfer', 'trust', 'viewer']);
   const savedId = await page.evaluate(async () => {
     const created = await window.sshOS.profile.create({ name: '로컬 저장 검사', host: 'example.invalid', port: 22, username: 'fixture', authentication: 'password' });
     const profiles = await window.sshOS.profile.list();
@@ -62,7 +62,8 @@ try {
   await page.getByTestId('xterm-ready').waitFor();
   assert.equal(await page.locator('.xterm-screen').count(), 1);
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-eval-blocked'), 'true');
-  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP'], limitation: 'Development executable on current machine only; no signing or Windows/Ubuntu result.' };
+  assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-security'), 'osc-rep-paste-pass');
+  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no signing or Windows/Ubuntu result.' };
   writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
 } finally { await application.close(); }

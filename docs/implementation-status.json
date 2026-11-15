@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D09",
+  "stage": "D10",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -92,7 +92,10 @@
     "Per-channel1MiB/global6MiB PTY history,256KiB live backpressure and fixed output replay snapshot with exact restore-token ACK before input",
     "Monotonic PTY input with rolling120-events/64KiB limits,64KiB in-flight ownership and no duplicate write replay",
     "Timed-out input keeps its buffer and byte reservation until actual write callback/socket close, then scrubs only settled bytes",
-    "GUI execution output is released on owning-server session end and stale post-end data is discarded"
+    "GUI execution output is released on owning-server session end and stale post-end data is discarded",
+    "Main-owned PTY capability/restore barrier, bounded renderer input queue and actual xterm internal windows with minimize/reload continuity",
+    "Native-gesture one-shot asynchronous clipboard read, frozen target and multiline/large paste confirmation with exact bytes and ordered automatic responses",
+    "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -318,6 +321,25 @@
         "PTY receipts contain no input/output/argv"
       ],
       "limitation": "Backend SSH fixture PTY channel; no xterm UI, native vi/IME/clipboard or target Ubuntu/OpenSSH/OS acceptance."
+    },
+    "actual_terminal_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual xterm GUI over restricted main/worker SSH PTY bridge",
+        "live DA response, typed input and Ctrl+C byte with no TERM",
+        "OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs",
+        "native-gesture gate refuses unprompted clipboard read",
+        "multiline paste confirmation and exact bracketed bytes without added newline",
+        "automatic response held behind paste and next sequence synchronized",
+        "delayed clipboard result remains pinned to terminal1 after focus moves to terminal2",
+        "renderer reload replays output without new shell or old DA responses",
+        "minimized xterm consumes output and resizes stay within bounds",
+        "confirmed terminal close yields unknown, normal exit0 remains distinct",
+        "receipts exclude input/output/argv"
+      ],
+      "limitation": "Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain."
     }
   },
   "remaining_D01": [
@@ -334,15 +356,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Connect main terminal capabilities to xterm window, restore barrier, bounded input queue and paste confirmation/security handlers, then D10 lifecycle/storage/probe and remaining validation/packaging.",
+  "next_action": "Implement D10 active execution/PTY storage continuity, restartable worker and shutdown/disconnect/sleep/crash integration, SSH response probe and memory display circuit breaker; then D11-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d09-engine",
+  "latest_evidence_directory": "evidence/d09-gui",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D09 PTY backend, replay/input boundaries and actual SSH pipeline locally verified; main/xterm/paste UI remains",
-    "product_features_available": "Profiles/SSH trust, desktop windows, tree/list files, confirmed file mutations, text/image viewers, asynchronous SFTP shelf and confirmed GUI remote executions with output windows. PTY and full lifecycle/probe remain.",
+    "current_stage": "D10 integration; PTY backend and xterm/paste/security GUI locally verified",
+    "product_features_available": "Profiles/SSH trust, desktop windows, tree/list files, confirmed file mutations, readonly text/image viewers, asynchronous SFTP shelf, confirmed GUI execution/output and real PTY xterm windows. Full lifecycle/probe/memory integration and distribution remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {
@@ -352,7 +374,6 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D09 PTY main/xterm window, paste confirmation, parser safety and renderer replay/input integration remain.",
     "D10 storage retry with a faulted but still-running execution must reconcile live worker observations before re-enabling writes; healthy active execution retry is already refused.",
     "D10 worker recreation, app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."

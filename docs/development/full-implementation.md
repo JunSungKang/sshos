@@ -145,3 +145,13 @@ PTY는 GUI 실행과 같은6/4 채널 풀을 사용하고 intent 저장 ACK 후 
 입력은 단조 sequence·120회/rolling1초·64KiB/rolling1초·in-flight64KiB를 검사한다. 일반 키 입력은4KiB packet과 단독 Enter를 허용하고 혼합 줄바꿈은 거절하며, 승인된 paste 경로와 구분한다. duplicate sequence는 재전송하지 않는다.10초 쓰기 callback 미확정은 입력 불명과 pause로 처리하되 실제 callback/socket 종료 전 Buffer와 in-flight 소유권을 유지한다. timeout만으로 버퍼를0으로 덮어 전송 중 내용을 바꾸지 않는다. 실제 settlement 뒤에만 참조·byte를 해제하고 복구 ACK 전 미확정 write가 남으면 입력을 재개하지 않는다. 입력 내용과 순서는 영수증에 기록하지 않는다.
 
 216개 단위 검사·타입/build·실제 PTY utilityProcess/SSH 검사가 통과했다. GUI exec와 PTY가 인증된 socket 하나를 공유하고 초기80×24와132×40 변경, 복구 전 입력 거절, input duplicate 거절, Ctrl+C byte와 TERM 구분,256KiB 역압, 고정 snapshot과 history 초기화, 정상 exit0/close, 타 실행 및 control 유지를 확인했다. 실행 GUI/transfer engine 회귀도 통과했다. 기존 POSIX shell 시험은 child exit가 아니라 stdio close 후 결과를 검사하도록 경합을 수정했다. GUI 완료 출력은 서버 세션 종료 시 worker와 renderer에서 해제하고 늦은 byte가 다시 추가되지 않도록 했다. evidence/d09-engine에 실제 출력을 보존했다. 아직 xterm 제품 창·paste 확인·보안 parser·vi/IME/clipboard·지원 OS 수용 통과가 아니다. 다음은 main terminal 권한과 xterm UI다.
+
+## PTY 제품 창·붙여넣기·parser 경계 연결
+
+main 소유 terminal/output/restore capability와 실제 xterm6 DOM 창을 연결했다. 입력은64KiB 유한 큐·4KiB packet·120회/s·55KiB/s pacing과 단조 sequence를 사용한다. 복구 때 새 xterm에 고정 snapshot을 write callback까지 소비하고 정확한 S를 ACK하기 전에는 입력과 DA 응답을 전송하지 않는다. 살아 있는 새 출력의 DA 응답은 허용한다. 최소화는 shell과 출력 소비를 유지하고, 표시 다시 연결/새 표시 시작은 새 shell을 만들지 않는다. resize는 proposeDimensions 결과를2–500열/1–200행으로 제한한 후 적용한다.
+
+붙여넣기는 native 입력1회/1초와 focused BrowserWindow 조건으로 main의 비동기 clipboard read를 승인한다. 원래 terminal capability를 읽기 시작 전에 고정한다. CR/LF 포함 또는4KiB 초과는 서버·터미널·원문 확인을 요구하고60초 일회성 token을 사용한다. CRLF/LF를 변환하거나 Enter를 추가하지 않는다. bracketed paste 모드에서만 경계 byte를 추가한다. paste 동안 기존 키 입력을 먼저 비우고 자동 응답은 뒤에 대기시키며 마지막 authoritative sequence와 동기화한다. renderer 교체·연결 해제는 권한과 미사용 paste buffer를 폐기한다.
+
+public xterm parser로 OSC 제목/링크/클립보드·관련 제어를 소비하고 REP500 초과를 거절한다. WebLinks/Clipboard addon과 proposed API를 사용하지 않는다. 실제 parser fixture에서 OSC0/2/8/52, REP2147483647 차단·REP500 허용, paste 이벤트의 원문 보존과 자동 입력 방지를 확인했다.
+
+타입·227개 단위 검사·build·Electron CSP/parser·actual PTY backend/GUI·기존 실행 GUI 회귀가 통과했다. GUI 검사에서 Ctrl+C byte, 다중 터미널 대상 고정, paste 확인 전 byte0, 정확한 bracketed byte, paste 뒤 DA sequence, reload 중 shell 재요청0·과거 DA 응답0, 최소화 출력 소비, 닫기 확인/결과불명과 정상 exit0를 확인했다. evidence/d09-gui에 실제 출력·화면3장·source hash를 보존했다. native focus와 clipboard read는 test main process의 모의이며 제품 우회 경로는 없다. 실제 vi/IME/OS clipboard와 지원 OS/Ubuntu/OpenSSH 수용은 미검증이다. 다음은 D10의 저장소 복구·종료/절전/crash·응답시간 표시다.
