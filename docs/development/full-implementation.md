@@ -81,3 +81,9 @@ control 세대별 transfer/execution socket을 각각 하나로 제한하는 lea
 worker의 JSON 직접 쓰기 없이 main writer에64KiB 이하 영수증을 보내고5초 내 식별자가 일치하는 저장 ACK를 받아야 다음 단계로 진행한다. main은 먼저 durably 수락한 resource만 갱신하며 서버·세대·epoch·불변 경로를 확인한다. requestId 중복은 저장을 반복하지 않고 ACK를 재사용하며 sequence 역행을 거절한다. 저장 하나가 실패하면 worker의 모든 대기 허가를 무효화하고 후속 성공 ACK로 풀지 않는다. 수동 저장소 재확인 전에는 신규 저장·변경 진행을 허용하지 않는다. 종결 영수증의 phase를 같은 task ID의 queued/preparing으로 되돌리는 것도 거절한다.
 
 144개 단위 검사·타입/build·Electron startup/isolation와 파일 GUI 회귀가 통과했다. 채널 검사는 메모리 post callback과 실제 AtomicJSONStore 조합으로 저장 전후 권한·중복·시한·다른 세대·64KiB·잘못된 resource를 검사했다. main/utilityProcess의 수신 분기는 연결했으며 실제 전송 command coordinator를 통해 전체 프로세스를 관통하는 검증은 다음 단위다. evidence/d07-receipt-channel에 실제 출력과 source hash를 보존했다. 아직 전송 선택/확인/진행 UI의 완성을 뜻하지 않는다.
+
+## 전송 조정기와 실제 프로세스 관통 검사
+
+worker에 batch reserve→각 row stage→전체 commit 순서를 연결했다. stage만으로 socket·temp를 만들지 않는다. commit 뒤 전역2/서버1 FIFO와 path lock으로 실행하고 실제 자원 close 및 마지막 관측 기록 처리가 끝난 뒤 슬롯을 해제한다. close 불명은 정리 대기로 유지한다. queued 취소는 runner를 생성하지 않으며 disconnect/세대 변경은 해당 작업만 중단한다. 저장 fault는 active transfer를 중단하고 queued 작업을 제거해 이후 저장소 확인이 같은 task를 재실행하지 못하게 한다. progress는 raw path/file byte 없이 metadata event와100행 page로 전달한다.
+
+149개 단위 검사·타입/build·Electron 기반 회귀가 통과했다. scripts/transfer-engine-smoke.mjs는 workspace 안에만 임시 main harness를 만들고 actual utilityProcess 하나와 실제 main ReceiptRepository/ACK 채널을 연결한다. 실제3MiB+17byte 두 파일의 upload/download, 전체 SHA256 read-back, exclusive link, temp 제거, 서버별 순서 및 매 task 새 인증, 작업 뒤 control 유지가 통과했다. harness는 종료 시 자신의 main 파일·fixture·runtime을 제거한다. native dialog 및 renderer enqueue를 우회하는 backend 시험이므로 UI 전송 완료를 뜻하지 않는다. evidence/d07-coordinator에 실제 출력을 보존했다. 저장소 재확인과 worker fault 해제의 실제 수명 결합, 선택/충돌 preview/확인/진행 UI는 다음 통합 대상이다.

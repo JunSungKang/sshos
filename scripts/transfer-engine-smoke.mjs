@@ -1,0 +1,45 @@
+import { _electron as electron,expect } from '@playwright/test';
+import { strict as assert } from 'node:assert';
+import { randomUUID,createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import * as fs from 'node:fs/promises';
+import { join } from 'node:path';
+import { root,localPath,runtimeEnvironment } from './environment.mjs';
+import { startSSHFixture } from './fixtures/ssh-server.mjs';
+
+const require=createRequire(import.meta.url);const {inspectLocalFile,inspectLocalDirectory}=require(join(root,'dist/worker/transfers/local.js'));
+const id=randomUUID(),base=localPath(`fixtures/transfer-engine-${id}`),env=runtimeEnvironment(`transfer-engine-${id}`);Object.assign(process.env,env);
+const {default:executablePath}=await import('electron');let application,fixture;
+try {
+  const remoteRoot=join(base,'remote'),native=join(base,'native');await Promise.all([fs.mkdir(join(remoteRoot,'etc'),{recursive:true}),fs.mkdir(join(remoteRoot,'home/fixture'),{recursive:true}),fs.mkdir(native)]);
+  await fs.writeFile(join(remoteRoot,'etc/os-release'),'ID=ubuntu\nVERSION_ID=24.04\n');const data=Buffer.alloc(3*1024*1024+17);for (let index=0;index<data.length;index++) data[index]=index%251;
+  await fs.writeFile(join(native,'upload.bin'),data);await fs.writeFile(join(remoteRoot,'home/fixture/download.bin'),data);
+  fixture=await startSSHFixture(remoteRoot,{hardlink:true});
+  const mainPath=join(base,'main.cjs');
+  await fs.writeFile(mainPath,`
+const {app,utilityProcess}=require('electron');const fs=require('node:fs/promises');const {join}=require('node:path');const {randomUUID}=require('node:crypto');
+const root=${JSON.stringify(root)};app.setName('sshOS transfer fixture');app.setPath('userData',process.env.SSHOS_RUNTIME_ROOT);app.setPath('temp',process.env.TMPDIR);
+const {EngineGateway}=require(join(root,'dist/main/engine-gateway.js'));const {MainReceiptChannel}=require(join(root,'dist/main/receipt-channel.js'));const {ReceiptRepository}=require(join(root,'dist/main/persistence/receipts.js'));
+let worker;app.whenReady().then(async()=>{const dataRoot=join(process.env.SSHOS_RUNTIME_ROOT,'data');await fs.mkdir(dataRoot,{recursive:true});const repo=await ReceiptRepository.open(dataRoot);const epoch=randomUUID();worker=utilityProcess.fork(join(root,'dist/worker/index.js'),[epoch],{stdio:'ignore'});const ready=new Promise(resolve=>worker.on('message',message=>{if(message.type==='ready'&&message.backendEpoch===epoch)resolve();}));const channel=new MainReceiptChannel(epoch,()=>repo,()=>true,message=>worker.postMessage(message));const events=[];const gateway=new EngineGateway(worker,epoch,()=>{},channel,snapshot=>events.push(snapshot));app.__sshosTransferFixture={repo,epoch,gateway,ready,events};});app.on('before-quit',()=>worker?.kill());
+`);
+  application=await electron.launch({executablePath,args:[`--user-data-dir=${env.SSHOS_RUNTIME_ROOT}`,mainPath],cwd:root,env,timeout:15000});
+  await expect.poll(() => application.evaluate(({app}) => Boolean(app.__sshosTransferFixture)),{timeout:15000}).toBe(true);
+  const epoch=await application.evaluate(async ({app}) => {await app.__sshosTransferFixture.ready;return app.__sshosTransferFixture.epoch;});const serverId=randomUUID();
+  const connection=await application.evaluate(async ({app},input) => app.__sshosTransferFixture.gateway.request(input),{action:'session:connect',serverId,generation:1,payload:{host:'127.0.0.1',port:fixture.port,username:'fixture',authentication:'password',password:'test-only',trustedHostKey:fixture.publicKey.toString('base64')}});assert.equal(connection.status,'connected');assert.equal(connection.snapshot.os,'supported');
+  const directory=await inspectLocalDirectory(native),source=await inspectLocalFile(join(native,'upload.bin'));const remoteStat=await fs.stat(join(remoteRoot,'home/fixture/download.bin'));const fingerprint='SHA256:'+createHash('sha256').update(fixture.publicKey).digest('base64').replace(/=+$/u,'');
+  const rows=['upload','download'].map(direction => {const taskId=randomUUID(),now=new Date().toISOString();return {kind:'file_transfer',taskId,serverId,generation:1,backendEpoch:epoch,direction,endpointSnapshot:{name:'fixture',host:'127.0.0.1',port:fixture.port,username:'fixture',endpoint:`127.0.0.1:${fixture.port}`},hostKeyFingerprint:fingerprint,source:direction==='upload'?source.path:'/home/fixture/download.bin',destination:direction==='upload'?'/home/fixture/uploaded.bin':join(directory.path,'downloaded.bin'),tempPath:direction==='upload'?`/home/fixture/.sshos-${taskId}.part`:join(directory.path,`.sshos-${taskId}.part`),remoteParent:'/home/fixture',localParent:directory.path,sourceInitialStat:direction==='upload'?source.stat:{size:data.length,mtime:String(Math.floor(remoteStat.mtimeMs/1000)),identity:''},totalBytes:data.length,transferredBytes:0,verifiedBytes:0,streamSha256:null,phase:'queued',stage:'queued',cleanupState:'none',tempCreated:false,destinationCreated:false,dispatchAllowed:false,lastConfirmedPhase:'queued',errorCode:null,lateObservations:[],recoveryUncertain:false,recoveredFromPhase:null,acknowledgedAt:null,createdAt:now,updatedAt:now};});
+  const reservationToken=randomUUID();await application.evaluate(async ({app},{rows,directory,reservationToken}) => {
+    const f=app.__sshosTransferFixture;await f.gateway.request({action:'transfer:reserve',serverId:rows[0].serverId,generation:1,reservationToken,count:rows.length});
+    for (const [index,row] of rows.entries()) {await f.repo.save(row);await f.gateway.request({action:'transfer:stage',serverId:row.serverId,generation:1,reservationToken,index,spec:{row,localDirectory:directory}});}
+  },{rows,directory,reservationToken});
+  assert.equal(fixture.metrics.authenticationRequests,1);assert.equal((await fs.readdir(join(remoteRoot,'home/fixture'))).some(name=>name.endsWith('.part')),false);
+  await application.evaluate(async ({app},input) => app.__sshosTransferFixture.gateway.request(input),{action:'transfer:commit',serverId,generation:1,reservationToken});
+  await expect.poll(() => application.evaluate(({app}) => app.__sshosTransferFixture.repo.snapshots().filter(row=>row.phase==='completed').length),{timeout:30000,intervals:[100,250,500]}).toBe(2);
+  await expect.poll(() => application.evaluate(async ({app},serverId) => (await app.__sshosTransferFixture.gateway.request({action:'transfer:snapshot',serverId,generation:1,offset:0})).rows.length,serverId),{timeout:5000}).toBe(0);
+  assert.deepEqual(await fs.readFile(join(remoteRoot,'home/fixture/uploaded.bin')),data);assert.deepEqual(await fs.readFile(join(native,'downloaded.bin')),data);assert.equal(fixture.metrics.authenticationRequests,3);assert.deepEqual(fixture.metrics.commands,[]);
+  const records=await application.evaluate(({app}) => app.__sshosTransferFixture.repo.snapshots());for (const row of records) {assert.equal(row.streamSha256,createHash('sha256').update(data).digest('hex'));assert.equal(row.cleanupState,'confirmed');assert.equal(row.transferredBytes,data.length);assert.equal(row.verifiedBytes,data.length);}
+  const sessions=await application.evaluate(async ({app},serverId) => app.__sshosTransferFixture.gateway.request({action:'session:snapshot',serverId,generation:1}),serverId);assert.equal(sessions[0].status,'connected');
+  const events=await application.evaluate(({app}) => app.__sshosTransferFixture.events);assert.ok(events.some(row=>row.phase==='queued'));assert.ok(events.some(row=>row.phase==='completed'&&!row.active));assert.ok(events.every(row=>!('source'in row)&&!('destination'in row)&&!('bytes'in row)));
+  const versions=await application.evaluate(() => ({electron:process.versions.electron,node:process.versions.node,chrome:process.versions.chrome}));
+  const report={status:'pass',platform:process.platform,architecture:process.arch,versions,assertions:['one actual Electron utilityProcess transfer engine','main-only durable JSON writer with worker ACK before each mutation phase','stage all tasks without SSH transfer or temp creation until commit','two FIFO tasks on one server with fresh per-task authentication','actual3MiB upload/download with full SHA256 read-back and exclusive final links','metadata-only progress events and terminal resource release','control SSH survives both transfers'],limitation:'Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested.'};await fs.writeFile(join(localPath('evidence'),'d07-engine.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+} finally {if (application) await application.close();if (fixture) await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}

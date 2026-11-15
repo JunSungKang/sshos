@@ -1,0 +1,10 @@
+{
+  "scripts/transfer-engine-smoke.mjs": "df3054439de39b72ff562c484f2e4d96d2cae8ac1045a67ce32fc00c91a01b36",
+  "src/main/engine-gateway.ts": "a26dca863bd91b0aaa1262e9e0cd4bd992aa81ea926f8b476733912c1c87a319",
+  "src/shared/engine-protocol.ts": "3776b67cfcb9bfc325c0362b7d4a35eaf2e2ddf90f5de2bf64e5ff1f0995a90b",
+  "src/shared/transfer-protocol.ts": "4cef3f3e1e30cecbdb1d1f27bb8fe52154e8a42e254fa055621750b70fd87315",
+  "src/worker/index.ts": "cd0019d4a692626d6d03b3e239086b576646ed600ae16b9e8c7bf018d0120cc7",
+  "src/worker/receipt-writer.ts": "c1896cd68e7fe9eb32456db104745a9c96e33158bdb92dedf4cba5f8a551b5d9",
+  "src/worker/transfers/coordinator.ts": "fa9b7eb8bbc8883d83d6a1d6a6edc445edc1168427e93151da8cf8fc03fafb7f",
+  "tests/unit/transfer-coordinator.test.ts": "394a3c04296803b0a02d5e5f0e4217710edc8ecdb3e0306b80afb7ef9b2f81a0"
+}

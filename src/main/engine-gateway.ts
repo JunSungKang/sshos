@@ -2,16 +2,19 @@ import { randomUUID } from 'node:crypto';
 import type { UtilityProcess } from 'electron';
 import { engineEventSchema, engineRequestSchema, type EngineCommand } from '../shared/engine-protocol';
 import { sessionSnapshotSchema, type SessionSnapshot } from '../shared/session-contracts';
+import type { TransferRuntime } from '../shared/transfer-protocol';
 
 export class EngineGateway {
   private readonly pending = new Map<string, { serverId: string; generation: number; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private stopped = false;
   private lastSequence = 0;
-  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean}) {
+  private lastTransferSequence=0;
+  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean)=>void) {
     worker.on('message', (raw: unknown) => {
       if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
+      if (data.type === 'transfer') {if (data.sequence<=this.lastTransferSequence) return;const gap=data.sequence !== this.lastTransferSequence+1;this.lastTransferSequence=data.sequence;this.transferChanged?.(data.snapshot,gap);return;}
       if (data.type === 'session') {
         if (data.sequence <= this.lastSequence) return;
         const gap = data.sequence !== this.lastSequence + 1;

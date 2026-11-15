@@ -64,14 +64,18 @@
     "Real loopback SSH/SFTP upload/download verification, unsupported hardlink, READ denial, temp corruption, destination race and post-create cancellation fixtures",
     "Bounded worker-to-main durable receipt channel with registered-resource/immutable identity checks, monotonic sequence, deduplicated request IDs and five-second ACK gate",
     "One failed or missing persistence ACK invalidates all pending worker dispatch permissions; late ACKs cannot unlock faulted writes",
-    "Terminal receipt phases cannot be reset to restart the same task; transfer slot release waits for pending late-observation persistence after resource closure"
+    "Terminal receipt phases cannot be reset to restart the same task; transfer slot release waits for pending late-observation persistence after resource closure",
+    "Worker transfer coordinator combines batch reservation/staging/commit, FIFO queue, per-server/global slots, Runner/Ports and main-only receipt writer",
+    "Queued cancellation and generation disconnect never create a runner/socket; storage fault interrupts active transfers and removes queued jobs before a later reset can replay them",
+    "Bounded metadata-only runtime events and100-row snapshots report active resource ownership separately from terminal operation outcome",
+    "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 144,
-      "evidence": "evidence/d07-receipt-channel/test-unit.txt"
+      "tests": 149,
+      "evidence": "evidence/d07-coordinator/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -199,6 +203,26 @@
       "status": "pass",
       "evidence": "evidence/d07-ports",
       "scope": "Real loopback SSH/SFTP upload/download and local hardlinks,0byte/readback/hash/no-overwrite/fault/cancel cases on current host. Native selection, cross-process receipt writer and GUI enqueue remain."
+    },
+    "actual_transfer_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "versions": {
+        "electron": "45.3.2",
+        "node": "24.22.2",
+        "chrome": "156.0.8078.100"
+      },
+      "assertions": [
+        "one actual Electron utilityProcess transfer engine",
+        "main-only durable JSON writer with worker ACK before each mutation phase",
+        "stage all tasks without SSH transfer or temp creation until commit",
+        "two FIFO tasks on one server with fresh per-task authentication",
+        "actual3MiB upload/download with full SHA256 read-back and exclusive final links",
+        "metadata-only progress events and terminal resource release",
+        "control SSH survives both transfers"
+      ],
+      "limitation": "Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested."
     }
   },
   "remaining_D01": [
@@ -215,14 +239,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Connect TransferQueue/Runner/Ports/WorkerReceiptWriter in a worker transfer coordinator, add bounded task registration/snapshot/cancel RPC, then main native selections and GUI transfer shelf/task progress. Existing pending stages and target gates remain.",
+  "next_action": "Implement one-per-frame native dialog gate and local selection capabilities; add bounded transfer preview/enqueue controller and renderer upload/download, task and shelf UI. Finish manual storage verification/reset handshake and remaining lifecycle integration in D07/D10.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-receipt-channel",
+  "latest_evidence_directory": "evidence/d07-coordinator",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 receipt message channel wired into main/worker and unit tested; transfer coordinator/commands, native selection capabilities and enqueue/progress UI remain",
+    "current_stage": "D07 worker/main/SSH durable backend pipeline verified; native selection capabilities, conflict/confirmation previews and renderer enqueue/shelf still remain",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

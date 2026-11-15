@@ -5,12 +5,13 @@ export class WorkerReceiptWriter {
   private readonly pending=new Map<string,{identity:Omit<ReceiptACK,'action'|'ok'>;resolve:()=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   private sequence=0;
   private fault=false;
-  constructor(readonly epoch:string,private readonly post:(message:unknown)=>void) {}
+  constructor(readonly epoch:string,private readonly post:(message:unknown)=>void,private readonly onFault:()=>void=()=>{}) {}
   get faulted():boolean {return this.fault;}
   private fail():void {
     if (!this.fault) {
       this.fault=true;for (const value of this.pending.values()) {clearTimeout(value.timer);value.reject(new Error('STORAGE_FAILED'));}this.pending.clear();
       try {this.post({type:'receipt:fault',backendEpoch:this.epoch,errorCode:'STORAGE_FAILED'});} catch { /* Parent exit is handled by the app lifecycle. */ }
+      try {this.onFault();} catch { /* The writer remains locked even if UI observation fails. */ }
     }
   }
   persist(input:FileReceipt):Promise<void> {
