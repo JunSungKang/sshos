@@ -7,6 +7,7 @@ import { sessionSnapshotSchema, type SessionSnapshot } from '../shared/session-c
 import type { TerminalRuntime } from '../shared/terminals';
 import type { ExecutionRuntime } from '../shared/execution-ui';
 import type { TransferRuntime } from '../shared/transfer-protocol';
+import type { MutationObservation } from '../shared/mutations';
 
 export class EngineGateway {
   private readonly pending = new Map<string, { serverId: string; generation: number; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
@@ -15,7 +16,7 @@ export class EngineGateway {
   private lastTransferSequence=0;
   private lastExecutionSequence=0;
   private lastTerminalSequence=0;
-  constructor(private worker: UtilityProcess, private currentEpoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void,private readonly terminalChanged?:(snapshot:TerminalRuntime,gap:boolean,sequence:number)=>void) {this.bind(worker,currentEpoch);}
+  constructor(private worker: UtilityProcess, private currentEpoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void,private readonly terminalChanged?:(snapshot:TerminalRuntime,gap:boolean,sequence:number)=>void,private readonly mutationObserved?:(value:MutationObservation)=>void) {this.bind(worker,currentEpoch);}
   get epoch():string {return this.currentEpoch;}
   get running():boolean {return !this.stopped;}
   restart(worker:UtilityProcess,epoch:string,receiptChannel?:{accept(raw:unknown):boolean}):void {if(!this.stopped || epoch===this.currentEpoch)throw new Error('REQUEST_BUSY');this.worker=worker;this.currentEpoch=epoch;this.receiptChannel=receiptChannel;this.stopped=false;this.lastSequence=0;this.sessionSequences.clear();this.lastTransferSequence=0;this.lastExecutionSequence=0;this.lastTerminalSequence=0;this.bind(worker,epoch);}
@@ -25,6 +26,7 @@ export class EngineGateway {
       if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
+      if(data.type==='mutation_observation'){const {type:_type,...value}=data;this.mutationObserved?.(value);return;}
       if(data.type === 'pty'){if(data.sequence<=this.lastTerminalSequence)return;const gap=data.sequence !== this.lastTerminalSequence+1;this.lastTerminalSequence=data.sequence;this.terminalChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'execution') {if(data.sequence<=this.lastExecutionSequence)return;const gap=data.sequence !== this.lastExecutionSequence+1;this.lastExecutionSequence=data.sequence;this.executionChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'transfer') {if (data.sequence<=this.lastTransferSequence) return;const gap=data.sequence !== this.lastTransferSequence+1;this.lastTransferSequence=data.sequence;this.transferChanged?.(data.snapshot,gap,data.sequence);return;}

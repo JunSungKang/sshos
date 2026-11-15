@@ -9,12 +9,16 @@ export const mutationResultSchema = z.object({ phase:z.enum(['completed','failed
 export type MutationResult = z.infer<typeof mutationResultSchema>;
 export type MutationPreview = { confirmationToken:string; operation:MutationSpec['operation']; serverName:string; endpoint:string; username:string; source:string|null; destination:string|null; expiresAt:string };
 export const endpointSnapshotSchema = z.object({ name:z.string().max(256), host:z.string().max(253), port:z.int().min(1).max(65535), username:z.string().max(256), endpoint:z.string().max(300) }).strict();
+export const mutationLateRecordSchema=z.object({stage:z.enum(['mkdir_ack','delete_ack','link_ack','source_removed']),at:z.iso.datetime()}).strict();
+export const mutationObservationSchema=z.object({backendEpoch:z.uuid(),serverId:z.uuid(),generation:z.int().positive(),taskId:z.uuid(),operation:z.enum(['mkdir','delete','rename']),source:remotePathSchema.nullable(),destination:remotePathSchema.nullable(),observation:mutationLateRecordSchema}).strict();
+export type MutationObservation=z.infer<typeof mutationObservationSchema>;
 export const mutationReceiptSchema = z.object({
   kind:z.literal('file_mutation'), taskId:z.uuid(), serverId:z.uuid(), generation:z.int().min(1), backendEpoch:z.uuid(),
   endpointSnapshot:endpointSnapshotSchema, hostKeyFingerprint:z.string().max(128), operation:z.enum(['mkdir','delete','rename']),
   source:remotePathSchema.nullable(), destination:remotePathSchema.nullable(), parent:remotePathSchema, sourceInitialStat:initialStatSchema.nullable(),
   phase:z.enum(['prepared','dispatched','completed','failed','partial','result_unknown']), stage:z.string().max(64), lastConfirmedPhase:z.string().max(64),
   destinationCreated:z.boolean(), sourceRemovalConfirmed:z.boolean(), errorCode:z.string().max(64).nullable(),
+  lateObservations:z.array(mutationLateRecordSchema).max(2).optional(),
   recoveryUncertain:z.boolean(), recoveredFromPhase:z.string().max(64).nullable(), acknowledgedAt:z.iso.datetime().nullable(),
   createdAt:z.iso.datetime(), updatedAt:z.iso.datetime()
 }).strict();
