@@ -1,0 +1,11 @@
+{
+  "typecheck": "pass",
+  "unitTests": 277,
+  "unitFiles": 51,
+  "build": "pass",
+  "integrationSuites": 16,
+  "securityUnitTests": 45,
+  "securityElectron": "pass",
+  "failureCorrection": "Initial PTY disk assertion ran before recordPending=false; harness now waits for durable ACK. Full suite rerun passed.",
+  "scope": "Current macOS26 arm64 and loopback fixture. Native decisions/vault/focus mocked. Supported-target/signing/performance acceptance remains untested."
+}

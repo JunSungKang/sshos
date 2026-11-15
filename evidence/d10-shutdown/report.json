@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "elapsedMs": 9685.775083,
+  "assertions": [
+    "native confirmation receives combined active GUI-exec/PTY and transfer/queue metadata",
+    "keep-connection and keep-running choices leave SSH and sessions alive",
+    "approved disconnect closes exec/PTY channels as unknown and preserves application",
+    "approved app close cancels queued transfer and waits for finalizing link within shared10s budget",
+    "real held remote hardlink forces app deadline; late remote success after app exit remains unknown on restart",
+    "relaunch performs no authentication/command replay and preserves cancelled queue record"
+  ],
+  "limitation": "Native message-box choices and file picker are mocked in test main, SSH programs are fixture streams; observed timing includes process-exit overhead on this development host and does not certify target-platform acceptance."
+}

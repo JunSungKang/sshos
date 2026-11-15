@@ -1,0 +1,9 @@
+sshOS(시오스) v6 설계 시안 지침. 제품 구현/실제 캡처가 아니다.
+정본: docs/01-product-plan.md,02-development-plan.md,09-desktop-interaction-spec.md.
+Electron 기본 창1개 안의 React desktop. 바탕화면 아이콘, 겹치는 내부 창, taskbar, 상시 전송선반.
+1600x1000 기준 상단44px,하단선반60px,taskbar56px. 고정좌측메뉴없음.
+파일은 한 창의 트리+목록. 텍스트/정적이미지뷰어,실행stdout/stderr창,PTY터미널.
+서버명은모든서버작업창제목과전송행에표시. 상단우측은활성서버와SSH완료응답(ms,예시).
+최소화→taskbar유지→같은위치복원,파일창닫아도전송유지. 실행중지요청과종료확정을구분.
+X11/원격GUI,AI,온라인검색,DB관리,외부변경자동동기화,자동재실행을보여주지않는다.
+사진처럼보이는UI이미지이더라도실제제품검증증거라고표기하지않는다.

@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "production1s observer with injected2000MiB renderer working set",
+    "two consecutive high samples revoke input/pause PTY and dispose actual xterm",
+    "responsive renderer acknowledges synchronous disposal and remains alive",
+    "blocked display rejects automatic history restore; explicit clear resumes existing shell",
+    "unresponsive renderer replaced after missing ACK while worker epoch and shell remain",
+    "new UI does not automatically replay blocked ring or input"
+  ],
+  "limitation": "Memory values injected via test-main app.getAppMetrics; renderer event loop actually blocked and renderer actually replaced. No OS OOM, physical allocation threshold or target-platform result claimed."
+}

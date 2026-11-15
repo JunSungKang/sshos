@@ -1,0 +1,19 @@
+{
+  "scripts/fixtures/ssh-server.mjs": "9f131e9e406a77ea49196521834d8f44685819f81f0dc454000bd0e1b3afab9f",
+  "src/main/engine-gateway.ts": "a5b8c3cc5371cd8015c00fb18df3ce813b1de7e32503385ef05559bc793f750c",
+  "src/main/executions.ts": "bbad196359e7132aad5d028242123d96aeec389438aff7931576cda4f4176d5f",
+  "src/main/index.ts": "9094709addc16551aa43d93e7fa924f01f542da9f1033590d74e4bf8f9791f3d",
+  "src/shared/engine-protocol.ts": "5d0c2dc6e5bd7be8027b2e11c8036ebd95d338b136498d5804530ce8cb6b035c",
+  "src/worker/execution/gui.ts": "abac51e8c4b0986ba8f5f81cb0bc9124ef0ac8068328aca2984ee46c42c6ac53",
+  "src/worker/index.ts": "1edc54b11b201f60d96cb695fea226069f900fb71a468ca0745631d463d3c4f2",
+  "tests/unit/execution-contracts.test.ts": "0d3103d31d545e1205e77e39082872d3ee9118fc654fc9c46d833ef14203b949",
+  "tests/unit/execution-controller.test.ts": "466aaaee4de0878b19226354033cf49cc196859f72f397553d1df231280782d7",
+  "tests/unit/gui-execution.test.ts": "8a2e2eb572fef878e67f322403da76f79b12768e1c26e82ef952c30118426b24",
+  "scripts/terminal-engine-smoke.mjs": "274ade704ae35ca517afb86a7140fc56b5be7c808940d15412a4ad93f7bfd4ae",
+  "src/shared/terminals.ts": "10b25b84adacc23c36655ba30ffb716d0e159560ac0ddfe0cd4356d889eace6e",
+  "tests/unit/terminal-boundaries.test.ts": "1141147911b6fb849593b6dfd651a3639b44bb77e26f2de1b64209826550472c",
+  "tests/unit/terminal-sessions.test.ts": "26494a988934a7fd8f27e169b377c146eb348ddc75ffc0141232ed22ef7180bf",
+  "src/worker/terminal/input.ts": "330272a62d706cc8b6dcc4927b330861f99457db11f90575fed9a86dbcf9a8f0",
+  "src/worker/terminal/stream.ts": "aa5df3677c2ab2e815f483daa83ad9a22a22f4399987344c354172defb42b14f",
+  "src/worker/terminal/sessions.ts": "5bf5f5528bd7580d7a72a82cc4e13476a42ed459c7428fe3b5732c1ea94eceeb"
+}

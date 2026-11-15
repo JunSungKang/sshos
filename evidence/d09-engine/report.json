@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "actual utilityProcess PTY with durable main intent and shared GUI-exec socket",
+    "xterm-256color80x24 and explicit132x40 resize",
+    "input blocked until frozen snapshot consumption and exact restore ACK",
+    "exact monotonic input and duplicate rejection; Ctrl+C byte is not TERM",
+    "256KiB live output backpressure and bounded fixed replay snapshot",
+    "explicit new display drops old history without creating a shell",
+    "observed exit0 plus channel close, other execution and control remain",
+    "PTY receipts contain no input/output/argv"
+  ],
+  "limitation": "Backend SSH fixture PTY channel; no xterm UI, native vi/IME/clipboard or target Ubuntu/OpenSSH/OS acceptance."
+}

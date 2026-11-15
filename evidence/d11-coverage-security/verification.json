@@ -1,0 +1,49 @@
+{
+  "unitTests": 344,
+  "unitFiles": 61,
+  "sessionGUIRegression": "pass",
+  "coverageGate": "fail",
+  "measuredBeforeLatest2NativeGestureCases": {
+    "lines": {
+      "total": 2505,
+      "covered": 2400,
+      "skipped": 0,
+      "pct": 95.8
+    },
+    "statements": {
+      "total": 7246,
+      "covered": 6205,
+      "skipped": 0,
+      "pct": 85.63
+    },
+    "functions": {
+      "total": 1282,
+      "covered": 1166,
+      "skipped": 0,
+      "pct": 90.95
+    },
+    "branches": {
+      "total": 5107,
+      "covered": 3927,
+      "skipped": 0,
+      "pct": 76.89
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "failingModuleCount": 38,
+  "newScopes": [
+    "instrumented real loopback SessionManager handshake/OS/SFTP/home/quarantine",
+    "main execution shutdown/recovery/action/output lifetimes",
+    "receipt pending limits/replay/hash/ACK failures and completed-cache retirement",
+    "secret decrypt shape/errors/ownership and recovered trust retry",
+    "execution slots and ancestor/local-alias locks",
+    "native paste owner/minimized/destroyed/async/byte boundaries",
+    "strict host IPv4/IPv6/DNS syntax"
+  ],
+  "limitation": "Current-host controlled unit/loopback fixtures. No supported-target, real OpenSSH, native clipboard, network-performance or signing acceptance."
+}

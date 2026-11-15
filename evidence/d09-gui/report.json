@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "actual xterm GUI over restricted main/worker SSH PTY bridge",
+    "live DA response, typed input and Ctrl+C byte with no TERM",
+    "OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs",
+    "native-gesture gate refuses unprompted clipboard read",
+    "multiline paste confirmation and exact bracketed bytes without added newline",
+    "automatic response held behind paste and next sequence synchronized",
+    "delayed clipboard result remains pinned to terminal1 after focus moves to terminal2",
+    "renderer reload replays output without new shell or old DA responses",
+    "minimized xterm consumes output and resizes stay within bounds",
+    "confirmed terminal close yields unknown, normal exit0 remains distinct",
+    "receipts exclude input/output/argv"
+  ],
+  "limitation": "Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain."
+}

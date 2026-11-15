@@ -1,0 +1,105 @@
+
+> sshos@0.1.0 pretest:coverage
+> tsc -p tsconfig.json
+
+
+> sshos@0.1.0 test:coverage
+> vitest run --coverage
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+      Coverage enabled with v8
+
+
+ Test Files  70 passed (70)
+      Tests  553 passed (553)
+   Start at  21:02:23
+   Duration  10.15s (tests 88%, import 8%, worker 3%, transform 1%)
+
+    Isolate  70 workers spawned · ~114ms startup each (spawn + environment, per file)
+             at least ~770ms faster with isolate: false — reuses workers across files instead of one per file
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   96.08 |    91.63 |   96.76 |   99.72 |                   
+ main              |   95.79 |    90.38 |   94.89 |   99.79 |                   
+  connections.ts   |   91.95 |       87 |   88.37 |     100 | ...45,154-158,165 
+  ...nostic-log.ts |    95.4 |    85.41 |     100 |     100 | 14,19-22          
+  ...ne-gateway.ts |   98.24 |    96.72 |   91.66 |     100 | 34,38             
+  ...ion-output.ts |   94.54 |    93.33 |     100 |     100 | 10,12,20          
+  ...n-previews.ts |     100 |    98.03 |     100 |     100 | 25                
+  executions.ts    |   95.75 |    87.85 |     100 |     100 | 19-20,24,32,37-53 
+  files.ts         |   95.76 |    89.74 |   93.33 |   98.27 | 27                
+  licenses.ts      |   97.56 |    96.42 |     100 |     100 | 12                
+  mutations.ts     |    97.3 |     90.8 |   93.02 |     100 | ...14,120,124,146 
+  probes.ts        |   92.72 |    85.71 |   70.58 |     100 | ...12-15,17,21-25 
+  ...rivate-key.ts |   95.65 |    88.23 |     100 |     100 | 11,22             
+  ...pt-channel.ts |   97.01 |    95.91 |     100 |     100 | 15,26             
+  ...rer-memory.ts |     100 |    93.75 |     100 |     100 | 15-18             
+  runtime-paths.ts |   96.77 |    96.15 |     100 |     100 | 33                
+  security.ts      |   93.75 |    93.75 |    87.5 |   97.05 | 27                
+  settings.ts      |   96.59 |    93.61 |     100 |     100 | 16,20,24          
+  shutdown.ts      |   98.27 |    94.59 |   93.75 |     100 | 14-15             
+  ...e-recovery.ts |     100 |    94.44 |     100 |     100 | 6                 
+  ...l-gestures.ts |     100 |    96.87 |     100 |     100 | 6                 
+  terminals.ts     |   93.56 |    85.13 |   93.22 |     100 | ...66-72,74,76,78 
+  ...r-previews.ts |    94.9 |    91.27 |     100 |     100 | ...1,81-86,90,107 
+  ...selections.ts |   96.42 |    89.13 |   92.85 |     100 | 16,20,26-30,42    
+  transfers.ts     |   94.28 |    86.88 |   96.77 |     100 | ...1,75-78,95-105 
+  viewers.ts       |    97.5 |    92.17 |   94.44 |     100 | ...59,78,84-87,92 
+ main/persistence  |   93.93 |    89.45 |   97.84 |   99.59 |                   
+  receipts.ts      |   90.57 |     86.6 |     100 |   98.46 | 84                
+  ...repository.ts |   91.66 |     87.5 |   96.87 |     100 | ...3,79,86,93,101 
+  store.ts         |   97.25 |    93.18 |   96.42 |     100 | ...96,115,121,140 
+ shared            |   98.53 |    97.23 |     100 |   99.33 |                   
+  ...n-protocol.ts |     100 |    88.88 |     100 |     100 | 4                 
+  executions.ts    |     100 |    96.87 |     100 |     100 | 11                
+  files.ts         |   94.73 |      100 |     100 |      90 | 14                
+  ...sfer-state.ts |   91.66 |       90 |     100 |     100 | 21                
+  transfers.ts     |    91.3 |    91.42 |     100 |     100 | 24-25,27          
+ shared/viewers    |    99.7 |    99.68 |     100 |   98.98 |                   
+  image-header.ts  |   99.67 |    99.67 |     100 |   98.79 | 84                
+ worker            |    94.9 |    91.89 |     100 |     100 |                   
+  probe.ts         |    92.8 |     87.8 |     100 |     100 | 13,24,26-31,33-35 
+  ...ipt-writer.ts |   97.14 |      100 |     100 |     100 |                   
+  ...e-recovery.ts |   96.66 |    93.93 |     100 |     100 | 12-13             
+ worker/connection |   96.57 |    92.02 |   97.16 |   99.61 |                   
+  key-parser.ts    |      96 |    87.09 |   92.85 |     100 | 13,20,29,41       
+  os-release.ts    |     100 |    95.83 |     100 |     100 | 10                
+  ...on-manager.ts |   94.09 |    86.78 |   96.07 |   99.05 | 67                
+  ...-key-agent.ts |   96.66 |    96.55 |     100 |     100 | 30,40             
+ worker/execution  |      96 |    91.18 |   98.93 |   98.98 |                   
+  channels.ts      |   95.62 |    90.16 |   96.55 |     100 | 20,22,33,38       
+  gui.ts           |   96.55 |    91.11 |     100 |   97.61 | 45                
+  output-ring.ts   |   94.31 |    88.09 |     100 |     100 | 10-11,24,29-30    
+ worker/files      |   98.12 |     94.8 |   95.55 |     100 |                   
+  browser.ts       |   96.58 |    94.93 |   95.23 |     100 | 14,70-71,85       
+  mutations.ts     |   99.24 |    94.02 |   94.11 |     100 | 12,28,80,83,89    
+ worker/terminal   |   95.59 |    88.75 |    97.1 |     100 |                   
+  input.ts         |   96.55 |    96.96 |     100 |     100 | 5                 
+  sessions.ts      |   95.43 |    87.57 |   95.91 |     100 | ...47,50,56-57,59 
+  stream.ts        |   95.71 |    86.95 |     100 |     100 | 14,16             
+ worker/transfers  |   95.11 |     90.5 |   97.35 |     100 |                   
+  coordinator.ts   |   95.48 |    93.02 |   91.89 |     100 | ...0-82,87,94,103 
+  io.ts            |   95.41 |    90.47 |   93.75 |     100 | 11,36,43,57       
+  local.ts         |   95.27 |    87.62 |     100 |     100 | ...68-72,85-86,98 
+  ports.ts         |   94.11 |     86.2 |     100 |     100 | ...40,53,58,64,73 
+  progress.ts      |   90.32 |    88.46 |     100 |     100 | 6-8,18            
+  runner.ts        |    92.3 |    85.32 |   92.59 |     100 | ...99,112,116,119 
+  scope.ts         |   98.13 |     94.8 |     100 |     100 | 30,40,46          
+ worker/viewers    |   98.37 |    93.67 |   96.29 |     100 |                   
+  reader.ts        |   97.93 |    95.08 |   97.05 |     100 | 28-41,87,108      
+  sftp-channel.ts  |   98.78 |     87.5 |      90 |     100 | 19,21,36,42       
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 96.08% ( 7101/7390 )
+Branches     : 91.63% ( 4757/5191 )
+Functions    : 96.76% ( 1257/1299 )
+Lines        : 99.72% ( 2556/2563 )
+================================================================================

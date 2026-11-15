@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "actual renderer crash followed by explicit recovery choice restores existing PTY without new shell or engine",
+    "actual utility process SIGKILL disconnects sessions and stores PTY result_unknown",
+    "user-only engine restart rotates epoch and preserves receipt/profile/window state",
+    "restart performs no authentication or remote replay; old session capabilities remain rejected",
+    "explicit reconnect creates a newer generation and a separately requested new PTY"
+  ],
+  "limitation": "Current-host emulated SSH fixture, native recovery dialog response mocked. OS sleep/close dialogs, target platform and native clipboard/IME remain separate."
+}

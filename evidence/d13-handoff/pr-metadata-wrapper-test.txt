@@ -1,0 +1,13 @@
+✔ dry-run validates current human scope without any write (1.809959ms)
+✔ apply repeats guard/current-head validation and writes only title/body (0.283167ms)
+✔ refuses wrong identity, assignee, canonical repo, branch or head before writing (0.407875ms)
+✔ a failed guard or changed second read cannot fall through to mutation (0.237542ms)
+✔ rejects extra mutation fields, empty/oversized metadata and invalid PR numbers (0.303167ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 66.88575

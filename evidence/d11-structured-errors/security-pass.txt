@@ -1,0 +1,52 @@
+
+> sshos@0.1.0 pretest:security
+> npm run build
+
+
+> sshos@0.1.0 prebuild
+> node scripts/prepare-licenses.mjs
+
+Prepared 14 local license documents.
+
+> sshos@0.1.0 build
+> tsc -p tsconfig.json && vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vite.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 158 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/renderer/tests/xterm.html                          0.44 kB │ gzip:   0.28 kB
+dist/renderer/index.html                                0.53 kB │ gzip:   0.33 kB
+dist/renderer/assets/viewer-worker-Tge2YUQk.js          7.07 kB
+dist/renderer/assets/terminal-clipboard-B1njb2Cr.css    3.96 kB │ gzip:   1.02 kB
+dist/renderer/assets/main-DBjrKnwP.css                 18.93 kB │ gzip:   4.73 kB
+dist/renderer/assets/xterm-De9iwuCS.js                  1.83 kB │ gzip:   1.10 kB
+dist/renderer/assets/terminal-clipboard-D5ahGYRg.js   333.58 kB │ gzip:  84.04 kB
+dist/renderer/assets/main-CDQsE8Ty.js                 429.50 kB │ gzip: 128.54 kB
+
+✓ built in 142ms
+
+> sshos@0.1.0 test:security
+> vitest run tests/unit/security.test.ts tests/unit/diagnostic-log.test.ts tests/unit/ssh-authentication.test.ts tests/unit/ssh-handshake.test.ts tests/unit/key-parser.test.ts tests/unit/terminal-boundaries.test.ts tests/unit/terminal-gestures.test.ts && node scripts/verify.mjs security
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+
+ Test Files  7 passed (7)
+      Tests  49 passed (49)
+   Start at  19:03:30
+   Duration  1.61s (tests 82%, import 14%, transform 3%, worker 1%)
+
+Starting electron-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","versions":{"electron":"45.3.2","node":"24.22.2","chrome":"156.0.8078.100"},"assertions":["main/preload/renderer/utilityProcess handshake","sandbox, contextIsolation and Node isolation","profile persistence across UI reload","desktop window drag, minimize, restore and maximize","renderer external fetch and eval denied","xterm DOM renderer and addon-fit under production CSP","public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500","paste capture preserves exact CRLF/LF and prevents xterm automatic input"],"limitation":"Development executable on current machine only; no signing or Windows/Ubuntu result."}
+Debugger ending on ws://127.0.0.1:57288/8c6e8fc0-8889-4313-a149-85cb0b645b81
+For help, see: https://nodejs.org/learn/getting-started/debugging
+Report: /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS/.local/verification/security-1794737011807

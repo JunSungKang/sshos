@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "versions": {
+    "electron": "45.3.2",
+    "node": "24.22.2",
+    "chrome": "156.0.8078.100"
+  },
+  "assertions": [
+    "main/preload/renderer/utilityProcess handshake",
+    "sandbox, contextIsolation and Node isolation",
+    "renderer external fetch and eval denied",
+    "xterm DOM renderer and addon-fit under production CSP"
+  ],
+  "limitation": "Development executable on current machine only; no signing or Windows/Ubuntu result."
+}

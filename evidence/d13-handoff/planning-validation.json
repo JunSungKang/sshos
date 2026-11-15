@@ -1,0 +1,16 @@
+{
+  "planning_valid": true,
+  "version": "v6",
+  "requirements": 38,
+  "tasks": 13,
+  "checks": 152,
+  "required_technical_checks": 149,
+  "nonblocking_research_checks": 3,
+  "product_checks": "all untested",
+  "planning_artifacts": 17,
+  "local_links_checked": 84,
+  "archived_file_hashes_verified": 69,
+  "scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+  "errors": [],
+  "limitation": "Documentation consistency only; no product/runtime/security certification."
+}

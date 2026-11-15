@@ -1,0 +1,9 @@
+{
+  "target": "mac",
+  "embeddedAsarSHA256": "5e6506a0f1d3c9faac757962aafaac7e9fd43f5821a5c3750ef09f3350a581a5",
+  "embeddedIntegrityMatches": true,
+  "verifiedAsarFiles": 925,
+  "unpackedBytes": 295191442,
+  "unpackedSizeWithin750MiB": true,
+  "scope": "Static package inspection only; no native launch/OS trust/notarization claim"
+}

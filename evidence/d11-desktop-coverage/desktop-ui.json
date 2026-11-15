@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "file-window cap displays actual open-window list without terminating other windows",
+    "explicit listed-window close makes capacity available",
+    "active-window Tab leaves through its taskbar; Enter returns focus to selected window",
+    "minimize immediately makes content inert and retains taskbar; restore reuses same window",
+    "150ms transition and OS reduced-motion override"
+  ],
+  "limitation": "Current-host development Electron and loopback SSH fixture. Native keyboard layout/IME/screen reader/scale matrix and target OS acceptance remain."
+}

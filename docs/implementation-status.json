@@ -1,0 +1,636 @@
+{
+  "schemaVersion": 1,
+  "spec_version": "v6",
+  "approved_scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+  "implementation_started": true,
+  "started_on": "2026-11-15",
+  "authorization": {
+    "source": "actual_user_message",
+    "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
+  },
+  "stage": "D13",
+  "stage_status": "development_implemented_user_acceptance_pending",
+  "release_ready": false,
+  "completed_stages": [],
+  "first_push": {
+    "branch": "work/import-plans",
+    "head": "32c6206",
+    "original_root_preserved": "609936e07db67734d204169801c251e8839ae4a4"
+  },
+  "implemented": [
+    "Sandboxed Electron startup and local app protocol",
+    "Restricted preload lifecycle snapshot API with sender/origin/schema/budget validation",
+    "utilityProcess loads ssh2 and reports its epoch without connecting",
+    "React foundation screen with honest development status",
+    "Workspace-local toolchain, install/runtime/cache scripts",
+    "Local protocol and IPC security tests, actual Electron smoke and xterm CSP fixture",
+    "Per-socket host-key verifier rejects unknown/changed hosts before authentication",
+    "Single RSA/Ed25519 in-process signer validates key identity and disallows SHA-1 signatures",
+    "One-shot authentication and explicit SSH algorithm allowlist",
+    "Real loopback SSH handshake tests with ephemeral in-memory keys",
+    "Bounded key reading and serialized five-second worker-thread key parser with bcrypt-round limits",
+    "Atomic checksummed JSON store with backups, serialized writer, corruption recovery and storage fault state",
+    "Persisted profile CRUD and main-only key selection capability through strict IPC",
+    "OS encryption vault adapter with unavailable handling and persist-before-use key rotation",
+    "Profile manager UI with persistence and visible locked storage recovery state",
+    "SSH session lifecycle, ephemeral host challenge approval and OS/SFTP capability inspection",
+    "Main-owned session tokens and desktop window registry bound to server/generation",
+    "Desktop launchers, taskbar and pointer/keyboard internal window movement, eight-edge resize, minimize/maximize/restore",
+    "Bounded paged SFTP enumeration, Unicode-safe names, metadata-only symlinks/special files and explicit refresh",
+    "Capability-bound tree/list explorer, virtual rows and readonly directory cache on UI reload/disconnect",
+    "Single-use sixty-second file mutation preview, durable pre-dispatch intent, SFTP mkdir0700/unlink/rmdir and hardlink-then-unlink rename",
+    "Path locks, partial/unknown outcomes, strict receipt recovery and explicit acknowledgement/local-record deletion",
+    "Task manager pages and detail dialogs, bounded task IPC payloads and aggregate directory paging budget",
+    "Future-schema JSON refusal prevents fallback downgrade over newer data",
+    "Strict UTF8 viewer decoding and line indexing with byte/scalar limits",
+    "Predecode PNG/JPEG/EXIF/WebP structure/dimension validation",
+    "Pinned ssh2 read-channel cancellation adapter and bounded FIFO viewer read pool",
+    "Demand-driven viewer reading with one64KiB replay chunk,32KiB SFTP reads, actual-byte bounds and final fstat/EOF validation",
+    "Queued viewer read scheduling, isolated read deadlines/cancellation and generation-bound worker RPC; generic RPC cache excludes file content",
+    "Main-owned viewer/probe capabilities with server/generation/epoch binding, window deduplication and explicit interrupted-read recovery",
+    "Text virtual scroll and isolated Worker image validation/decode with one transferable bitmap canvas, fit/zoom, EXIF1-8 and cached readonly display",
+    "Actual multi-MiB image streaming with consumer ACK and aggregate data pacing separate from control IPC budget",
+    "One per-role transfer/execution socket lease per control generation, shared opening promise and per-socket pinned host authentication with isolated close",
+    "Connection resource tokens withheld until inspection and requested credential persistence finish; disconnect invalidates pending secret updates and stale connected events",
+    "Transfer state machine, all-or-nothing queue reservations, two global/one per-server slots and shared remote/local path locks",
+    "32KiB/16-buffer bounded transfer copy and SHA256 readback kernels with short read/write handling and safe offsets through64GiB",
+    "Durable transfer orchestrator orders temp intent/created ACK, bounded copy/hash, complete readback, finalization intent ACK, exclusive link, destination confirmation and separate cleanup record",
+    "Cancellation wins before finalization or is rejected throughout pending intent; unknown ACKs and late observations never promote terminal tasks to completed",
+    "Discriminated mutation/transfer receipt schema, immutable task identity, conservative recovery, local/remote unresolved path restrictions and cleanup-aware retention/task detail",
+    "Host trust approval reserves the pending authentication operation across disk writes, preventing authentication after a concurrent disconnect",
+    "Actual per-task SFTP transfer adapter and local no-follow/exclusive0600 files with held source handles, sync/close and full readback",
+    "Canonical native directory identity checks, symlink/junction and UNC refusal, Windows destination name validation and local inode checks for temp/final cleanup",
+    "Abort scope closes only the transfer lease, retains native I/O until settlement and captures late successful mutation ACKs as observations",
+    "Real loopback SSH/SFTP upload/download verification, unsupported hardlink, READ denial, temp corruption, destination race and post-create cancellation fixtures",
+    "Bounded worker-to-main durable receipt channel with registered-resource/immutable identity checks, monotonic sequence, deduplicated request IDs and five-second ACK gate",
+    "One failed or missing persistence ACK invalidates all pending worker dispatch permissions; late ACKs cannot unlock faulted writes",
+    "Terminal receipt phases cannot be reset to restart the same task; transfer slot release waits for pending late-observation persistence after resource closure",
+    "Worker transfer coordinator combines batch reservation/staging/commit, FIFO queue, per-server/global slots, Runner/Ports and main-only receipt writer",
+    "Queued cancellation and generation disconnect never create a runner/socket; storage fault interrupts active transfers and removes queued jobs before a later reset can replay them",
+    "Bounded metadata-only runtime events and100-row snapshots report active resource ownership separately from terminal operation outcome",
+    "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation",
+    "Shared per-frame native dialog gate used by profile key selection and the transfer selection service",
+    "Main-only native upload/directory capabilities with120s expiry, immutable filesystem identity, explicit unsupported rows, whole101-file rejection and renderer-generation invalidation",
+    "Main-owned readonly transfer previews with bounded pages, explicit conflict/unsupported rows, editable destinations, selection-bound single-use confirmation and native path privacy",
+    "Restricted transfer bridge, whole-batch durable acceptance, file explorer multi-selection and explicit upload/download conflict confirmation",
+    "Persistent2-slot transfer shelf with separate transfer/readback byte progress and speed, task cancellation and redacted native-path task details",
+    "Accepted transfers survive explorer closure and renderer reload; sequence-aware cross-server snapshot resync avoids stale progress and reconciles lost terminal events",
+    "Per-generation bounded whole-operation metadata FIFO serializes OS inspection, browsing, mutations and transfer previews on control SFTP",
+    "Epoch/request/token storage-retry barrier requires worker quiescence and settled JSON writes before explicit fault reset; interrupted queued tasks never replay",
+    "POSIX-quoted GUI execution contracts with64 argv/16KiB limits and actual /bin/sh injection fixtures",
+    "Shared6-global/4-server execution channel reservations retain opening/closing/late callback ownership until actual close",
+    "GUI execution backend revalidates source/cwd, gates SSH exec on durable intent, keeps stdin open and records exit versus channel-close observations",
+    "Bounded per-job4MiB/global16MiB stdout/stderr memory ring with metadata charges, omission reporting, terminal-first global eviction and no generic RPC byte cache",
+    "Four-kind strict durable receipt schema includes GUI exec/PTY metadata while rejecting argv/input/output/hash; conservative no-replay execution recovery",
+    "Main-owned60s single-use GUI exec confirmation binds argv/source/cwd/stat/session/epoch and requires per-session POSIX acknowledgement",
+    "Explicit file execution dialog with direct default, separate argv, validated directory-token cwd and sh/bash choice after executable-bit refusal",
+    "Main-owned execution output capabilities,32KiB cursor/replay and1MiB/s pacing with stale-renderer/window byte rejection",
+    "Virtual plain stdout/stderr log window joins split UTF8/line fragments, escapes ANSI and reports bounded-display omission",
+    "Confirmed running-window hide/keep/stop and confirmed TERM/channel close; task output reopen and renderer reload attach without rerunning",
+    "Historical execution receipts open as metadata only; task record closure releases worker output memory",
+    "PTY backend shares execution slots/socket, durably gates shell creation and preserves exit versus local-close uncertainty",
+    "Per-channel1MiB/global6MiB PTY history,256KiB live backpressure and fixed output replay snapshot with exact restore-token ACK before input",
+    "Monotonic PTY input with rolling120-events/64KiB limits,64KiB in-flight ownership and no duplicate write replay",
+    "Timed-out input keeps its buffer and byte reservation until actual write callback/socket close, then scrubs only settled bytes",
+    "GUI execution output is released on owning-server session end and stale post-end data is discarded",
+    "Main-owned PTY capability/restore barrier, bounded renderer input queue and actual xterm internal windows with minimize/reload continuity",
+    "Native-gesture one-shot asynchronous clipboard read, frozen target and multiline/large paste confirmation with exact bytes and ordered automatic responses",
+    "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure",
+    "Same-live-worker execution receipt continuity during explicit storage verification, with conservative backup uncertainty and ACK-gated metadata reconciliation that preserves established PTY input",
+    "Explicit stopped-worker epoch replacement with no automatic replay/reconnect; actual renderer-crash and engine-SIGKILL recovery through desktop UI",
+    "Generation-aware native key selection invalidation and stale saved-secret rotation guards during engine replacement",
+    "Aggregate native app-close/disconnect confirmation with active task counts and frozen server generation, explicit keep choices and bounded shutdown",
+    "Shared monotonic shutdown budget, queued cancellation and finalizing protection; actual held-link/late-success restart remains unknown with no replay",
+    "Generation-guarded late trust approval/disconnect callbacks and stable DOM window identity for same-title multi-generation windows",
+    "Actual control/auxiliary close barriers across generations, cancellation-aware connect reservations and global bounds including closing sockets",
+    "Bounded one-thread key parsing FIFO with three owned requests, cancelled-queue checks and owned credential RPC cleanup",
+    "Suspend and resume generation invalidation with best-effort interrupt/close intents, immediate scoped disconnect and no automatic replay",
+    "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue",
+    "Foreground active-server SSH command-completion response metric with literal /bin/true, actual-close cooldown, identity validation, 5s delayed/15s freshness and no reconnect",
+    "Pinned ssh2 paused-channel disposal preserves genuine protocol close and frees slots without closing sibling PTYs; transport loss cannot imply observed channel close",
+    "Main1s renderer working-set observer with strict1536MiB two-sample boundary, immediate PTY input revocation/pause, synchronous xterm disposal ACK and2s UI replacement fallback; manual ring-clear recovery only",
+    "Sequence-aware session snapshot recovery cannot rewind newer server events; changing paginated execution/PTY snapshots retry up to3 times with bounded pages",
+    "Worker PTY history clears at owning-session end and late output/old display restore are rejected",
+    "Settings list saved endpoint fingerprints and saved credential ownership without blobs/ciphertext; native-confirmed removal quiesces all affected profiles/tasks before atomic JSON change; connect/profile edits/trust approval locked during change",
+    "Strict allowlisted default JSONL log limited to1MiB x3,128 pending entries,100-row diagnostic preview; frozen60s one-use export, native save dialog, no overwrite and stale-renderer rejection",
+    "All specification13 fixed Korean errors mapped and checked; actual xterm long OSC/DCS, combining and oversized numeric fixtures exercised",
+    "Utility process disables automatic network address-family retries; integration/security commands execute actual suites rather than missing-fixture gates",
+    "Window cap opens actual window list with explicit close/select; active-window Tab can reach taskbar and Enter restores selected-window focus; minimized content immediately inert,150ms restore/minimize with reduced-motion override",
+    "Instrumented source key-parser coordinator retains real compiled parser threads; new failure/cancellation/termination, key-file, profile/file capability, redacted-export, metadata/geometry boundary tests",
+    "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed",
+    "Bounded late file-mutation ACK observations retain original unknown/partial phase, generation/path identity and restrictions without completion promotion or replay; duplicate callbacks ignored",
+    "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty",
+    "Strict host syntax rejects legacy octal/hex/short IPv4 and bracketed non-IPv6 instead of accepting URL/IDNA reinterpretation",
+    "Fixed local license inventory and32KiB UTF8 pages through named IPC; plaintext upstream Electron/Chromium notices, SHA256/size/no-symlink checks and actual settings GUI paging",
+    "Development-only packaging pipeline replaces release-readiness circular prerequisite; clean revision/source archive/hash manifest, six production fuses, target-specific notices/SBOM, no native accelerators or tests; actual artifact build verification pending",
+    "Local performance harness performs five100-row durable registrations/five real warm Electron launches/100 UI feedback measurements; target performance remains untested and command returns2",
+    "Revision-bound unresolved receipt cache removes repeated per-claim clone/sort while preserving durable writes and conflict invalidation",
+    "Real development artifacts built for all three architectures; macOS ASAR embedded header/member integrity verified; stronger Windows audit found Pageant-driven smart unpacking and corrected rebuild is pending",
+    "Shared structured fixed-code error model across main desktop apps, actual last-confirmed phase in task summaries, explicit unknown/partial outcome priority, no raw bridge error text",
+    "All17 current-host integration suites pass after fixed-message assertion updates;375 unit cases pass; coverage88.02/80.71 with26 failing files remains blocking",
+    "Corrected Windows static inspection verifies923 ASAR member hashes and embedded header; no Pageant helper or smart-unpacked SSH code",
+    "Contribution/security/NOTICE documents, native six-combination verification handoff and explicitly unperformed G0/G2/G3 evaluation status",
+    "Pinned supported NSIS toolset1.2.1/vendor3.12 bundle; exact archive/build string and official StdUtils DLL/source/notice hashes verified",
+    "Windows afterPack includes unmodified StdUtils LGPL notice/clarification/corresponding source and nested notices; NSIS/StdUtils added to CycloneDX inventory; direct zlib payload removes Nsis7z/nsisunz dependency",
+    "Canonical allowlisted worker error codes reject untrusted SFTP descriptions before durable receipts; numeric protocol status owns classification.",
+    "Transfer resync bounds pagination and attempts, checks engine epoch and never infers absence from an incomplete snapshot.",
+    "PTY paste body accepts exactly64KiB UTF8 independently of JSON escaping and bounded control metadata.",
+    "Synchronous SFTP inspection exceptions release their timeout timer.",
+    "Application-owned pre-ready background networking/component update suppression and live Session/window spellchecker disablement; security smoke supplies no masking CLI flags.",
+    "Packaged/development cache/crash/log path configuration shared before app.ready; production retains OS-default userData.",
+    "Unavailable directory fsync emits one fixed diagnostic code without raw native details, while actual IO failures remain fatal.",
+    "Unresolved/active/record-error work blocks profile identity/auth changes and deletion; profile writes reserve against new authentication until ACK and revalidate busy state inside the serialized state mutation.",
+    "Startup receipt cleanup handles5001 completed records before enforcing retained-record limits, preserving unresolved, live and backup-uncertain records."
+  ],
+  "local_verification": {
+    "typecheck": "pass",
+    "unit_tests": {
+      "status": "pass",
+      "tests": 553,
+      "evidence": "evidence/d11-review-corrections/coverage-pass.txt"
+    },
+    "build": "pass",
+    "electron_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "versions": {
+        "electron": "45.3.2",
+        "node": "24.22.2",
+        "chrome": "156.0.8078.100"
+      },
+      "assertions": [
+        "main/preload/renderer/utilityProcess handshake",
+        "sandbox, contextIsolation and Node isolation",
+        "profile persistence across UI reload",
+        "desktop window drag, minimize, restore and maximize",
+        "renderer external fetch and eval denied",
+        "xterm DOM renderer and addon-fit under production CSP"
+      ],
+      "limitation": "Development executable on current machine only; no signing or Windows/Ubuntu result."
+    },
+    "host_os": {
+      "name": "macOS",
+      "version": "26.6.2",
+      "build": "25G83",
+      "architecture": "arm64",
+      "official_macOS14_matrix": "untested"
+    },
+    "clean_install": "pass",
+    "audit": {
+      "info": 0,
+      "low": 0,
+      "moderate": 6,
+      "high": 0,
+      "critical": 0,
+      "total": 6
+    },
+    "loopback_ssh": {
+      "status": "pass",
+      "cases": 5,
+      "evidence": "tests/unit/ssh-handshake.test.ts",
+      "limitation": "Real TCP SSH exchange with ssh2 fixture; not Ubuntu/OpenSSH target verification."
+    },
+    "profile_persistence_electron_smoke": {
+      "status": "pass",
+      "evidence": "evidence/d02/test-e2e.txt",
+      "scope": "profile create/list/reload/delete, sandbox and CSP on current macOS arm64"
+    },
+    "session_gui_smoke": {
+      "status": "pass",
+      "host": "darwin",
+      "architecture": "arm64",
+      "authenticationRequests": 1,
+      "assertions": [
+        "unknown host rejected before authentication",
+        "native GUI host trust confirmation",
+        "fresh verified SSH password authentication",
+        "SFTP rejection leaves SSH connected",
+        "session-specific OS confirmation",
+        "disconnect and profile cleanup"
+      ],
+      "limitation": "Loopback ssh2 fixture, not a manual Ubuntu/OpenSSH target acceptance result."
+    },
+    "file_browsing_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "real SSH/SFTP directory enumeration",
+        "folder navigation with spaces",
+        "untrusted names as text",
+        "symlink is metadata only",
+        "explicit refresh sees external changes",
+        "renderer reload restores cached directory without remote enumeration",
+        "disconnect preserves readonly last listing"
+      ],
+      "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+    },
+    "file_mutation_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "real SSH/SFTP directory enumeration",
+        "folder navigation with spaces",
+        "untrusted names as text",
+        "symlink is metadata only",
+        "explicit refresh sees external changes",
+        "renderer reload restores cached directory without remote enumeration",
+        "GUI preview sends no mutation before confirmation",
+        "confirmed mkdir0700 and nonrecursive delete with durable receipts",
+        "unsupported hardlink preserves original file",
+        "task details and confirmed local receipt deletion without remote mutation",
+        "disconnect preserves readonly last listing"
+      ],
+      "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+    },
+    "viewer_gui_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron SSH/SFTP text read through restricted preload",
+        "HTML and ANSI source as plain text",
+        "virtual text and scroll restoration",
+        "explicit reread updates content",
+        "PNG signature despite unknown extension",
+        "isolated Worker decode to one bitmaprenderer canvas",
+        "pixel correctness and zoom without remote reread",
+        "JPEG EXIF orientations1–8 with dimensions and corner pixels",
+        "static WebP decode",
+        "multi-MiB PNG stream paced within IPC budget",
+        "invalid UTF8 refusal and successful explicit reread",
+        "unknown file explicit text selection",
+        "disconnected viewer cache and disabled reread"
+      ],
+      "limitation": "Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance."
+    },
+    "current_regressions": {
+      "status": "pass",
+      "evidence": "evidence/d07-core",
+      "scope": "Session/file/viewer/Electron local GUI fixtures; asynchronous bridge predicates now poll their resolved values, not Promise truthiness."
+    },
+    "actual_transfer_ports": {
+      "status": "pass",
+      "evidence": "evidence/d07-ports",
+      "scope": "Real loopback SSH/SFTP upload/download and local hardlinks,0byte/readback/hash/no-overwrite/fault/cancel cases on current host. Native selection, cross-process receipt writer and GUI enqueue remain."
+    },
+    "actual_transfer_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "versions": {
+        "electron": "45.3.2",
+        "node": "24.22.2",
+        "chrome": "156.0.8078.100"
+      },
+      "assertions": [
+        "one actual Electron utilityProcess transfer engine",
+        "main-only durable JSON writer with worker ACK before each mutation phase",
+        "stage all tasks without SSH transfer or temp creation until commit",
+        "two FIFO tasks on one server with fresh per-task authentication",
+        "actual3MiB upload/download with full SHA256 read-back and exclusive final links",
+        "metadata-only progress events and terminal resource release",
+        "control SSH survives both transfers"
+      ],
+      "limitation": "Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested."
+    },
+    "actual_transfer_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "GUI native-selection adapter returns only names and tokens",
+        "readonly conflict preview makes no temp or auxiliary authentication",
+        "explicit destination rename rotates confirmation",
+        "whole-batch upload accepted through restricted preload",
+        "4MiB hash/readback upload continues after explorer close and renderer reload",
+        "always-visible transfer shelf and persisted task detail",
+        "Ctrl/Cmd two-file selection and GUI download",
+        "full byte/hash verification and no-overwrite preservation",
+        "one fresh authenticated transfer socket per task and control survives"
+      ],
+      "limitation": "OS native dialogs replaced in this test process; current-host loopback fixture only, target OS/Ubuntu/OpenSSH and signed production packages remain untested."
+    },
+    "storage_recovery": {
+      "status": "pass",
+      "evidence": "evidence/d07-recovery",
+      "scope": "Unit protocol and actual utilityProcess fault barrier/reopen/reset plus a new3MiB upload; GUI retry then download. Native disk-full/permission/Windows locking faults remain."
+    },
+    "actual_execution_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron utilityProcess and durable main receipt ACK before SSH exec",
+        "readonly inspection does not execute commands",
+        "two concurrent executions share one independently verified execution socket",
+        "quoted command and separate stdout/stderr bytes across real SSH",
+        "observed exit7 plus channel close is exited, not business success",
+        "silent execution keeps stdin open, TERM once,5s unconfirmed stop then local close remains unknown",
+        "explicit exec rejection preserves control SSH",
+        "receipts exclude argv/stdin/output/hash"
+      ],
+      "limitation": "SSH fixture programs are emulated server channels; actual POSIX quoting separately tested with /bin/sh. GUI execution confirmation/output and target Ubuntu/native matrix remain."
+    },
+    "actual_execution_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "GUI explicit execution with direct default, POSIX session confirmation, validated cwd and separate empty/metacharacter argv",
+        "preview makes no SSH exec or execution authentication",
+        "safe plain stdout/stderr and visible ANSI escapes",
+        "main rejects unconfirmed running-window closure",
+        "hide/reopen and renderer reload preserve execution without replay",
+        "healthy active execution blocks storage reset",
+        "TERM once,5s unconfirmed stop, later observed exit0 plus close",
+        "explicit sh of a non-executable file after direct refusal, exit3 preserved",
+        "receipts exclude arguments, inputs, outputs and command hashes"
+      ],
+      "limitation": "Emulated programs on a real loopback SSH server and current Mac development Electron. Actual Ubuntu/OpenSSH program/CPU/noexec/PTY and supported target matrix remain."
+    },
+    "actual_terminal_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual utilityProcess PTY with durable main intent and shared GUI-exec socket",
+        "xterm-256color80x24 and explicit132x40 resize",
+        "input blocked until frozen snapshot consumption and exact restore ACK",
+        "exact monotonic input and duplicate rejection; Ctrl+C byte is not TERM",
+        "256KiB live output backpressure and bounded fixed replay snapshot",
+        "explicit new display drops old history without creating a shell",
+        "observed exit0 plus channel close, other execution and control remain",
+        "PTY receipts contain no input/output/argv"
+      ],
+      "limitation": "Backend SSH fixture PTY channel; no xterm UI, native vi/IME/clipboard or target Ubuntu/OpenSSH/OS acceptance."
+    },
+    "actual_terminal_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual xterm GUI over restricted main/worker SSH PTY bridge",
+        "live DA response, typed input and Ctrl+C byte with no TERM",
+        "OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs",
+        "native-gesture gate refuses unprompted clipboard read",
+        "multiline paste confirmation and exact bracketed bytes without added newline",
+        "automatic response held behind paste and next sequence synchronized",
+        "delayed clipboard result remains pinned to terminal1 after focus moves to terminal2",
+        "renderer reload replays output without new shell or old DA responses",
+        "minimized xterm consumes output and resizes stay within bounds",
+        "confirmed terminal close yields unknown, normal exit0 remains distinct",
+        "receipts exclude input/output/argv"
+      ],
+      "limitation": "Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain."
+    },
+    "execution_storage_continuity": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual main JSON/worker storage fault barrier and reconciliation with active exec and PTY",
+        "same-epoch current receipts preserve live running phase and later actual exit7",
+        "established PTY inputs continue across storage faults and explicit verification without new shell",
+        "backup uncertainty dominates live observations and remains unknown after observed exit0 and close",
+        "reconciled receipts persist and recordError clears only after ACK; control and shared socket remain"
+      ],
+      "limitation": "Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain."
+    },
+    "engine_lifetime": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual renderer crash followed by explicit recovery choice restores existing PTY without new shell or engine",
+        "actual utility process SIGKILL disconnects sessions and stores PTY result_unknown",
+        "user-only engine restart rotates epoch and preserves receipt/profile/window state",
+        "restart performs no authentication or remote replay; old session capabilities remain rejected",
+        "explicit reconnect creates a newer generation and a separately requested new PTY"
+      ],
+      "limitation": "Current-host emulated SSH fixture, native recovery dialog response mocked. OS sleep/close dialogs, target platform and native clipboard/IME remain separate."
+    },
+    "aggregate_shutdown": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "elapsedMs": 9685.775083,
+      "assertions": [
+        "native confirmation receives combined active GUI-exec/PTY and transfer/queue metadata",
+        "keep-connection and keep-running choices leave SSH and sessions alive",
+        "approved disconnect closes exec/PTY channels as unknown and preserves application",
+        "approved app close cancels queued transfer and waits for finalizing link within shared10s budget",
+        "real held remote hardlink forces app deadline; late remote success after app exit remains unknown on restart",
+        "relaunch performs no authentication/command replay and preserves cancelled queue record"
+      ],
+      "limitation": "Native message-box choices and file picker are mocked in test main, SSH programs are fixture streams; observed timing includes process-exit overhead on this development host and does not certify target-platform acceptance."
+    },
+    "socket_retirement": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "unitTests": 246,
+      "assertions": [
+        "controlled callbacks prove replacement waits for both old control and auxiliary close",
+        "closing controls and waiting reservations count toward three-server bound",
+        "pending cancellation and closeAll do not create a replacement TCP client",
+        "three real isolated key parses finish FIFO and clear accepted buffers; excess queue refused",
+        "actual SSH session, renderer/engine restart, held-link shutdown and transfer engine regressions pass"
+      ],
+      "limitation": "Delayed-close paths use controlled client fixtures; actual SSH regressions use loopback ssh2. Target OpenSSH/OS, sleep, probe, memory and production-package acceptance remain."
+    },
+    "power_lifetime": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "synthetic suspend notification revokes session capabilities and disconnects real SSH/PTY",
+        "resume after suspend performs no authentication, shell or input replay",
+        "explicit reconnect alone creates a newer generation and PTY",
+        "resume without a preceding suspend also invalidates existing generation",
+        "connection engine remains ready with unchanged epoch and unknown result records"
+      ],
+      "limitation": "PowerMonitor notifications emitted in test main; no physical OS sleep, network loss on sleep or target-platform acceptance claimed."
+    },
+    "response_probe": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron main/worker control-SSH response probe and header text/tooltip",
+        "only literal /bin/true; no probe authentication or extra shell",
+        "blur clears numbers and pauses requests; focus resumes after actual-close cooldown",
+        "header server selection does not reassign existing terminal window",
+        "real delayed completion produces delay without a stale numeric value",
+        "exec rejection disables future probes while two SSH controls and other PTY input remain usable",
+        "disconnect removes displayed number"
+      ],
+      "limitation": "Foreground focus and native disconnect decision mocked in test main; actual physical focus/sleep, target OpenSSH/OS and controlled network performance remain."
+    },
+    "renderer_memory_guard": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "production1s observer with injected2000MiB renderer working set",
+        "two consecutive high samples revoke input/pause PTY and dispose actual xterm",
+        "responsive renderer acknowledges synchronous disposal and remains alive",
+        "blocked display rejects automatic history restore; explicit clear resumes existing shell",
+        "unresponsive renderer replaced after missing ACK while worker epoch and shell remain",
+        "new UI does not automatically replay blocked ring or input"
+      ],
+      "limitation": "Memory values injected via test-main app.getAppMetrics; renderer event loop actually blocked and renderer actually replaced. No OS OOM, physical allocation threshold or target-platform result claimed."
+    },
+    "settings_diagnostics": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "saved endpoint/fingerprint shown with no public blob/ciphertext/secret value",
+        "native cancel preserves trust, sessions and task",
+        "secret removal ends only owning profile and atomically removes ciphertext/reference",
+        "trust removal ends both same-endpoint profiles and existing PTY without authentication replay",
+        "next connection requires renewed trust before sending authentication",
+        "diagnostics preview/export identical allowlisted JSON with no host/user/path/secrets/input/output",
+        "export refuses overwrite and stale renderer tokens"
+      ],
+      "limitation": "Native confirmation/save picker and safeStorage encryption mocked in test main; actual SSH socket/PTY/JSON used. OS vault, native dialog interaction and supported target matrix remain untested."
+    },
+    "integration_suite": {
+      "status": "pass",
+      "suites": 17,
+      "evidence": "evidence/d11-review-corrections/integration-report.json",
+      "sourceUnchanged": true
+    },
+    "coverage": {
+      "status": "pass",
+      "statements": 96.08,
+      "branches": 91.63,
+      "requiredStatements": 90,
+      "requiredBranches": 85,
+      "perFile": true,
+      "failingModules": 0,
+      "evidence": "evidence/d11-review-corrections/coverage-summary.json",
+      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded."
+    },
+    "desktop_ui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "file-window cap displays actual open-window list without terminating other windows",
+        "explicit listed-window close makes capacity available",
+        "active-window Tab leaves through its taskbar; Enter returns focus to selected window",
+        "minimize immediately makes content inert and retains taskbar; restore reuses same window",
+        "150ms transition and OS reduced-motion override"
+      ],
+      "limitation": "Current-host development Electron and loopback SSH fixture. Native keyboard layout/IME/screen reader/scale matrix and target OS acceptance remain."
+    },
+    "security_current": {
+      "status": "pass",
+      "unitTests": 61,
+      "evidence": "evidence/d11-review-corrections/security-report.json",
+      "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
+    },
+    "development_packages": {
+      "status": "pass",
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+      "targets": [
+        "win32-x64",
+        "darwin-arm64",
+        "darwin-x64"
+      ],
+      "evidence": "evidence/d12-reviewed-development/artifacts.json",
+      "nativeLaunch": "untested",
+      "publisherSignature": "unavailable; Windows unsigned/macOS ad-hoc",
+      "notarization": "untested",
+      "scope": "Clean committed runtime source; every ASAR member/header, six fuses, target notices, source archive/hash and size verified. Static verification does not prove supported target launch."
+    },
+    "local_performance": {
+      "status": "partial",
+      "localMeasurements": "pass",
+      "targetAcceptance": "untested",
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+      "sourceDirty": false,
+      "evidence": "evidence/d12-reviewed-development/performance-partial.json",
+      "registration100P95Ms": 1135.606458,
+      "warmLaunchMs": [
+        951.7378330000001,
+        537.1392920000008,
+        544.4608749999998,
+        527.0780410000007,
+        544.9829169999994
+      ],
+      "uiClickP95Ms": 30.799999713897705,
+      "memory": "One586.015625MiB snapshot; not settled300-sample acceptance."
+    },
+    "pr_metadata": {
+      "status": "updated_and_verified",
+      "evidence": "evidence/d13-handoff/pr-metadata-apply.json"
+    },
+    "ci": {
+      "status": "pass",
+      "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+      "evidence": "evidence/d12-reviewed-development/correction-ci.json",
+      "scope": "GitHub planning-docs: document validator, clean install, typecheck,553 unit cases and build. Subsequent head checks are authoritative on PR#1."
+    }
+  },
+  "remaining_D01": [
+    "macOS14arm64 native target validation (current host is macOS26.6.2)",
+    "Windows11x64 and macOS14x64 native launch tests",
+    "Ubuntu24.04amd64/arm64 SSH key and hosttrust/SFTP hardlink fixtures",
+    "safeStorage OS encryption and signing continuity tests",
+    "Publisher signatures/notarization and native launch/license/security public-release decision; static package checks are separately passed."
+  ],
+  "known_issues": [
+    {
+      "id": "DEP-001",
+      "severity": "moderate",
+      "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
+    }
+  ],
+  "next_action": "Finish current-head independent/App approval and guarded merge/branch cleanup through PR#1; then user performs native/OpenSSH/vault/IME/accessibility/controlled performance acceptance. Signing/usability/public-release gates remain open.",
+  "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
+  "evidence_directory": "evidence/d01",
+  "latest_evidence_directory": "evidence/d12-reviewed-development",
+  "progress_summary": {
+    "completed_stages": 0,
+    "total_stages": 13,
+    "current_stage": "D13 development handoff prepared; current-head review and merge tracked on PR#1, compound product acceptance remains untested.",
+    "product_features_available": "All approved application feature groups have implementation and current-host automated evidence: profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and licenses. Three corrected-source development packages verified. Target acceptance is separate.",
+    "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
+  },
+  "user_owned_verification": {
+    "source": "2026-11-15 user decision",
+    "quote": "아 없어. 내가 직접 시험할게 넌 작성된 모든 문서 기반으로 개발만 정확하게 진행하도록 해.",
+    "signing_available": false,
+    "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
+  },
+  "implementation_gaps": [
+    "Current-head independent/App review, guarded merge and verified branch cleanup are recorded by PR#1; do not infer them from this pre-merge manifest.",
+    "User-owned native/OpenSSH/vault/IME/accessibility/controlled-network performance tests; signing resources and G0/G2/G3 participants unavailable. Public-release license/security gate remains separate."
+  ],
+  "independent_review": {
+    "authorized": true,
+    "authorizationQuote": "읽기 전용 리뷰 에이전트 허용",
+    "reviewedHead": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+    "decision": "APPROVE",
+    "evidence": "evidence/d12-reviewed-development/independent-code-review.json",
+    "previousChangesRequestedHead": "91a81af1f6570b3d803ed1824213f100bc58e7db",
+    "previousFormalEvidence": "evidence/d11-review-corrections/formal-changes-requested.json",
+    "corrections": "Both original major findings RESOLVED; no new findings on reviewed code head.",
+    "currentHeadFormalAuthority": "https://github.com/JunSungKang/sshos/pull/1; final metadata head must be independently rechecked before formal approval and merge."
+  },
+  "developer_delivery": {
+    "implementation": "implemented",
+    "automated_local_verification": "pass",
+    "development_packages": "pass",
+    "sourceRevision": "8b41e23211fcac17ca40a467cd5c93c7a2d89264",
+    "runtime_source_changes_after_packages": "none at handoff preparation",
+    "product_acceptance": "untested; user-owned targets",
+    "public_release": "not ready",
+    "workflow_authority": "https://github.com/JunSungKang/sshos/pull/1"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "prAuthorLogin": "JunSungKang",
+  "assigneeLogin": "JunSungKang",
+  "reviewerLogin": "junsung-bot[bot]",
+  "requiredChecks": [
+    "planning-docs"
+  ],
+  "checkProviders": {
+    "planning-docs": 15368
+  },
+  "protectedBranches": [
+    "main"
+  ],
+  "mergeMethods": [
+    "merge"
+  ],
+  "bootstrapNote": "Import existing plans first, preserving existing remote root commit. Current-head App formal review remains mandatory through branch protection and guarded merge. Base-owned governance-review workflow becomes available after governance import."
+}

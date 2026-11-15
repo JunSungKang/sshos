@@ -1,0 +1,50 @@
+{
+  "source_revision": "v4-draft",
+  "archived_on": "2026-11-14",
+  "files": [
+    {
+      "path": "docs/05-framework-comparison.md",
+      "sha256": "c20c24a9c836472f129f0a6e34f2591b4f9ad4ec7ee3365885a98ffb58023546"
+    },
+    {
+      "path": "docs/02-development-plan.md",
+      "sha256": "b377d5f0f2e8cccf5c9c825d0251c32b461eecdd3083be3cb1d3c232f4a1c3cb"
+    },
+    {
+      "path": "docs/04-system-architecture.md",
+      "sha256": "535aa353a3c759aec4c44784f0d3c6fb71b4ce2bea809733a893470a3016d926"
+    },
+    {
+      "path": "docs/01-product-plan.md",
+      "sha256": "e387a3eda450ac022346e5e510f6160c189573f03ae3ff6ee4e51dc2c149a6f1"
+    },
+    {
+      "path": "docs/03-research-and-positioning.md",
+      "sha256": "2658c6906c08cb1649727bae1adaa9ae0faf61e4c6bc534482b93215c887395f"
+    },
+    {
+      "path": "docs/planning-status.json",
+      "sha256": "e214a41532db3211bdeeecf409c2b032ba0f7da52f4eb2096d7bbf5db7eb0d88"
+    },
+    {
+      "path": "docs/planning-validation.json",
+      "sha256": "126e9ad89070a2d5256a1a2ef2dbcc24ec4d8f88c5dad0170eb89cb101c9ed0e"
+    },
+    {
+      "path": "design/sshOS-v4-architecture.svg",
+      "sha256": "29b096c13581d193fdc8b2b81502c3939b645d660d62d288ca870527babd5573"
+    },
+    {
+      "path": "design/architecture-render.js",
+      "sha256": "279a507f631cce2390503145df65f7d8be7a6f10449200b6d3b2440ca818420f"
+    },
+    {
+      "path": "design/sshOS-v4-architecture.png",
+      "sha256": "fff8b28a53e4661b508e9de7699516049652f50c71c05fdebe6ec1cff7cfe116"
+    },
+    {
+      "path": "design/preview-prompt.txt",
+      "sha256": "f79b77def8c14bc4b9af904789e838c50eb460d2eb96732437762fe517424a67"
+    }
+  ]
+}

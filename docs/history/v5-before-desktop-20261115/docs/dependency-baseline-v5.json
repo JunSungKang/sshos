@@ -1,0 +1,183 @@
+{
+  "version": "v5",
+  "observed_on": "2026-11-14",
+  "development_node": "24.22.3",
+  "node_source": "https://nodejs.org/dist/index.json",
+  "policy": "exact direct versions; generate and review lockfile during D01; do not silently follow latest; metadata license is not complete distribution review",
+  "packages": [
+    {
+      "name": "electron",
+      "version": "45.3.2",
+      "source": "https://registry.npmjs.org/electron/45.3.2",
+      "license_metadata": "MIT",
+      "integrity": "sha512-bPO0MMvJCdKdPfXgd3ES8zupu+ocr6XmSuRGwyZazTiigTz8jE7rwukSkck0iomS6UZeFuCwzu0uanMD/D34uw==",
+      "engine_requirement": {
+        "node": ">= 22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "electron-builder",
+      "version": "26.18.0",
+      "source": "https://registry.npmjs.org/electron-builder/26.18.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-ASgIuQnOq4RuD8jMhS9hI0LS3EMRT1I/M5R6utqifB/BHN80IcCjBdt+DED+NmNPvmBgEtrlExXZitNdA7kXOg==",
+      "engine_requirement": {
+        "node": ">=14.0.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "typescript",
+      "version": "7.0.2",
+      "source": "https://registry.npmjs.org/typescript/7.0.2",
+      "license_metadata": "Apache-2.0",
+      "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==",
+      "engine_requirement": {
+        "node": ">=16.20.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "react",
+      "version": "19.3.1",
+      "source": "https://registry.npmjs.org/react/19.3.1",
+      "license_metadata": "MIT",
+      "integrity": "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==",
+      "engine_requirement": {
+        "node": ">=0.10.0"
+      },
+      "role": "runtime",
+      "combination_test": "untested"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.1",
+      "source": "https://registry.npmjs.org/react-dom/19.3.1",
+      "license_metadata": "MIT",
+      "integrity": "sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==",
+      "engine_requirement": null,
+      "role": "runtime",
+      "combination_test": "untested"
+    },
+    {
+      "name": "vite",
+      "version": "8.3.8",
+      "source": "https://registry.npmjs.org/vite/8.3.8",
+      "license_metadata": "MIT",
+      "integrity": "sha512-LzOn3h9rG/0vhLdXrV4yJ4QFA9eEoqCl+Yx+kGJd7aB9w6nfNgVHKSYwLPZUHrz4ZGa+t+kXjV9itvcHDLQouA==",
+      "engine_requirement": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "vitest",
+      "version": "5.1.0",
+      "source": "https://registry.npmjs.org/vitest/5.1.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-MzmNFnrwa8v8lF1bLxw3UJ4EREwVOVb75VqJZmUDRjJ6EluK/x9th7qTbaeDk41WxE1GxWqmTXcdsfobfH5sOA==",
+      "engine_requirement": {
+        "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.65.1",
+      "source": "https://registry.npmjs.org/%40playwright%2Ftest/1.65.1",
+      "license_metadata": "Apache-2.0",
+      "integrity": "sha512-y+NCIRm2LvY4slUVWvGh1nujJ8RF/hEisIsq2mtUPgdQC4L701bq5hZGMhrpeXjACvwvO9tj5dJqhvM6TP9lbw==",
+      "engine_requirement": {
+        "node": ">=20"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "ssh2",
+      "version": "1.17.0",
+      "source": "https://registry.npmjs.org/ssh2/1.17.0",
+      "license_metadata": [
+        {
+          "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE",
+          "type": "MIT"
+        }
+      ],
+      "integrity": "sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ==",
+      "engine_requirement": {
+        "node": ">=10.16.0"
+      },
+      "role": "runtime",
+      "combination_test": "untested"
+    },
+    {
+      "name": "zod",
+      "version": "4.6.7",
+      "source": "https://registry.npmjs.org/zod/4.6.7",
+      "license_metadata": "MIT",
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "engine_requirement": null,
+      "role": "runtime",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.19.2",
+      "source": "https://registry.npmjs.org/%40types%2Fnode/24.19.2",
+      "license_metadata": "MIT",
+      "integrity": "sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "source": "https://registry.npmjs.org/%40types%2Freact/19.3.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "source": "https://registry.npmjs.org/%40types%2Freact-dom/19.3.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@types/ssh2",
+      "version": "1.15.6",
+      "source": "https://registry.npmjs.org/%40types%2Fssh2/1.15.6",
+      "license_metadata": "MIT",
+      "integrity": "sha512-oGdxhBqcRTwSTKFm+9EiKzkNVYRLEFkcW44lhguvBalGJbWfGnDt/ezwSUZc+SF9m9bMc3VyklNAtp7zICjS5w==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    },
+    {
+      "name": "@electron/fuses",
+      "version": "2.1.3",
+      "source": "https://registry.npmjs.org/%40electron%2Ffuses/2.1.3",
+      "license_metadata": "MIT",
+      "integrity": "sha512-LoKJUXNiJ4JM8IIrUltSHI+8pkogaGj5wmJx81jE/Wk3g2w1/kfMbTEKNoY5kitGE8hiC12h32R/1SlywFtxXg==",
+      "engine_requirement": {
+        "node": ">=22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested"
+    }
+  ],
+  "implementation_started": false
+}

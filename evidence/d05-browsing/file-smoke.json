@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "real SSH/SFTP directory enumeration",
+    "folder navigation with spaces",
+    "untrusted names as text",
+    "symlink is metadata only",
+    "explicit refresh sees external changes",
+    "renderer reload restores cached directory without remote enumeration",
+    "disconnect preserves readonly last listing"
+  ],
+  "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+}

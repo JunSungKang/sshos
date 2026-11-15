@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "unitTests": 246,
+  "assertions": [
+    "controlled callbacks prove replacement waits for both old control and auxiliary close",
+    "closing controls and waiting reservations count toward three-server bound",
+    "pending cancellation and closeAll do not create a replacement TCP client",
+    "three real isolated key parses finish FIFO and clear accepted buffers; excess queue refused",
+    "actual SSH session, renderer/engine restart, held-link shutdown and transfer engine regressions pass"
+  ],
+  "limitation": "Delayed-close paths use controlled client fixtures; actual SSH regressions use loopback ssh2. Target OpenSSH/OS, sleep, probe, memory and production-package acceptance remain."
+}

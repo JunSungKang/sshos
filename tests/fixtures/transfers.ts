@@ -1,0 +1,6 @@
+import { resolve } from 'node:path';
+import type { TransferReceipt } from '../../src/shared/transfers';
+export function transferReceipt(direction:'upload'|'download'='upload',size=3):TransferReceipt {
+  const taskId=crypto.randomUUID(),now=new Date().toISOString();const localParent=resolve('.local/fixtures/transfer');
+  return {kind:'file_transfer',taskId,serverId:crypto.randomUUID(),generation:1,backendEpoch:crypto.randomUUID(),direction,endpointSnapshot:{name:'fixture',host:'example.invalid',port:22,username:'fixture',endpoint:'example.invalid:22'},hostKeyFingerprint:'SHA256:fixture',source:direction === 'upload' ? resolve(localParent,'source') : '/home/source',destination:direction === 'upload' ? '/home/destination' : resolve(localParent,'destination'),tempPath:direction === 'upload' ? `/home/.sshos-${taskId}.part` : resolve(localParent,`.sshos-${taskId}.part`),remoteParent:'/home',localParent,sourceInitialStat:{size,mtime:'1',identity:direction === 'upload' ? 'local-source' : ''},totalBytes:size,transferredBytes:0,verifiedBytes:0,streamSha256:null,phase:'queued',stage:'queued',cleanupState:'none',tempCreated:false,destinationCreated:false,dispatchAllowed:false,lastConfirmedPhase:'queued',errorCode:null,lateObservations:[],recoveryUncertain:false,recoveredFromPhase:null,acknowledgedAt:null,createdAt:now,updatedAt:now};
+}

@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "basis": "evidence/d11-boundaries/verification.json",
+  "changedSourcePaths": [
+    "src/main/index.ts",
+    "scripts/electron-smoke.mjs"
+  ],
+  "coverageIncludedModulesChanged": [],
+  "entrypointRevalidation": "integration-report.json and security-report.json",
+  "limitation": "Preserves unchanged unit evidence; native packet capture remains untested."
+}

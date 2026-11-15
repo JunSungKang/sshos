@@ -1,0 +1,8 @@
+{
+  "src/main/index.ts": "3a3050a57048d777affbe15e6a158e188d383518b993321af8248bff08892218",
+  "src/main/native-dialogs.ts": "1102dad97602ebfa154b58a5cc9df16bc097a02f34a8b1514e6c562dd2ddb926",
+  "src/main/profiles.ts": "723139bef3fb7c49214e7e3fb4a76fe38b7cec2cbfd6c62ab19832ac90c6d27e",
+  "src/main/transfer-selections.ts": "74d26d0dc02b63cfeefc2facf0bd50b8859a826e342f2bd4c89db72f0e5ae3c5",
+  "src/shared/transfer-selections.ts": "6986fc30c03e3eb392a85cc0da8d0439ffad32542e2196d007db1505bf7dfe88",
+  "tests/unit/transfer-selections.test.ts": "a1ba0e09eea383c1017fdce0050ebf58867dc88be2751327efc806fcac94107f"
+}

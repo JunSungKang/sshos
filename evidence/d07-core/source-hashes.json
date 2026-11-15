@@ -1,0 +1,21 @@
+{
+  "scripts/file-smoke.mjs": "e3a061dec1c270021b9cef24e2feb75e428a23ec744b953f0bc4e459726f4149",
+  "scripts/fixtures/keys.mjs": "755845a7375a5fa87a4c6b27f20583533432da6b78c8031fa41b76b05f23df85",
+  "scripts/fixtures/ssh-server.mjs": "46c0a3b00959fd29a8f4ddc78f4422ef5a74e882656cbab451cdd6f364d77c19",
+  "scripts/session-smoke.mjs": "bd9afaaad8480731afac74318d4a89e40d1dcb658f474340ebe9045faf9dec07",
+  "scripts/viewer-smoke.mjs": "99af5ffc32b5938482f0819a19fdcbde0088c60d812242a00d9c8fab60214454",
+  "src/main/connections.ts": "4f6c44409764d70305f8e50c86e7ab8930e346eb63af70fa6ddf46d008782925",
+  "src/main/index.ts": "2566d5fc2504194e8a2177259d7a227b7f1e4e787ad3f0e3e7619f6fde442aa7",
+  "src/shared/transfer-state.ts": "df1c2c67421c889d9cf950fbb40ae7a4252a0db66090871d98f0e825686a1ba6",
+  "src/shared/transfers.ts": "4eee41f0f151a002469a7aa6d5512dbc59f4bb712edda3b99a8ae3849d2d9d9a",
+  "src/worker/connection/auxiliary-sockets.ts": "dcb87a8603b568f6fc6a636078112ac561ef85181eed35fe1cb64aadffd06a08",
+  "src/worker/connection/session-manager.ts": "0f168cf168e793762ee3a3e887e552c1eb31c8832c8f7ece2402bd52e36d906c",
+  "src/worker/transfers/io.ts": "99b0e1f20bab17acef59b4587cd68d7433f301c24e8c5e187dcbe64ba15a6a2d",
+  "src/worker/transfers/progress.ts": "c740465824a670926f295db4ccad7d77d90213c2a7fcf58c7eb672bbdd88d5e9",
+  "src/worker/transfers/queue.ts": "83c4a037bbf426ed0c11d1aa721fef879d4b7c52b3f6f055f15c332f43e007c3",
+  "tests/unit/auxiliary-sockets.test.ts": "455b962d4ed7595758b066bcf772053ba003d3b24860a8801cb295c94d643ddd",
+  "tests/unit/connections.test.ts": "31d03dc639e1ba96e46630d95a86acfef3273bf6a08e930983280cc9a544dfcb",
+  "tests/unit/key-parser.test.ts": "6ccd7f291c354e0a4681ad52775dd7750d9e4f30228edb8686a4e700e9e3ff94",
+  "tests/unit/transfers.test.ts": "2b37ac9a24047edab967d366f4393ec4aa56848999c620ce5045cf44edbce972",
+  "tests/unit/viewer-channels.test.ts": "7c9f4a7e43933a9fef2f289d973e5ff49ed506e8d02d0ae580e5879d29b6f071"
+}

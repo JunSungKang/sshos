@@ -1,0 +1,9 @@
+{
+  "scripts/fixtures/ssh-server.mjs": "5c2a408097f2e37db82500f7234e236dcb25dd7ad58ae9f8be5429ecff4ffee2",
+  "src/shared/viewers/image-header.ts": "a28d04d8ebfe6313783e046f16a1e02b3ae8afa713c93a61fab11c9b57d95686",
+  "src/shared/viewers/text.ts": "311f312390cd034cea383a170e66d3e8ed2b5bfdf76268bbdf76e400a07cd2d7",
+  "src/worker/viewers/read-pool.ts": "a76597b7a61edbeb719adccc3ef0bb6152a1c801e15a4cb8daca9885a5242abf",
+  "src/worker/viewers/sftp-channel.ts": "936b34459860190bb980bd9b9794a732f1dd79f44975c354c299b4537c3d6a81",
+  "tests/unit/viewer-channels.test.ts": "e4b5abc0a95ea3c8844e62459de6e6328bb12ff1b4fc2764b8f085449e23cd77",
+  "tests/unit/viewer-formats.test.ts": "5ee5313dec0afbde24fbce357c39b3e8ab940b2ac8babef30800465914bf98f5"
+}

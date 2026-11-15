@@ -1,0 +1,15 @@
+{
+  "status": "pass",
+  "host": "darwin",
+  "architecture": "arm64",
+  "authenticationRequests": 1,
+  "assertions": [
+    "unknown host rejected before authentication",
+    "native GUI host trust confirmation",
+    "fresh verified SSH password authentication",
+    "SFTP rejection leaves SSH connected",
+    "session-specific OS confirmation",
+    "disconnect and profile cleanup"
+  ],
+  "limitation": "Loopback ssh2 fixture, not a manual Ubuntu/OpenSSH target acceptance result."
+}

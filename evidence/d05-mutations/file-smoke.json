@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "real SSH/SFTP directory enumeration",
+    "folder navigation with spaces",
+    "untrusted names as text",
+    "symlink is metadata only",
+    "explicit refresh sees external changes",
+    "renderer reload restores cached directory without remote enumeration",
+    "GUI preview sends no mutation before confirmation",
+    "confirmed mkdir0700 and nonrecursive delete with durable receipts",
+    "unsupported hardlink preserves original file",
+    "task details and confirmed local receipt deletion without remote mutation",
+    "disconnect preserves readonly last listing"
+  ],
+  "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+}

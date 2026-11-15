@@ -1,0 +1,53 @@
+{
+  "document_version": "v3",
+  "date": "2026-11-14",
+  "scope": "Planning documents only; not implementation or user-study evidence",
+  "structural_draft_validation": "pass",
+  "bidirectional_traceability": "pass",
+  "task_dependency_graph": "acyclic",
+  "source_document_hashes": "match",
+  "v2_archive_hashes": "match",
+  "active_local_links": "resolve",
+  "research_source_ids": "all mapped IDs present",
+  "counts": {
+    "requirements": 32,
+    "tasks": 11,
+    "checks": 32,
+    "planned_artifacts": 33,
+    "papers": 6,
+    "tools": 8,
+    "fault_fixture_groups": 18
+  },
+  "approval": "pending",
+  "product_check_status": {
+    "untested": 32,
+    "pass": 0
+  },
+  "implementation_started": false,
+  "git_initialized": false,
+  "temporary_artifacts_found": [],
+  "preview_generation": "pending existing output-path authorization; prompt updated only",
+  "spec_scope_digest": "b90bd946bb851751664ef7d88a1b9917a2ff69723ce611fe8d28be8d23b14c87",
+  "files": [
+    {
+      "path": "docs/01-product-plan.md",
+      "sha256": "4028c9894a1a984932a96e0cde0e5489d4fcd815cf6688cb2a72158a17c3ffe3"
+    },
+    {
+      "path": "docs/02-development-plan.md",
+      "sha256": "6728991a2e861c018eaf8d1f547a7968f340029ed7008ae2c4e91f1ca1b16402"
+    },
+    {
+      "path": "docs/03-research-and-positioning.md",
+      "sha256": "394bec85f9747c2cbe750cf4402a558ff8bd5e6a6aad922c9f4f04229793397e"
+    },
+    {
+      "path": "docs/spec-v3.json",
+      "sha256": "b96b635c930853436686755435d97f42e643c8865ca702de843d4eee7ecb6924"
+    },
+    {
+      "path": "design/preview-prompt.txt",
+      "sha256": "7717208bf3671043c51d5a5b2990b0f4eff4edfb1e8fda4737cd22536c082dde"
+    }
+  ]
+}

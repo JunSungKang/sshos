@@ -1,0 +1,5 @@
+import { errorCodeOf } from '../shared/errors';
+import { ErrorPanel } from './ErrorPanel';
+import { useEffect,useRef,useState } from 'react';
+import type { TerminalClosePreview } from '../shared/terminal-ui';
+export function TerminalCloseDialog({preview,close,done}:{preview:TerminalClosePreview;close():void;done():void}) {const dialog=useRef<HTMLDialogElement>(null);const [busy,setBusy]=useState(false),[error,setError]=useState('');useEffect(()=>{dialog.current?.showModal();},[]);return <dialog ref={dialog} className="connection-dialog" aria-label="터미널 세션 닫기" onCancel={event=>{event.preventDefault();if(!busy)close();}}><h2>{preview.terminalName} 세션 닫기</h2><p>{preview.serverName} · {preview.endpoint}</p><p>이 채널과 로컬 입력을 닫습니다. 원격 프로그램과 자식 프로세스 전체의 종료는 보장하지 않습니다. 종료 정보가 없으면 결과 불명으로 기록합니다.</p>{error && <ErrorPanel error={error} phase={null} target={preview.terminalName}/>}<button disabled={busy} onClick={()=>{setBusy(true);void window.sshOS.terminal.close(preview.confirmationToken).then(()=>{done();close();}).catch(failure=>setError(errorCodeOf(failure))).finally(()=>setBusy(false));}}>세션 닫기</button><button disabled={busy} onClick={close}>유지</button></dialog>;}

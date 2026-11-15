@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "sourceRevision": "80504518a8d6944ca5cbbf285a9ef74fbd58867a",
+  "sourceDirty": false,
+  "packageLockSHA256": "f9092e4d22f10ce0afa36022dbb2fd49110221c849335961b0ce42e04aa242c3",
+  "node": "24.22.3",
+  "electron": "45.3.2",
+  "kind": "development",
+  "publisherSigned": false,
+  "notarized": false,
+  "releaseReady": false,
+  "buildHost": {
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "commands": [
+    "npm ci",
+    "npm run typecheck",
+    "npm run test:unit",
+    "npm run package:mac"
+  ],
+  "builtAt": "2026-11-15T09:28:34.742Z",
+  "artifacts": [
+    {
+      "name": "sshOS-0.1.0-arm64-mac.zip",
+      "bytes": 120588853,
+      "sha256": "7ce44aec6fe221b351f51732fed8c1ef01ef93dc0abfbea04495a7807150a3cb",
+      "compressedSizeWithin250MiB": true
+    },
+    {
+      "name": "sshOS-0.1.0-mac.zip",
+      "bytes": 127796632,
+      "sha256": "72b4df0f7d975751153ba1b980b40e1d78a57ae2ad1615ae932af6c045c84c09",
+      "compressedSizeWithin250MiB": true
+    }
+  ],
+  "packageChecks": [
+    {
+      "architecture": "arm64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 14,
+      "publisherSignature": "ad-hoc only",
+      "nativeLaunch": "untested"
+    },
+    {
+      "architecture": "x64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 14,
+      "publisherSignature": "ad-hoc only",
+      "nativeLaunch": "untested"
+    }
+  ],
+  "sourceArchive": {
+    "name": "sshOS-0.1.0-80504518a8d6-source.tar",
+    "sha256": "de0d871f478b78e68e68b3f9ac2cae4542c471d2264157cc4be7b626b21f12b5"
+  },
+  "limitations": [
+    "Development artifacts only; no publisher certificate/notarization.",
+    "Cross-built files do not prove target OS launch, OpenSSH matrix, performance or accessibility.",
+    "Production inspector fuse is disabled; Playwright automation build is not distributed."
+  ]
+}

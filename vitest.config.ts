@@ -1,0 +1,2 @@
+import { defineConfig } from 'vitest/config';
+export default defineConfig({ test: { include: ['tests/unit/**/*.test.ts'], environment: 'node',coverage:{provider:'v8',reportsDirectory:'.local/coverage',reporter:['text','json','json-summary','html'],include:['src/shared/**/*.ts','src/main/**/*.ts','src/worker/**/*.ts'],exclude:['src/main/index.ts','src/worker/index.ts','src/worker/connection/key-parser-thread.ts'],thresholds:{perFile:true,statements:90,branches:85}} } });

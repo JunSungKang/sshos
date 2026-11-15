@@ -1,0 +1,46 @@
+{
+  "typecheck": "pass",
+  "unitTests": 313,
+  "unitFiles": 59,
+  "desktopGUI": "desktop-ui.json",
+  "terminalGUIRegression": "pass",
+  "coverageGate": "fail",
+  "coverageMeasuredBeforeLatest5AddedBoundaryCases": {
+    "lines": {
+      "total": 2482,
+      "covered": 2338,
+      "skipped": 0,
+      "pct": 94.19
+    },
+    "statements": {
+      "total": 7164,
+      "covered": 5956,
+      "skipped": 0,
+      "pct": 83.13
+    },
+    "functions": {
+      "total": 1268,
+      "covered": 1114,
+      "skipped": 0,
+      "pct": 87.85
+    },
+    "branches": {
+      "total": 5006,
+      "covered": 3692,
+      "skipped": 0,
+      "pct": 73.75
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "coverageThresholds": {
+    "perFile": true,
+    "statements": 90,
+    "branches": 85
+  },
+  "scope": "Current-host development fixtures; coverage remains an unresolved mandatory code-verification gap. No native target acceptance."
+}

@@ -1,0 +1,21 @@
+
+> sshos@0.1.0 build
+> tsc -p tsconfig.json && vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vite.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 126 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/renderer/tests/xterm.html                             0.43 kB │ gzip:   0.28 kB
+dist/renderer/index.html                                   0.45 kB │ gzip:   0.31 kB
+dist/renderer/assets/xterm-B1njb2Cr.css                    3.96 kB │ gzip:   1.02 kB
+dist/renderer/assets/main-B8EBgca4.css                    10.87 kB │ gzip:   3.07 kB
+dist/renderer/assets/modulepreload-polyfill-P2Xu9kJm.js    0.67 kB │ gzip:   0.38 kB
+dist/renderer/assets/xterm-Bp2-knoL.js                   332.58 kB │ gzip:  83.63 kB
+dist/renderer/assets/main-C0suscYg.js                    348.90 kB │ gzip: 105.91 kB
+
+✓ built in 148ms

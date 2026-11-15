@@ -1,0 +1,52 @@
+{
+  "version": "v6",
+  "updated_on": "2026-11-15",
+  "status": "implementation_in_progress_D11",
+  "framework": "Electron",
+  "methodology": "SDD",
+  "workspace_root": "/Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS",
+  "implementation_started": true,
+  "git_initialized": true,
+  "dependencies_installed": true,
+  "product_checks": "all untested",
+  "scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+  "document_revision_authorization": {
+    "source": "user_message",
+    "original_quote": "문서 전수 점검하고 지금까지 대화한 세션을 토대로 계획서 및 개발 계획서등 모든 문서를 전면 수정해"
+  },
+  "implementation_approval": {
+    "status": "approved",
+    "scope_digest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+    "evidence": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
+  },
+  "current_planning_open_questions": [],
+  "implementation_prerequisites": [
+    "Actual implementation instruction",
+    "Authorized target and fixture environments",
+    "Signing/notarization resources for public binaries",
+    "Actual remote for push"
+  ],
+  "prior_revision": "docs/history/v5-before-desktop-20261115/archive-manifest.json",
+  "temporary_artifacts": [],
+  "document_hashes": {
+    "README.md": "989f50bc343e084f4d493fb49e8c615fa7417b09056375fb4b72064c164dc74e",
+    "docs/01-product-plan.md": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
+    "docs/02-development-plan.md": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
+    "docs/03-research-and-positioning.md": "bfd947769381b609bf03b7e2d4440aca5034bb43f751bdeb0434c397bbd5a47f",
+    "docs/04-system-architecture.md": "e544a9b048b929bd60d92b25e3031f16caadb8869ca5d63e356cce3575f1cea1",
+    "docs/05-framework-comparison.md": "3f18edb802e5134636231410bea74a71b30793ad06ac3394b59678c6db7d5e6a",
+    "docs/06-quality-security-checklist.md": "9285e3a52938ad904153d6dbae038e41d61bd74356f3d2eadd19573029897541",
+    "docs/07-implementation-handoff.md": "4ff4a19da385c6eb05b09763ed1e06b4a288b3ee08b711e27cb5f4796af3afff",
+    "docs/08-requirement-traceability.md": "1c3f6c2536e349f1ef7ddf66d5e0e5c88e2da1da6a365a2b51494cad552f7bdc",
+    "docs/09-desktop-interaction-spec.md": "de84d2cb0dd741b2c5aabdc76d144abb17cba329be316facf330c4f7888cf003",
+    "docs/10-session-decisions.md": "a9bef4a9cc91acf3dc330a5159b4bf9a25dd9795c6b6d18cf32417fc452f5b3d",
+    "docs/11-document-audit.md": "1b0c441ef5c951f9b5c21c1a054f0c40a1522dbf2745b5f7fddc5db20241c5d6",
+    "docs/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
+    "docs/validate-plan.py": "a168c7fae9370ea97dc9edf8d88d18c973acfc8b311423188fdf48b2ecf47c5b",
+    "design/README.md": "90d6fba01e4ad898c24082d3e7e497ec35117a1f88fc6a95d83d80543da03d72",
+    "design/preview-prompt.txt": "3a5b025b3ab6fd88ed3d63be43956c44f2d96d5e04f7490aa5dbe9014d21233e",
+    "design/mockups/scene-spec-v6.json": "aeafe614dff09c88e8a058711e5d1afa3c51e81e4d3edf02a000706587fc857a",
+    "docs/spec-v6.json": "f71770abd618c4cc5206eb1e33f873b733335273193e26f2e25f3172b8fe3965"
+  },
+  "next_action": "See docs/implementation-status.json and docs/development/implementation-traceability.md for current implementation and remaining target/review gates."
+}

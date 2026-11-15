@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-14",
+  "reason": "Research-based v3 strategy revision; exact pre-revision bytes",
+  "files": [
+    {
+      "original": "docs/01-product-plan.md",
+      "archive": "docs/history/v2/01-product-plan.md",
+      "sha256": "5ef4c1d4b056a6f751bfeff74eb23480d7ccc2225b1407e3d9db2eeec36a5abd"
+    },
+    {
+      "original": "docs/02-development-plan.md",
+      "archive": "docs/history/v2/02-development-plan.md",
+      "sha256": "f56f32f7d1a024cee6122976e120d881d308bba7fe3501beb8e17b2ef63c1fc9"
+    },
+    {
+      "original": "docs/spec-v2.json",
+      "archive": "docs/history/v2/spec-v2.json",
+      "sha256": "789ffb1a2ca5da5f71bb24de9710da9bfb6fde8e650c014b113df5ce0e6a8f44"
+    },
+    {
+      "original": "design/preview-prompt.txt",
+      "archive": "docs/history/v2/preview-prompt.txt",
+      "sha256": "69cf29ec9b8b5d7060a775cf82f879bffa97507237a8d1f21c279eeb4660e736"
+    }
+  ]
+}
