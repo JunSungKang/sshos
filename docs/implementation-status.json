@@ -114,14 +114,17 @@
     "Settings list saved endpoint fingerprints and saved credential ownership without blobs/ciphertext; native-confirmed removal quiesces all affected profiles/tasks before atomic JSON change; connect/profile edits/trust approval locked during change",
     "Strict allowlisted default JSONL log limited to1MiB x3,128 pending entries,100-row diagnostic preview; frozen60s one-use export, native save dialog, no overwrite and stale-renderer rejection",
     "All specification13 fixed Korean errors mapped and checked; actual xterm long OSC/DCS, combining and oversized numeric fixtures exercised",
-    "Utility process disables automatic network address-family retries; integration/security commands execute actual suites rather than missing-fixture gates"
+    "Utility process disables automatic network address-family retries; integration/security commands execute actual suites rather than missing-fixture gates",
+    "Window cap opens actual window list with explicit close/select; active-window Tab can reach taskbar and Enter restores selected-window focus; minimized content immediately inert,150ms restore/minimize with reduced-motion override",
+    "Instrumented source key-parser coordinator retains real compiled parser threads; new failure/cancellation/termination, key-file, profile/file capability, redacted-export, metadata/geometry boundary tests",
+    "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 277,
-      "evidence": "evidence/d11-settings-diagnostics/verification.json"
+      "tests": 313,
+      "evidence": "evidence/d11-desktop-coverage/verification.json"
     },
     "build": "pass",
     "electron_smoke": {
@@ -476,6 +479,29 @@
       "status": "pass",
       "suites": 16,
       "evidence": "evidence/d11-settings-diagnostics/integration/report.json"
+    },
+    "coverage": {
+      "status": "fail",
+      "statements": 83.13,
+      "branches": 73.75,
+      "requiredStatements": 90,
+      "requiredBranches": 85,
+      "perFile": true,
+      "evidence": "evidence/d11-desktop-coverage/coverage-failing-baseline.txt",
+      "scope": "Measured before the latest5 additional schema/geometry tests; do not represent test pass as coverage pass."
+    },
+    "desktop_ui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "file-window cap displays actual open-window list without terminating other windows",
+        "explicit listed-window close makes capacity available",
+        "active-window Tab leaves through its taskbar; Enter returns focus to selected window",
+        "minimize immediately makes content inert and retains taskbar; restore reuses same window",
+        "150ms transition and OS reduced-motion override"
+      ],
+      "limitation": "Current-host development Electron and loopback SSH fixture. Native keyboard layout/IME/screen reader/scale matrix and target OS acceptance remain."
     }
   },
   "remaining_D01": [
@@ -490,12 +516,17 @@
       "id": "DEP-001",
       "severity": "moderate",
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
+    },
+    {
+      "id": "TEST-001",
+      "severity": "release_blocking_verification_gap",
+      "summary": "Required per-file statement90% / branch85% unit coverage is not met. Real report retained; no threshold reduction or exclusion to claim pass."
     }
   ],
-  "next_action": "D11 remaining desktop accessibility/window-limit UX, measured coverage and performance/security audit; D12 packages/source/licenses/SBOM; D13 user handoff.",
+  "next_action": "Fill D11 security/recovery coverage gaps and implement late file-mutation ACK metadata preservation; then measured performance/audit, D12 packages/notices/SBOM and D13 handoff.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-settings-diagnostics",
+  "latest_evidence_directory": "evidence/d11-desktop-coverage",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
