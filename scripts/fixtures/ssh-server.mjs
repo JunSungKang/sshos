@@ -19,12 +19,15 @@ export async function startSSHFixture(directory, options = {}) {
   };
   const status = ssh2.utils.sftp.STATUS_CODE; const host = fixtureKey();
   const pending=new Set();
-  const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], readDirs: 0, openedPaths: [], mutations:[] };
+  const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], ptyRequests:[],shells:0,windowChanges:[],readDirs: 0, openedPaths: [], mutations:[] };
   const server = new ssh2.Server({ hostKeys: [host.private] }, connection => {
     connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});
     connection.on('authentication', ctx => { metrics.authenticationRequests++; if (ctx.method === 'password' && ctx.username === 'fixture' && ctx.password === 'test-only') ctx.accept(); else ctx.reject(['password']); });
     connection.on('session', accept => {
       const session = accept();
+      session.on('pty',(acceptPTY,rejectPTY,info)=>{metrics.ptyRequests.push(info);if(options.shell)acceptPTY();else rejectPTY();});
+      session.on('window-change',(acceptWindow,_rejectWindow,info)=>{metrics.windowChanges.push(info);acceptWindow?.();});
+      session.on('shell',(acceptShell,rejectShell)=>{metrics.shells++;if(options.shell)options.shell({accept:acceptShell,reject:rejectShell,session});else rejectShell();});
       session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
       session.on('sftp', acceptSFTP => {
         const stream = acceptSFTP(); const handles = new Map();

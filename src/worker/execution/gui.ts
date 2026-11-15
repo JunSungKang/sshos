@@ -7,7 +7,7 @@ import { ExecutionChannels,type ChannelTicket } from './channels';
 import { ExecutionInspector } from './inspect';
 import { ExecutionOutputRing,type OutputBatch } from './output-ring';
 export type ExecutionRuntime={receipt:ExecutionReceipt;recordError:boolean;recordPending:boolean;active:boolean;cleanupPending:boolean};
-type Job={row:ExecutionReceipt;ticket:ChannelTicket|null;channel:ClientChannel|null;active:boolean;cleanupPending:boolean;recordError:boolean;pending:number;tail:Promise<void>;closeRequested:boolean;channelError:boolean;stopTimer:ReturnType<typeof setTimeout>|null;outputTimer:ReturnType<typeof setTimeout>|null;outputAt:number};
+type Job={sessionEnded:boolean;row:ExecutionReceipt;ticket:ChannelTicket|null;channel:ClientChannel|null;active:boolean;cleanupPending:boolean;recordError:boolean;pending:number;tail:Promise<void>;closeRequested:boolean;channelError:boolean;stopTimer:ReturnType<typeof setTimeout>|null;outputTimer:ReturnType<typeof setTimeout>|null;outputAt:number};
 const errorCode=(error:unknown)=>error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INTERNAL_ERROR';
 export class GUIExecutions {
   private readonly jobs=new Map<string,Job>();readonly output=new ExecutionOutputRing();readonly channels:ExecutionChannels;readonly inspector:ExecutionInspector;
@@ -20,13 +20,13 @@ export class GUIExecutions {
     job.row=executionReceiptSchema.parse({...job.row,...change,updatedAt:new Date().toISOString()});const row=structuredClone(job.row);job.pending++;this.publish(job);
     const operation=job.tail.then(()=>this.writer.persist(row));job.tail=operation.catch(()=>{job.recordError=true;}).finally(()=>{job.pending--;this.publish(job);});return operation;
   }
-  private save(job:Job,change:Partial<ExecutionReceipt>):void {void this.persist(job,change).catch(()=>{});}
+  private save(job:Job,change:Partial<ExecutionReceipt>):void {if(this.jobs.get(job.row.taskId) !== job)return;void this.persist(job,change).catch(()=>{});}
   private require(serverId:string,generation:number,id:string):Job {const job=this.jobs.get(id);if(!job || job.row.serverId !== serverId || job.row.generation !== generation)throw new Error('TOKEN_EXPIRED');return job;}
   inspect(serverId:string,generation:number,spec:ExecutionSpec):Promise<InitialStat> {return this.sessions.withMetadata(serverId,generation,()=>this.inspector.inspect(serverId,generation,spec));}
   start(input:ExecutionReceipt,rawSpec:ExecutionSpec,rawExpected:InitialStat):ExecutionRuntime {
     if(this.writer.faulted)throw new Error('STORAGE_FAILED');const row=executionReceiptSchema.parse(input),spec=executionSpecSchema.parse(rawSpec),expected=initialStatSchema.parse(rawExpected);
     if(row.kind !== 'gui_exec' || row.phase !== 'prepared' || row.backendEpoch !== this.epoch || row.source !== spec.path || row.cwd !== spec.cwd || row.channelAccepted || row.channelClosed || row.exitObserved || row.exitCode !== null || row.exitSignal !== null || row.stopRequestedAt !== null || row.acknowledgedAt !== null || row.recoveryUncertain || this.jobs.has(row.taskId) || this.jobs.size>=1000)throw new Error('INPUT_INVALID');
-    const job:Job={row,ticket:null,channel:null,active:true,cleanupPending:false,recordError:false,pending:0,tail:Promise.resolve(),closeRequested:false,channelError:false,stopTimer:null,outputTimer:null,outputAt:0};this.jobs.set(row.taskId,job);this.output.register(row.taskId);
+    const job:Job={sessionEnded:false,row,ticket:null,channel:null,active:true,cleanupPending:false,recordError:false,pending:0,tail:Promise.resolve(),closeRequested:false,channelError:false,stopTimer:null,outputTimer:null,outputAt:0};this.jobs.set(row.taskId,job);this.output.register(row.taskId);
     try {
       const ticket=this.channels.open(row.taskId,row.serverId,row.generation,{kind:'gui_exec',command:executionCommand(spec)},async()=>{
         const current=await this.inspect(row.serverId,row.generation,spec);if(JSON.stringify(current) !== JSON.stringify(expected))throw new Error('SOURCE_CHANGED');if(job.closeRequested)throw new Error('EXEC_CANCELLED_NOT_SENT');await this.persist(job,{phase:'dispatching',lastConfirmedPhase:'dispatch_intent'});
@@ -38,7 +38,7 @@ export class GUIExecutions {
   }
   private accepted(job:Job,channel:ClientChannel):void {
     job.channel=channel;
-    const output=(stream:'stdout'|'stderr',bytes:Buffer)=>{this.output.append(job.row.taskId,stream,bytes);const now=performance.now();job.outputAt=Math.max(now,job.outputAt)+bytes.length*1000/(1024**2);const delay=job.outputAt-now;if(delay>1){channel.pause();channel.stderr.pause();if(job.outputTimer)clearTimeout(job.outputTimer);job.outputTimer=setTimeout(()=>{job.outputTimer=null;channel.resume();channel.stderr.resume();},delay);}};
+    const output=(stream:'stdout'|'stderr',bytes:Buffer)=>{if(job.sessionEnded || this.jobs.get(job.row.taskId) !== job)return;this.output.append(job.row.taskId,stream,bytes);const now=performance.now();job.outputAt=Math.max(now,job.outputAt)+bytes.length*1000/(1024**2);const delay=job.outputAt-now;if(delay>1){channel.pause();channel.stderr.pause();if(job.outputTimer)clearTimeout(job.outputTimer);job.outputTimer=setTimeout(()=>{job.outputTimer=null;channel.resume();channel.stderr.resume();},delay);}};
     channel.on('data',(bytes:Buffer)=>output('stdout',bytes));channel.stderr.on('data',(bytes:Buffer)=>output('stderr',bytes));
     channel.on('error',()=>{job.channelError=true;});
     channel.on('exit',(code:number|null,signal?:string)=>{const validCode=Number.isSafeInteger(code) && code !== null && code>=0 && code<=0xffffffff,validSignal=typeof signal === 'string' && /^[A-Z0-9_-]{1,32}$/u.test(signal);if(!validCode && !validSignal)return;if(job.stopTimer)clearTimeout(job.stopTimer);this.save(job,{exitObserved:true,exitCode:validCode ? code:null,exitSignal:validSignal ? signal:null,lastConfirmedPhase:'exit_observed'});});
@@ -55,5 +55,5 @@ export class GUIExecutions {
   }
   closeChannel(serverId:string,generation:number,id:string):void {const job=this.require(serverId,generation,id);if(!job.active)return;job.closeRequested=true;this.save(job,{phase:job.ticket?.requestSent ? 'result_unknown':'cancelled_not_sent',errorCode:job.ticket?.requestSent ? 'EXEC_RESULT_UNKNOWN':null});job.ticket?.close();}
   async forget(serverId:string,generation:number,id:string):Promise<void> {const job=this.require(serverId,generation,id);if(job.active || job.pending)throw new Error('REQUEST_BUSY');await job.tail;this.output.forget(id);this.jobs.delete(id);}
-  sessionChanged(serverId:string,generation:number,connected:boolean):void {for(const job of this.jobs.values())if(job.row.serverId === serverId && (!connected || job.row.generation !== generation))this.output.clear(job.row.taskId);}
+  sessionChanged(serverId:string,generation:number,connected:boolean):void {for(const job of this.jobs.values())if(job.row.serverId === serverId && (!connected || job.row.generation !== generation)){job.sessionEnded=true;this.output.clear(job.row.taskId);}}
 }

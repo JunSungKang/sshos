@@ -4,7 +4,7 @@ import { ExecutionSlots } from '../../src/worker/execution/slots';
 import { spawn } from 'node:child_process';
 import { mkdir,mkdtemp,writeFile,rm,access } from 'node:fs/promises';
 import { resolve,join } from 'node:path';
-const run=(command:string)=>new Promise<string>((done,reject)=>{const child=spawn('/bin/sh',['-c',command],{stdio:['ignore','pipe','pipe']});let output='';child.stdout.on('data',bytes=>{output+=bytes.toString();});child.on('error',reject);child.on('exit',code=>code===0 ? done(output):reject(new Error('fixture exit '+code)));});
+const run=(command:string)=>new Promise<string>((done,reject)=>{const child=spawn('/bin/sh',['-c',command],{stdio:['ignore','pipe','pipe']});let output='';child.stdout.setEncoding('utf8');child.stdout.on('data',bytes=>{output+=bytes.toString();});child.on('error',reject);child.on('close',code=>code===0 ? done(output):reject(new Error('fixture exit '+code)));});
 describe('GUI execution command boundary and shared slots',()=>{
  it('preserves metacharacters, empty arguments and Unicode as distinct argv in a real POSIX shell',async()=>{
    await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/exec-quote-'));
