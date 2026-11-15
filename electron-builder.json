@@ -12,6 +12,7 @@
     "!dist/renderer/tests/**/*",
     "package.json",
     "LICENSE",
+    "NOTICE",
     "!node_modules/{cpu-features,nan,buildcheck}/**/*",
     "!node_modules/ssh2/lib/protocol/crypto/**/*",
     "!**/*.node",

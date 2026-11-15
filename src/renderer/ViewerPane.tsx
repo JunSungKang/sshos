@@ -1,3 +1,5 @@
+import { ErrorPanel } from './ErrorPanel';
+import { errorCodeOf } from '../shared/errors';
 import { useEffect, useRef, useState } from 'react';
 import type { SessionView } from '../shared/session-contracts';
 import type { ViewerDescriptor } from '../shared/viewers/reader';
@@ -6,11 +8,7 @@ import type { ImageHeader } from '../shared/viewers/image-header';
 import { ViewerDecoder } from './ViewerDecoder';
 import { scheduleViewerFrame } from './viewer-stream-scheduler';
 
-const explain=(error:unknown) => {
-  const message=error instanceof Error ? error.message : '';
-  const codes:Record<string,string>={VIEW_LIMIT:'파일 크기 또는 이미지 치수가 지원 한도를 초과했습니다.',VIEW_FORMAT_UNSUPPORTED:'UTF-8 텍스트 또는 지원하는 정적 이미지 형식으로 읽을 수 없습니다.',SOURCE_CHANGED:'읽는 중 파일 변경을 관측했습니다. 이전 화면을 유지합니다. 다시 읽기를 요청하세요.',IO_TIMEOUT:'내용 읽기 또는 해석 시간이 제한을 초과했습니다.',CONNECTION_LOST:'SSH 연결이 끊겼습니다. 마지막으로 표시한 내용은 유지합니다.',PERMISSION_DENIED:'이 파일의 내용을 읽을 권한이 없습니다.',REQUEST_CANCELLED:'읽기가 중단됐습니다. 다시 읽기를 요청할 수 있습니다.',TOKEN_EXPIRED:'이 연결의 읽기 권한이 만료됐습니다. 다시 연결한 뒤 파일을 다시 여세요.'};
-  return Object.entries(codes).find(([code]) => message.includes(code))?.[1] ?? '파일 내용을 읽지 못했습니다. 연결 상태와 읽기 권한을 확인하세요.';
-};
+const explain=errorCodeOf;
 export function ViewerPane({windowId,kind,session,onName}:{windowId:string;kind:'text'|'image';session?:SessionView;onName(name:string,serverName:string):void}) {
   const [descriptor,setDescriptor]=useState<ViewerDescriptor|null>(null);const descriptorRef=useRef<ViewerDescriptor|null>(null);
   const [text,setText]=useState<DecodedText|null>(null);const [image,setImage]=useState<ImageHeader|null>(null);
@@ -71,7 +69,7 @@ export function ViewerPane({windowId,kind,session,onName}:{windowId:string;kind:
     <div className="viewer-toolbar"><button disabled={!connected || restartPending} onClick={() => {void reread();}}>다시 읽기</button><strong>읽기 전용</strong>{kind === 'image' && <label>배율<select aria-label="이미지 배율" value={zoom} onChange={event => setZoom(event.target.value === 'fit' ? 'fit' : Number(event.target.value) as 25|50|100|200)}><option value="fit">화면 맞춤</option>{[25,50,100,200].map(value => <option value={value} key={value}>{value}%</option>)}</select></label>}</div>
     <div className="viewer-location">{descriptor?.endpoint}<code>{descriptor?.path}</code></div>
     {descriptor && !connected && <p className="file-warning">연결 끊김 · 마지막 표시 내용을 읽기 전용으로 유지합니다.</p>}
-    {error && <p role="alert" className="file-warning">{error}</p>}
+    {error && <ErrorPanel error={error} phase={null} target={descriptor?.path ?? null}/>}
     <div className="viewer-viewport" ref={viewport}>
       {kind === 'text' ? text ? <VirtualText value={text} /> : <p className="viewer-empty">{status}</p> : <div className="image-surface"><canvas ref={canvas} role="img" aria-label={descriptor ? `${descriptor.name} 이미지` : '이미지'} style={{width:image ? image.width*scale : 0,height:image ? image.height*scale : 0}} />{!image && <p className="viewer-empty">{status}</p>}</div>}
     </div>
