@@ -3,6 +3,7 @@ import { resolve, relative, isAbsolute, sep } from 'node:path';
 import { AtomicJSONStore } from './store';
 import { type MutationReceipt } from '../../shared/mutations';
 import { fileReceiptSchema,receiptUnresolved as unresolved,receiptTerminal as terminal,type FileReceipt } from '../../shared/receipts';
+import { recoverExecution } from '../../shared/executions';
 import { recoverTransfer } from '../../shared/transfers';
 import { claimsConflict, type PathClaim } from '../../worker/files/path-locks';
 import { transferClaims } from '../../worker/transfers/claims';
@@ -41,7 +42,7 @@ export class ReceiptRepository {
       let loaded:Awaited<ReturnType<typeof store.load>>;
       try { loaded=await store.load(); if (loaded.value.taskId !== id) throw new Error('STORAGE_FAILED'); }
       catch { repo.damaged.add(id); continue; }
-      const recovered=loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : recoverTransfer(loaded.value,loaded.recovered); repo.stores.set(id,store);
+      const recovered=loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : loaded.value.kind === 'file_transfer' ? recoverTransfer(loaded.value,loaded.recovered) : recoverExecution(loaded.value,loaded.recovered); repo.stores.set(id,store);
       if (recovered !== loaded.value) { try { await store.save(recovered); } catch { repo.fault=true; } }
     }
     await repo.prune(); return repo;
@@ -55,7 +56,7 @@ export class ReceiptRepository {
     if (this.faulted) throw new Error('STORAGE_FAILED');
     const pending=this.snapshots().filter(unresolved);
     if (pending.length>=100) throw new Error('UNRESOLVED_LIMIT');
-    if (pending.some(row => row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
+    if (pending.some(row => (row.kind === 'file_transfer' || row.kind === 'file_mutation') && row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
     if (localClaims.length && pending.some(row => row.kind === 'file_transfer' && claimsConflict(localClaims,transferClaims(row).local))) throw new Error('RESULT_UNKNOWN');
   }
   async save(receipt:FileReceipt):Promise<void> {
@@ -63,7 +64,7 @@ export class ReceiptRepository {
       if (this.faulted) throw new Error('STORAGE_FAILED');
       const parsed=fileReceiptSchema.parse(receipt);if (parsed.kind === 'file_transfer' && parsed.phase === 'finalize_intent_pending') throw new Error('INPUT_INVALID');let store=this.stores.get(receipt.taskId);
       if (store) {
-        const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt];
+        const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.createdAt] : row.kind === 'file_transfer' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.executionId,row.terminalId,row.source,row.cwd,row.createdAt];
         if (JSON.stringify(immutable(previous)) !== JSON.stringify(immutable(parsed))) throw new Error('INPUT_INVALID');
         if (terminal(previous) && previous.phase !== parsed.phase) throw new Error('INPUT_INVALID');
       }

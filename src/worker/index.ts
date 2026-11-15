@@ -8,6 +8,7 @@ import { PathLocks } from './files/path-locks';
 import { ViewerReader } from './viewers/reader';
 import { WorkerReceiptWriter } from './receipt-writer';
 import { TransferCoordinator } from './transfers/coordinator';
+import { GUIExecutions } from './execution/gui';
 import { WorkerStorageRecovery } from './storage-recovery';
 import { TransferInspector } from './transfers/inspect';
 
@@ -17,10 +18,12 @@ if (!process.parentPort) throw new Error('Utility process parent port required')
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
 process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary: 'ssh2' });
 let transfers:TransferCoordinator|null=null;
+let executions:GUIExecutions|null=null;let executionSequence=0;
 const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message),() => transfers?.storageFault());
 let sequence = 0;
 let readers:ViewerReader|null=null;
 const sessions = new SessionManager(snapshot => {
+  executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   transfers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   readers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot });
@@ -30,6 +33,7 @@ const files = new FileBrowser((serverId, generation) => sessions.control(serverI
 const locks=new PathLocks();
 let transferSequence=0;
 transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
+executions=new GUIExecutions(epoch,sessions,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'execution',backendEpoch:epoch,sequence:++executionSequence,snapshot}));
 const recovery=new WorkerStorageRecovery(epoch,receiptWriter,transfers,message=>process.parentPort?.postMessage(message));
 const transferInspector=new TransferInspector((serverId,generation) => sessions.control(serverId,generation,true));
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
@@ -38,7 +42,14 @@ const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {
   try {
     let result: unknown;
-    if (request.action === 'session:connect') result = await sessions.connect(request.serverId, request.generation, request.payload);
+    if (request.action === 'execution:inspect') result=await executions!.inspect(request.serverId,request.generation,request.spec);
+    else if (request.action === 'execution:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=executions!.start(request.receipt,request.spec,request.expected);}
+    else if (request.action === 'execution:snapshot') result={...executions!.page(request.serverId,request.generation,request.offset),sequence:executionSequence};
+    else if (request.action === 'execution:read') result=executions!.read(request.serverId,request.generation,request.executionId,request.cursor);
+    else if (request.action === 'execution:stop') executions!.stop(request.serverId,request.generation,request.executionId);
+    else if (request.action === 'execution:close') executions!.closeChannel(request.serverId,request.generation,request.executionId);
+    else if (request.action === 'execution:forget') await executions!.forget(request.serverId,request.generation,request.executionId);
+    else if (request.action === 'session:connect') result = await sessions.connect(request.serverId, request.generation, request.payload);
     else if (request.action === 'session:disconnect') sessions.disconnect(request.serverId, request.generation);
     else if (request.action === 'session:snapshot') result = sessions.snapshots();
     else if (request.action === 'session:confirmOS') sessions.confirmOS(request.serverId, request.generation);
@@ -81,7 +92,7 @@ process.parentPort.on('message', (event: { data: unknown }) => {
       inFlight.delete(request.requestId);
       // Viewer bytes have their own one-chunk sequence replay buffer. Never put
       // file content into the generic RPC completion/snapshot cache.
-      if (request.action !== 'viewer:next') completed.set(request.requestId, result);
+      if (request.action !== 'viewer:next' && request.action !== 'execution:read') completed.set(request.requestId, result);
       while (completed.size > 200) completed.delete(completed.keys().next().value!);
     });
   }
