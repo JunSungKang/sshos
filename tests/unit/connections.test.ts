@@ -1,4 +1,4 @@
-import { afterEach,describe,expect,it } from 'vitest';
+import { afterEach,describe,expect,it,vi } from 'vitest';
 import { mkdir,mkdtemp,rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { ConnectionController } from '../../src/main/connections';
@@ -7,16 +7,17 @@ import type { EngineGateway } from '../../src/main/engine-gateway';
 import type { SecretVault } from '../../src/main/persistence/secrets';
 import type { SessionSnapshot } from '../../src/shared/session-contracts';
 const owned:string[]=[];
-afterEach(async () => {for (const root of owned.splice(0)) await rm(root,{recursive:true});});
+afterEach(async () => {vi.restoreAllMocks();for (const root of owned.splice(0)) await rm(root,{recursive:true});});
 const deferred=<T>() => {let resolve!:(value:T)=>void;const promise=new Promise<T>(done => {resolve=done;});return {promise,resolve};};
-async function fixture() {
+async function fixture(unknown=false) {
   await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/connections-'));owned.push(root);
   const repo=await StateRepository.open(resolve(root,'data'));const profile=await repo.create({name:'fixture',host:'example.invalid',port:22,username:'fixture',authentication:'password'});
-  await repo.trust('example.invalid:22',Buffer.from('fixture-public-blob'),'SHA256:fixture');
+  if (!unknown) await repo.trust('example.invalid:22',Buffer.from('fixture-public-blob'),'SHA256:fixture');
   const encrypted=deferred<string>();let encryptionStarted=false,healthy=true;let connects=0;let controller!:ConnectionController;
-  const gateway={request:async (request:{action:string;serverId:string;generation:number}) => {
+  const gateway={request:async (request:{action:string;serverId:string;generation:number;payload?:{trustedHostKey:string|null}}) => {
     if (request.action === 'session:disconnect') return;
-    connects++;const snapshot:SessionSnapshot={serverId:request.serverId,generation:request.generation,status:'connected',os:'supported',osConfirmed:false,sftp:'available',initialPath:'/home/fixture',errorCode:null};
+    connects++;if (request.payload?.trustedHostKey === null) return {status:'awaiting_host_trust',publicKey:Buffer.from('fixture-public-blob').toString('base64'),fingerprint:'SHA256:fixture'};
+    const snapshot:SessionSnapshot={serverId:request.serverId,generation:request.generation,status:'connected',os:'supported',osConfirmed:false,sftp:'available',initialPath:'/home/fixture',errorCode:null};
     controller.observe(snapshot);return {status:'connected',snapshot};
   }} as unknown as EngineGateway;
   const vault={encrypt:async () => {encryptionStarted=true;return encrypted.promise;}} as unknown as SecretVault;
@@ -40,5 +41,11 @@ describe('connection readiness and credential lifetime',() => {
   });
   it('blocks trust-writing connection operations while the receipt writer is faulted',async () => {
     const f=await fixture();f.setHealthy(false);await expect(f.controller.connect(f.profile.id,{password:'fixture-only',saveSecret:false})).rejects.toThrow('STORAGE_FAILED');expect(f.connects).toBe(0);
+  });
+  it('does not start fresh authentication after disconnect during durable host trust approval',async () => {
+    const f=await fixture(true);await f.controller.connect(f.profile.id,{password:'fixture-only',saveSecret:false});const challenge=f.controller.challenges()[0]!;
+    const gate=deferred<void>();let saving=false;const original=f.repo.trust.bind(f.repo);vi.spyOn(f.repo,'trust').mockImplementation(async (...args) => {saving=true;await gate.promise;await original(...args);});
+    const approval=f.controller.approve(challenge.challengeId);const rejected=expect(approval).rejects.toThrow('CONNECTION_LOST');for (let i=0;i<20 && !saving;i++) await Promise.resolve();
+    await f.controller.disconnect(f.profile.id);await expect(f.controller.connect(f.profile.id,{password:'fixture-only',saveSecret:false})).rejects.toThrow('SESSION_BUSY');gate.resolve();await rejected;expect(f.connects).toBe(1);expect(f.controller.views()[0]?.sessionToken).toBeNull();
   });
 });

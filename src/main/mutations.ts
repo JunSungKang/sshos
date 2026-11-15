@@ -8,6 +8,7 @@ import type { ConnectionController } from './connections';
 import type { FileController } from './files';
 import type { EngineGateway } from './engine-gateway';
 import type { ReceiptRepository } from './persistence/receipts';
+import { receiptTerminal,receiptUnresolved,type FileReceipt } from '../shared/receipts';
 
 type Preview = {spec:MutationSpec;stat:InitialStat|null;serverId:string;generation:number;sessionToken:string;deadline:number;view:MutationPreview};
 export class MutationController {
@@ -15,7 +16,7 @@ export class MutationController {
   private readonly running=new Set<string>();
   private readonly current=new Map<string,MutationReceipt & {recordError?:boolean}>();
   private readonly recordActions=new Map<string,{id:string;action:'acknowledge'|'forget';updatedAt:string|null;deadline:number}>();
-  constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean) {}
+  constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean,private readonly otherActive:(id:string)=>boolean=()=>false,private readonly acknowledgeOther:(row:FileReceipt)=>Promise<void>=async ()=>{}) {}
   async settled():Promise<void> { while (this.running.size) await new Promise(resolve => setTimeout(resolve,50)); }
   private repository():ReceiptRepository { const repo=this.storage(); if (!repo || repo.faulted || !this.stateHealthy()) throw new Error('STORAGE_FAILED'); return repo; }
   private validateSession(serverId:string,generation:number,sessionToken:string):void {
@@ -95,7 +96,7 @@ export class MutationController {
       const rows=[];const damagedIds:string[]=[];let count=0;let bytes=0;
       for (const value of values.slice(offset,offset+100)) {
         if ('damagedId' in value) {damagedIds.push(value.damagedId);count++;bytes+=40;continue;}
-        const row=value.row;const summary={taskId:row.taskId,kind:row.kind,operation:row.operation,serverName:row.endpointSnapshot.name,phase:row.phase,source:row.source,destination:row.destination,errorCode:row.errorCode,acknowledgedAt:row.acknowledgedAt,updatedAt:row.updatedAt,recordError:'recordError' in row && row.recordError === true};
+        const row=value.row;const summary={taskId:row.taskId,kind:row.kind,operation:row.kind === 'file_mutation' ? row.operation : row.direction,serverName:row.endpointSnapshot.name,phase:row.phase,source:row.source,destination:row.destination,errorCode:row.errorCode,acknowledgedAt:row.acknowledgedAt,updatedAt:row.updatedAt,recordError:'recordError' in row && row.recordError === true,unresolved:receiptUnresolved(row),terminal:receiptTerminal(row),transferredBytes:row.kind === 'file_transfer' ? row.transferredBytes : null,verifiedBytes:row.kind === 'file_transfer' ? row.verifiedBytes : null,totalBytes:row.kind === 'file_transfer' ? row.totalBytes : null,cleanupState:row.kind === 'file_transfer' ? row.cleanupState : null};
         const size=Buffer.byteLength(JSON.stringify(summary));if (bytes+size>240*1024) break;rows.push(summary);bytes+=size;count++;
       }
       return {rows,damagedIds,nextOffset:offset+count<values.length ? offset+count : null};
@@ -103,9 +104,9 @@ export class MutationController {
     if (action === 'task:inspect') { const id=z.uuid().parse(payload); const row=this.snapshots().find(row => row.taskId === id); if (!row) throw new Error('INPUT_INVALID'); return row; }
     if (action === 'task:previewRecordAction') {
       const input=z.object({id:z.uuid(),action:z.enum(['acknowledge','forget'])}).strict().parse(payload); const row=this.snapshots().find(row => row.taskId === input.id);
-      if (this.running.has(input.id) || (!row && !this.storage()?.damagedIds().includes(input.id))) throw new Error('INPUT_INVALID');
-      if (input.action === 'acknowledge' && (!row || !['result_unknown','partial'].includes(row.phase) || row.acknowledgedAt)) throw new Error('INPUT_INVALID');
-      if (input.action === 'forget' && row && (!['completed','failed','result_unknown','partial'].includes(row.phase) || (['result_unknown','partial'].includes(row.phase) && !row.acknowledgedAt))) throw new Error('INPUT_INVALID');
+      if (this.running.has(input.id) || this.otherActive(input.id) || (!row && !this.storage()?.damagedIds().includes(input.id))) throw new Error('INPUT_INVALID');
+      if (input.action === 'acknowledge' && (!row || !receiptUnresolved(row))) throw new Error('INPUT_INVALID');
+      if (input.action === 'forget' && row && (!receiptTerminal(row) || receiptUnresolved(row))) throw new Error('INPUT_INVALID');
       for (const [token,value] of this.recordActions) if (value.deadline<performance.now()) this.recordActions.delete(token);
       if (this.recordActions.size>=20) throw new Error('REQUEST_BUSY'); const token=randomUUID();
       this.recordActions.set(token,{...input,updatedAt:row?.updatedAt ?? null,deadline:performance.now()+60000});
@@ -114,10 +115,10 @@ export class MutationController {
     if (action === 'task:applyRecordAction') {
       const token=z.uuid().parse(payload); const input=this.recordActions.get(token); this.recordActions.delete(token);
       if (!input || input.deadline<performance.now()) throw new Error('TOKEN_EXPIRED'); const row=this.snapshots().find(row => row.taskId === input.id);
-      if ((row?.updatedAt ?? null) !== input.updatedAt || this.running.has(input.id)) throw new Error('TOKEN_EXPIRED');
+      if ((row?.updatedAt ?? null) !== input.updatedAt || this.running.has(input.id) || this.otherActive(input.id)) throw new Error('TOKEN_EXPIRED');
       const repo=this.repository();
       if (input.action === 'forget') await repo.forget(input.id);
-      else { await repo.acknowledge(input.id); if (row) await this.gateway.request({action:'mutation:finish',serverId:row.serverId,generation:row.generation,taskId:input.id,keepRestriction:false}).catch(() => {}); }
+      else { await repo.acknowledge(input.id); if (row?.kind === 'file_mutation') await this.gateway.request({action:'mutation:finish',serverId:row.serverId,generation:row.generation,taskId:input.id,keepRestriction:false}).catch(() => {});else if (row) await this.acknowledgeOther(row); }
       this.current.delete(input.id); return;
     }
     throw new Error('INPUT_INVALID');
