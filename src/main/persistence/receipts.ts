@@ -18,6 +18,7 @@ export class ReceiptRepository {
   private readonly damaged=new Set<string>();
   private fault=false;
   private version=0;
+  private pendingRevision=-1;private pendingRows:FileReceipt[]=[];
   get revision():number {return this.version;}
   get(id:string):FileReceipt|undefined {return this.stores.get(id)?.snapshot();}
   private tail:Promise<void>=Promise.resolve();
@@ -55,7 +56,11 @@ export class ReceiptRepository {
   damagedIds():string[] { return [...this.damaged]; }
   checkNew(serverId:string,claims:PathClaim[],localClaims:PathClaim[]=[]):void {
     if (this.faulted) throw new Error('STORAGE_FAILED');
-    const pending=this.snapshots().filter(unresolved);
+    // A100-row registration rechecks every claim before each durable write/RPC.
+    // Unresolved rows change only with this repository revision, so do not clone
+    // and sort all historical receipts for every individual claim.
+    if(this.pendingRevision!==this.version){this.pendingRows=[...this.stores.values()].map(store=>store.snapshot()).filter(unresolved);this.pendingRevision=this.version;}
+    const pending=this.pendingRows;
     if (pending.length>=100) throw new Error('UNRESOLVED_LIMIT');
     if (pending.some(row => (row.kind === 'file_transfer' || row.kind === 'file_mutation') && row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
     if (localClaims.length && pending.some(row => row.kind === 'file_transfer' && claimsConflict(localClaims,transferClaims(row).local))) throw new Error('RESULT_UNKNOWN');

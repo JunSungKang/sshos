@@ -261,3 +261,16 @@ Primary packaging references inspected: https://www.electronjs.org/docs/latest/t
 
 
 The first real macOS cross-architecture build produced ZIPs but archive inspection found199 dependency test files in Zod. The packaging gate correctly rejected this result; these artifacts are not passing packages. Added dependency test/example exclusions and a final source-revision/cleanliness recheck to reject code edits during assembly. The corrected package build is a separate run.
+
+
+## Real package inspection and local performance measurements
+
+At source80504518a8d6, Windows portable and both macOS ZIP builds completed. Compressed sizes were112384417/120588853/127796632 bytes (Windows/mac-arm64/mac-x64), all below250MiB. macOS ad-hoc verification, six fuses and packaged notices passed. A subsequent stronger static audit compared the embedded ASAR header hash with the actual archive and checked every member hash: macOS passed925 files per architecture with unpacked sizes295191442/302425426 bytes. These are development artifacts, without native target launch, publisher signature, notarization or performance acceptance.
+
+The stronger audit found ssh2/util/pagent.exe in Windows. electron-builder's smart unpacking had consequently placed all SSH JavaScript outside ASAR. The initial limited Windows report is preserved but explicitly superseded by this finding. Added helper exclusion, smartUnpack=false and an empty asarUnpack list; the complete member audit now refuses every unpacked/symlink/unhashed member and native helper. The corrected Windows artifact requires a separate build. Build metadata now distinguishes reproduction commands from actually executed packaging steps.
+
+The old performance placeholder was replaced by an actual local harness:5 independent100-row durable JSON registrations through TransferController (in-process worker RPC adapter),5 warm actual Electron launches to enabled controls,100 trusted UI clicks measured to two renderer animation frames and one whole-app memory snapshot. The command exits2 and records target acceptance as untested because it does not provide the specified native/network/settled-memory/full-load matrix. It never labels the single memory sample a300-sample p95.
+
+Before optimization100-row registration took8842.5–9085.9ms. ReceiptRepository.checkNew repeatedly cloned/sorted every receipt for each batch claim. A revision-bound unresolved-row cache avoids repeated history scans; every save/acknowledgement/deletion invalidates it. The same local harness then measured1041.0–1188.2ms. These observations are not a supported-target performance claim or competing-app comparison. Source hashes and dirty-source status are retained in each report.
+
+367 unit cases passed, including main desktop authority/caps, pinned paused-channel disposal without synthetic close,32-entry viewer FIFO, probe epoch/cancellation/failure and storage reconciliation failure. Coverage improved to87.68% statements/80.22% branches;29 files still fail the per-file gate. Desktop, channel-close, read-pool, engine-gateway, both storage-recovery modules and license reader now pass their individual thresholds. Evidence: evidence/d12-artifacts-and-performance.

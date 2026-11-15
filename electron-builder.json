@@ -4,7 +4,9 @@
   "directories": {
     "output": "release"
   },
-  "asar": true,
+  "asar": {
+    "smartUnpack": false
+  },
   "files": [
     "dist/**/*",
     "!dist/renderer/tests/**/*",
@@ -13,7 +15,8 @@
     "!node_modules/{cpu-features,nan,buildcheck}/**/*",
     "!node_modules/ssh2/lib/protocol/crypto/**/*",
     "!**/*.node",
-    "!node_modules/**/{test,tests,__tests__,example,examples}/**/*"
+    "!node_modules/**/{test,tests,__tests__,example,examples}/**/*",
+    "!node_modules/ssh2/util/**/*"
   ],
   "win": {
     "target": [
@@ -62,5 +65,6 @@
       "to": "build-info.json"
     }
   ],
-  "afterPack": "scripts/package-after-pack.cjs"
+  "afterPack": "scripts/package-after-pack.cjs",
+  "asarUnpack": []
 }

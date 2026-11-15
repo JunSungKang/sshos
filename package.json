@@ -18,7 +18,7 @@
     "test:e2e": "node scripts/electron-smoke.mjs",
     "test:integration": "node scripts/verify.mjs integration",
     "test:security": "vitest run tests/unit/security.test.ts tests/unit/diagnostic-log.test.ts tests/unit/ssh-authentication.test.ts tests/unit/ssh-handshake.test.ts tests/unit/key-parser.test.ts tests/unit/terminal-boundaries.test.ts tests/unit/terminal-gestures.test.ts && node scripts/verify.mjs security",
-    "test:performance": "node scripts/require-fixture.mjs performance",
+    "test:performance": "node scripts/performance.mjs",
     "package:win": "node scripts/package.mjs win",
     "package:mac": "node scripts/package.mjs mac",
     "pretest:unit": "tsc -p tsconfig.json",
@@ -27,7 +27,8 @@
     "pretest:integration": "npm run build",
     "pretest:security": "npm run build",
     "pretest:e2e": "npm run build",
-    "prebuild": "node scripts/prepare-licenses.mjs"
+    "prebuild": "node scripts/prepare-licenses.mjs",
+    "pretest:performance": "npm run build"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",

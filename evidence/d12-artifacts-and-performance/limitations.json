@@ -1,0 +1,6 @@
+{
+  "firstWinReport": "The first limited package gate passed. Subsequent full ASAR member audit found unused ssh2/util/pagent.exe and smart-unpacked ssh2 JS; this build is rejected for final delivery. Corrected exclusion/smartUnpack=false must be rebuilt and re-audited.",
+  "macStaticAudit": "Embedded header hash plus925 member hashes and unpacked size passed for each architecture. No native launch or OS trust claim.",
+  "performance": "Real100-row durable JSON/controller benchmark with fake worker RPC, actual warm Electron launch and100 UI click frames only; target acceptance remains untested. Exit2 preserves that gap.",
+  "coverage": "367 unit tests passed; statement87.68%,branch80.22%;29 files still below per-file90/85 thresholds."
+}

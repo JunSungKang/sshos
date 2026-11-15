@@ -122,7 +122,10 @@
     "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty",
     "Strict host syntax rejects legacy octal/hex/short IPv4 and bracketed non-IPv6 instead of accepting URL/IDNA reinterpretation",
     "Fixed local license inventory and32KiB UTF8 pages through named IPC; plaintext upstream Electron/Chromium notices, SHA256/size/no-symlink checks and actual settings GUI paging",
-    "Development-only packaging pipeline replaces release-readiness circular prerequisite; clean revision/source archive/hash manifest, six production fuses, target-specific notices/SBOM, no native accelerators or tests; actual artifact build verification pending"
+    "Development-only packaging pipeline replaces release-readiness circular prerequisite; clean revision/source archive/hash manifest, six production fuses, target-specific notices/SBOM, no native accelerators or tests; actual artifact build verification pending",
+    "Local performance harness performs five100-row durable registrations/five real warm Electron launches/100 UI feedback measurements; target performance remains untested and command returns2",
+    "Revision-bound unresolved receipt cache removes repeated per-claim clone/sort while preserving durable writes and conflict invalidation",
+    "Real development artifacts built for all three architectures; macOS ASAR embedded header/member integrity verified; stronger Windows audit found Pageant-driven smart unpacking and corrected rebuild is pending"
   ],
   "local_verification": {
     "typecheck": "pass",

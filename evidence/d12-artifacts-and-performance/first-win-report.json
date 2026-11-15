@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "sourceRevision": "80504518a8d6944ca5cbbf285a9ef74fbd58867a",
+  "sourceDirty": false,
+  "packageLockSHA256": "f9092e4d22f10ce0afa36022dbb2fd49110221c849335961b0ce42e04aa242c3",
+  "node": "24.22.3",
+  "electron": "45.3.2",
+  "kind": "development",
+  "publisherSigned": false,
+  "notarized": false,
+  "releaseReady": false,
+  "buildHost": {
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "commands": [
+    "npm ci",
+    "npm run typecheck",
+    "npm run test:unit",
+    "npm run package:win"
+  ],
+  "builtAt": "2026-11-15T09:26:02.192Z",
+  "artifacts": [
+    {
+      "name": "sshOS 0.1.0.exe",
+      "bytes": 112384417,
+      "sha256": "292ce5f2c3ef452f29259d75f77e4b32ca769a23ecbd75cc3f13fada2de9af16",
+      "compressedSizeWithin250MiB": true
+    }
+  ],
+  "packageChecks": [
+    {
+      "architecture": "x64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 14,
+      "publisherSignature": "unsigned",
+      "nativeLaunch": "untested"
+    }
+  ],
+  "sourceArchive": {
+    "name": "sshOS-0.1.0-80504518a8d6-source.tar",
+    "sha256": "de0d871f478b78e68e68b3f9ac2cae4542c471d2264157cc4be7b626b21f12b5"
+  },
+  "limitations": [
+    "Development artifacts only; no publisher certificate/notarization.",
+    "Cross-built files do not prove target OS launch, OpenSSH matrix, performance or accessibility.",
+    "Production inspector fuse is disabled; Playwright automation build is not distributed."
+  ]
+}

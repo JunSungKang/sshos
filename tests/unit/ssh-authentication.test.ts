@@ -92,3 +92,6 @@ it('offers only the chosen authentication method once and never falls back', () 
   const handler = oneShotAuthentication(chosen);
   expect(handler()).toBe(chosen); expect(handler()).toBe(false); expect(handler()).toBe(false);
 });
+
+
+it('does not expose disposed identities, accept malformed sign requests or forward unexpected signing exceptions',async()=>{const agent=signer();let called=false;agent.sign(rsaPublic,Buffer.from('x'),{hash:'sha256'});agent.sign({getPublicSSH:()=>{throw new Error('untrusted object');}} as ParsedKey,Buffer.from('x'),error=>{called=true;expect(error?.message).toBe('SIGNING_DENIED');});expect(called).toBe(true);await new Promise<void>(done=>agent.sign(rsaPublic,'not bytes' as never,{hash:'sha256'},error=>{expect(error?.message).toBe('SIGNING_DENIED');done();}));agent.dispose();agent.getIdentities((error,keys)=>{expect(error?.message).toBe('KEY_UNAVAILABLE');expect(keys).toBeUndefined();});});
