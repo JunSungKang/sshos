@@ -57,14 +57,18 @@
     "Durable transfer orchestrator orders temp intent/created ACK, bounded copy/hash, complete readback, finalization intent ACK, exclusive link, destination confirmation and separate cleanup record",
     "Cancellation wins before finalization or is rejected throughout pending intent; unknown ACKs and late observations never promote terminal tasks to completed",
     "Discriminated mutation/transfer receipt schema, immutable task identity, conservative recovery, local/remote unresolved path restrictions and cleanup-aware retention/task detail",
-    "Host trust approval reserves the pending authentication operation across disk writes, preventing authentication after a concurrent disconnect"
+    "Host trust approval reserves the pending authentication operation across disk writes, preventing authentication after a concurrent disconnect",
+    "Actual per-task SFTP transfer adapter and local no-follow/exclusive0600 files with held source handles, sync/close and full readback",
+    "Canonical native directory identity checks, symlink/junction and UNC refusal, Windows destination name validation and local inode checks for temp/final cleanup",
+    "Abort scope closes only the transfer lease, retains native I/O until settlement and captures late successful mutation ACKs as observations",
+    "Real loopback SSH/SFTP upload/download verification, unsupported hardlink, READ denial, temp corruption, destination race and post-create cancellation fixtures"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 126,
-      "evidence": "evidence/d07-orchestration/test-unit.txt"
+      "tests": 138,
+      "evidence": "evidence/d07-ports/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -187,6 +191,11 @@
       "status": "pass",
       "evidence": "evidence/d07-core",
       "scope": "Session/file/viewer/Electron local GUI fixtures; asynchronous bridge predicates now poll their resolved values, not Promise truthiness."
+    },
+    "actual_transfer_ports": {
+      "status": "pass",
+      "evidence": "evidence/d07-ports",
+      "scope": "Real loopback SSH/SFTP upload/download and local hardlinks,0byte/readback/hash/no-overwrite/fault/cancel cases on current host. Native selection, cross-process receipt writer and GUI enqueue remain."
     }
   },
   "remaining_D01": [
@@ -203,14 +212,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement actual local/SFTP transfer adapters, reverse worker-to-main durable writer messages and native selection/capability previews, then background transfer GUI. Continue remaining D08-D13 and lifecycle integration.",
+  "next_action": "Wire bounded worker-to-main durable receipt requests, task registration/queue snapshots/cancel and native selection previews; connect upload/download and shelf/task progress UI. Continue D08-D13 and lifecycle integration.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-orchestration",
+  "latest_evidence_directory": "evidence/d07-ports",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 durable orchestrator and receipt recovery tested with fault-injected ports; actual filesystem/SFTP adapters and enqueue/progress UI remain",
+    "current_stage": "D07 actual local/SFTP ports plus durable runner verified; worker/main writer protocol, native selection capabilities and GUI enqueue/progress remain",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

@@ -8,7 +8,7 @@ export const TRANSFER_PIPELINE=16;
 export const transferPhaseSchema=z.enum(['queued','preparing','transferring','verifying','finalize_intent_pending','finalizing','cancel_requested','completed','failed','interrupted','cancelled','result_unknown','skipped']);
 export type TransferPhase=z.infer<typeof transferPhaseSchema>;
 export const transferTerminal=(phase:TransferPhase):boolean => ['completed','failed','interrupted','cancelled','result_unknown','skipped'].includes(phase);
-export const transferStatSchema=z.object({size:z.int().min(0).max(MAX_TRANSFER_BYTES),mtime:z.string().regex(/^\d{1,32}$/u),identity:z.string().max(128)}).strict();
+export const transferStatSchema=z.object({size:z.int().min(0).max(MAX_TRANSFER_BYTES),mtime:z.string().regex(/^-?\d{1,32}$/u),identity:z.string().max(128)}).strict();
 export type TransferStat=z.infer<typeof transferStatSchema>;
 const path=z.string().min(1).refine(value => !value.includes('\0') && new TextEncoder().encode(value).length<=32768);
 export const transferReceiptSchema=z.object({

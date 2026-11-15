@@ -67,3 +67,11 @@ control 세대별 transfer/execution socket을 각각 하나로 제한하는 lea
 영수증은 file_mutation/file_transfer strict union과 불변 서버·경로·초기 stat을 사용한다. 잘못된 pending의 복원은 불명으로 분류하되 새 pending을 디스크에 저장하지 않는다. completed+cleanup needed/unknown도 미해결 보관·확인 대상이며 자동 prune과 확인 전 삭제를 막는다. backup 복구로 새 불확실성이 생기면 과거 acknowledgedAt을 새 승인으로 사용하지 않는다. 이미 알려진 result_unknown은 재실행 시 원래 recoveredFromPhase를 보존한다. 작업 화면은 두 종류의 결과·byte·정리 상태를 구분한다.
 
 추가 점검에서 host trust 저장 대기 중 disconnect와 connect가 경합할 수 있는 구간도 발견해 pending operation으로 예약하고 저장 후 세대를 다시 검사했다. 126개 단위 검사·타입/build·실제 Electron 연결/파일 작업 회귀 검사가 통과했다. evidence/d07-orchestration에 출력과 source hash를 저장했다. 지원 OS/실제 Ubuntu/SFTP 전송 수용 검사 완료를 뜻하지 않는다.
+
+## 실제 로컬 파일·SFTP 전송 adapter 검증
+
+로컬 canonical parent의 dev/ino와 일반 파일 handle/fstat을 검사하고 symlink·UNC·Windows 금지 다운로드 이름을 거절한다. 다운로드 temp는 wx/0600으로 만들며 실제 write 길이·sync·close·동일 inode의 read-back과 exclusive fs.link·destination stat을 확인한다. 업로드는 별도 transfer socket/SFTP에서 wx/0600·bounded write ACK·close·전량 read-back·OpenSSH hardlink API·destination stat·temp unlink를 수행한다. 공개 hardlink API 이외의 rename/copy/destination 제거 fallback은 없다. raw local path를 renderer에서 입력받는 API는 만들지 않았다.
+
+취소/timeout scope는 해당 transfer lease만 닫고 늦게 끝나는 native 작업은 실제 settlement까지 보존해 획득한 handle도 정리한다. 늦은 성공 ACK는 관측으로 기록하고 task를 completed로 승격하지 않는다. temp 검증 도중 EOF나 metadata 변화는 원본 변경과 구분해 VERIFY_MISMATCH로 처리한다.
+
+138개 단위 검사·타입/build·Electron 파일 작업 회귀 검사가 통과했다. 실제 loopback SSH/SFTP와 현재 로컬 volume에서 정상/빈 파일 양방향·hash·0600·기존 목적지 보존·hardlink 미지원·READ 거절·temp 변조·link 직전 충돌·temp 생성 후 취소와 control 유지가 통과했다. SSH fixture의 server API가 extension을 광고하지 않으므로 시험에 한해 pinned ssh2 1.17.0 VERSION packet에 hardlink 광고를 추가하고 실제 SFTP EXTENDED→fs.link를 처리한다. 제품 adapter는 이 시험용 private protocol 조작을 import하거나 사용하지 않는다. evidence/d07-ports에 실제 출력·환경·source hash를 보존했다. 이는 Ubuntu/OpenSSH·Windows/NTFS·macOS14·5GiB/64GiB 실기 수용 또는 GUI 전송 완료를 뜻하지 않는다. 다음은 worker→main writer protocol과 native 선택/확인·진행 UI다.

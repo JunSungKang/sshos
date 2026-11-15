@@ -1,0 +1,8 @@
+{
+  "platform": "Darwin",
+  "version": "26.6.2",
+  "architecture": "arm64",
+  "filesystem": "unverified: diskutil info query did not return filesystem metadata",
+  "scope": "Actual loopback ssh2 SSH/SFTP fixture and workspace-local filesystem. Not Ubuntu/OpenSSH, Windows/NTFS, macOS14 or5GiB/64GiB target acceptance.",
+  "tests": 138
+}

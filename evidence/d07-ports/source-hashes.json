@@ -1,0 +1,11 @@
+{
+  "scripts/fixtures/ssh-server.mjs": "36580ce98745f4ed49763c9170691babac01afdaeb415c1aa123f823a9e964e9",
+  "src/shared/transfers.ts": "ea3015e4b76c03808e3a6be351df5fbcb42fe71e1a82f668847065a21109d161",
+  "src/worker/transfers/local.ts": "023807347929afed9cdfa3f73fff06c9e4678f703400b06763b41d5110c84900",
+  "src/worker/transfers/ports.ts": "fb68ef5390608870a423f812e26271c3668a012f65eb7aba024948bb785282e8",
+  "src/worker/transfers/runner.ts": "3809d9ea58a0aa324d588b9653d1a6a028eb6f431fa815b376e9d5f26bc4938f",
+  "src/worker/transfers/scope.ts": "02f3a31045e9df9851e59aad03cc5c02182ad793f22ee878341ea48034b10c0f",
+  "tests/unit/transfer-ports.test.ts": "a60023f5c807d040278f4284f80aa161b81b15bb6a5382ffd5ee4beaf780c7b5",
+  "tests/unit/transfer-runner.test.ts": "b4eb326b6b45e73496dc66dbea4e06ee5db0348fd7d698bfa8f6782dccd21e52",
+  "tests/unit/transfer-scope.test.ts": "fc82725fa6cdf76770f5d55259ce189ca8c87d23bb54b7565cd96f5af1ce511f"
+}
