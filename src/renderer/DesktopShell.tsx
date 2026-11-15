@@ -5,6 +5,7 @@ import type { SessionView } from '../shared/session-contracts';
 import { ProfileManager } from './ProfileManager';
 import { FileExplorer } from './FileExplorer';
 import { TaskManager } from './TaskManager';
+import { ViewerPane } from './ViewerPane';
 
 const labels: Record<WindowKind, string> = { connections: '연결', files: '파일', text: '텍스트', image: '이미지', execution: '실행 출력', terminal: '터미널', tasks: '작업', settings: '설정' };
 const icons: Record<WindowKind, string> = { connections: '▤', files: '▱', text: '≡', image: '▧', execution: '▷', terminal: '›_', tasks: '⇅', settings: '⚙' };
@@ -15,6 +16,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   const manager = useRef<WindowManager | null>(null);
   if (!manager.current) manager.current = new WindowManager(getArea(), () => nextId.current);
   const [windows, setWindows] = useState<WindowModel[]>([]);
+  const [titles,setTitles]=useState<Record<string,{name:string;serverName:string}>>({});
   const [sessions, setSessions] = useState<SessionView[]>([]);
   const [activeServer, setActiveServer] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
@@ -37,13 +39,24 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       setNotice(''); update();
     } catch { setNotice('창을 열지 못했습니다. 연결 상태 또는 열린 창 수를 확인하세요.'); }
   };
-  const launch = (kind: WindowKind) => {
+  const openViewer=async (entryToken:string,kind:'text'|'image') => {
+    const registered=windowModelSchema.parse(await window.sshOS.viewer.open(entryToken,kind));
+    try {
+      if (manager.current!.snapshot().some(row => row.windowId === registered.windowId)) manager.current!.restore(registered.windowId);
+      else {nextId.current=registered.windowId;manager.current!.open(kind,registered.serverId,registered.sessionGeneration,registered.resourceId);}
+      update();
+    } catch (error) {if (!manager.current!.snapshot().some(row => row.windowId === registered.windowId)) await window.sshOS.desktop.closeWindow(registered.windowId).catch(() => {});throw error;}
+  };
+  const launch = async (kind: WindowKind) => {
     setStartMenu(false);
-    if (!['files','terminal'].includes(kind)) { void openFor(kind); return; }
-    const available = sessions.filter(session => session.status === 'connected' && session.sessionToken);
-    if (available.length === 1) { void openFor(kind, available[0]); return; }
-    if (available.length === 0) { void openFor('connections'); return; }
-    setChosenServer(''); setPicker(kind);
+    if (!['files','terminal'].includes(kind)) {await openFor(kind);return;}
+    try {
+      const current=await window.sshOS.session.list();setSessions(current.sessions);
+      const available=current.sessions.filter(session => session.status === 'connected' && session.sessionToken);
+      if (available.length === 1) {await openFor(kind,available[0]);return;}
+      if (available.length === 0) {await openFor('connections');return;}
+      setChosenServer('');setPicker(kind);
+    } catch {setNotice('연결 상태를 읽지 못했습니다. 연결 화면에서 확인하세요.');}
   };
   useEffect(() => {
     let alive = true;
@@ -71,13 +84,13 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
     <header><strong>sshOS <small>시오스</small></strong><span>데스크톱</span><span className="connection">{selected ? `${selected.serverName} · ${selected.status === 'connected' ? '연결됨' : '연결 끊김'}` : `연결 ${snapshot?.connectedServers ?? 0}`}</span></header>
     <div className="desktop-area">
       <nav className="desktop-icons" aria-label="앱 실행">{(['connections','files','terminal','settings'] as WindowKind[]).map(kind => <button key={kind} onDoubleClick={() => launch(kind)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); launch(kind); } }}><span aria-hidden="true">{icons[kind]}</span>{labels[kind]}</button>)}</nav>
-      {windows.map(row => <WindowFrame key={row.windowId} model={row} title={`${labels[row.kind]}${row.serverId ? ` · ${sessions.find(session => session.serverId === row.serverId)?.serverName ?? '연결 끊김'}` : ''}`}
+      {windows.map(row => <WindowFrame key={row.windowId} model={row} title={`${labels[row.kind]}${titles[row.windowId] ? ` / ${titles[row.windowId]!.name}` : ''}${row.serverId ? ` · ${sessions.find(session => session.serverId === row.serverId)?.serverName ?? titles[row.windowId]?.serverName ?? '연결 끊김'}` : ''}`}
         focus={() => { manager.current!.focus(row.windowId); update(); }}
         minimize={() => { manager.current!.minimize(row.windowId); update(); }}
         maximize={() => { manager.current!.toggleMaximize(row.windowId); update(); }}
         move={bounds => { manager.current!.moveResize(row.windowId, bounds); update(); }}
-        close={() => { void window.sshOS.desktop.closeWindow(row.windowId).then(() => { manager.current!.close(row.windowId); mirrored.current.delete(row.windowId); update(); }).catch(() => setNotice('창을 닫지 못했습니다. 다시 시도하세요.')); }}>
-        {row.kind === 'files' ? <FileExplorer newWindow={() => {const session=sessions.find(value => value.serverId === row.serverId);if (session) void openFor('files',session,true);}} windowId={row.windowId} generation={row.sessionGeneration!} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <TaskManager /> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
+        close={() => { void window.sshOS.desktop.closeWindow(row.windowId).then(() => { manager.current!.close(row.windowId); mirrored.current.delete(row.windowId); setTitles(value => {const next={...value};delete next[row.windowId];return next;}); update(); }).catch(() => setNotice('창을 닫지 못했습니다. 다시 시도하세요.')); }}>
+        {row.kind === 'text' || row.kind === 'image' ? <ViewerPane windowId={row.windowId} kind={row.kind} onName={(name,serverName) => setTitles(value => ({...value,[row.windowId]:{name,serverName}}))} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'files' ? <FileExplorer openViewer={openViewer} newWindow={() => {const session=sessions.find(value => value.serverId === row.serverId);if (session) void openFor('files',session,true);}} windowId={row.windowId} generation={row.sessionGeneration!} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <TaskManager /> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
       </WindowFrame>)}
       {notice && <p className="desktop-notice" role="alert">{notice}</p>}
       {snapshot?.storage.status === 'unavailable' && <div className="storage-error" role="alert"><p>앱 데이터를 읽지 못했습니다. 기존 데이터를 초기화하지 않고 변경 기능을 잠갔습니다.</p><p>{snapshot.storage.path}</p><button onClick={() => { void window.sshOS.settings.retryStorage().catch(() => setNotice('저장소를 다시 확인하지 못했습니다.')); }}>저장소 다시 확인</button></div>}
@@ -85,7 +98,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       {picker && <dialog ref={pickerDialog} className="server-picker" aria-label="서버 선택" onCancel={() => setPicker(null)}><h2>작업할 서버 선택</h2><select aria-label="대상 서버" value={chosenServer} onChange={event => setChosenServer(event.target.value)}><option value="">선택하세요</option>{sessions.filter(row => row.status === 'connected').map(row => <option key={row.serverId} value={row.serverId}>{row.serverName}</option>)}</select><button disabled={!chosenServer} onClick={() => { const server = sessions.find(row => row.serverId === chosenServer); const kind = picker; setPicker(null); if (server) void openFor(kind, server); }}>열기</button><button onClick={() => setPicker(null)}>취소</button></dialog>}
     </div>
     <aside className="transfers" aria-label="전송 상태"><strong>전송</strong><span>진행 중인 전송 없음</span><button onClick={() => launch('tasks')}>전체 작업</button></aside>
-    <footer className="taskbar"><button aria-label="시작" onClick={() => setStartMenu(!startMenu)}>▦</button>{windows.map(row => <button className={row.focused ? 'active' : ''} aria-pressed={row.focused} key={row.windowId} onClick={() => { manager.current!.restore(row.windowId); update(); }}>{icons[row.kind]} {labels[row.kind]}</button>)}<span>연결 {snapshot?.connectedServers ?? 0}</span></footer>
+    <footer className="taskbar"><button aria-label="시작" onClick={() => setStartMenu(!startMenu)}>▦</button>{windows.map(row => <button className={row.focused ? 'active' : ''} aria-pressed={row.focused} key={row.windowId} onClick={() => { manager.current!.restore(row.windowId); update(); }}>{icons[row.kind]} {titles[row.windowId]?.name ?? labels[row.kind]}</button>)}<span>연결 {snapshot?.connectedServers ?? 0}</span></footer>
     {startMenu && <nav className="start-menu" aria-label="시작 메뉴">{(['connections','files','terminal','tasks','settings'] as WindowKind[]).map(kind => <button key={kind} onClick={() => launch(kind)}>{icons[kind]} {labels[kind]}</button>)}</nav>}
   </main>;
 }
@@ -95,6 +108,7 @@ function WindowFrame({ model, title, focus, minimize, maximize, close, move, chi
   const frame = useRef<number | null>(null); const latest = useRef<{ x: number; y: number } | null>(null);
   const [menu, setMenu] = useState(false); const [keyboard, setKeyboard] = useState<{ kind: 'move' | 'resize'; start: Bounds } | null>(null);
   const root = useRef<HTMLElement>(null);
+  useEffect(() => {if (model.focused && root.current && !root.current.contains(document.activeElement)) root.current.focus();},[model.focused]);
   const begin = (event: PointerEvent<HTMLElement>, edge: ResizeEdge | null) => {
     if (model.mode !== 'normal' || event.button !== 0 || (event.target as HTMLElement).closest('button')) return;
     event.preventDefault(); event.stopPropagation(); focus(); event.currentTarget.setPointerCapture(event.pointerId);
