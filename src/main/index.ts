@@ -89,7 +89,7 @@ async function main(): Promise<void> {
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
   const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot));
-  connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage));
+  connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
   const viewers=new ViewerController(files,connections,desktop,gateway);

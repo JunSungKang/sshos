@@ -1,4 +1,4 @@
-import { _electron as electron } from '@playwright/test';
+import { _electron as electron, expect } from '@playwright/test';
 import { strict as assert } from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
@@ -20,7 +20,7 @@ try {
   await page.getByTestId('engine-state').filter({hasText:'연결 엔진 준비됨'}).waitFor();
   const profileId = await page.evaluate(async port => { const profile = await window.sshOS.profile.create({name:'접속 당시 이름',host:'127.0.0.1',port,username:'fixture',authentication:'password'}); await window.sshOS.session.connect(profile.id,{password:'test-only',saveSecret:false}); return profile.id; },fixture.port);
   await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();
-  await page.waitForFunction(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.os === 'supported' && row.sftp === 'available'));
+  await expect.poll(() => page.evaluate(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.os === 'supported' && row.sftp === 'available' && row.sessionToken !== null)),{timeout:15000}).toBe(true);
   await page.evaluate(async ({id,port}) => {await window.sshOS.profile.update(id,{name:'SFTP 파일 검사',host:'127.0.0.1',port,username:'fixture',authentication:'password'});},{id:profileId,port:fixture.port});
   await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();
   const explorer = page.getByRole('region',{name:'파일 · SFTP 파일 검사',exact:true});
@@ -47,7 +47,7 @@ try {
   await mutationDialog.getByLabel('새 이름').fill('renamed.txt');
   await mutationDialog.getByRole('button',{name:'서버와 경로 미리 보기'}).click();
   await mutationDialog.getByRole('button',{name:'확인하고 작업 시작'}).click();
-  await page.waitForFunction(async () => (await window.sshOS.task.list(0)).rows.some(row => row.operation === 'rename' && row.phase === 'failed' && row.errorCode === 'HARDLINK_UNSUPPORTED'));
+  await expect.poll(() => page.evaluate(async () => (await window.sshOS.task.list(0)).rows.some(row => row.operation === 'rename' && row.phase === 'failed' && row.errorCode === 'HARDLINK_UNSUPPORTED')),{timeout:15000}).toBe(true);
   assert.equal(await fs.readFile(join(fixtureRoot,'home/fixture/hello.txt'),'utf8'),'fixture only\n');
   await assert.rejects(fs.stat(join(fixtureRoot,'home/fixture/renamed.txt')));
   await page.getByRole('button',{name:'전체 작업',exact:true}).click();
@@ -57,7 +57,7 @@ try {
   const mutationsBeforeForget=fixture.metrics.mutations.length;
   await tasks.locator('article').filter({hasText:'폴더 생성'}).getByRole('button',{name:'로컬 기록 삭제',exact:true}).click();
   await page.getByRole('dialog',{name:'기록 변경 확인'}).getByRole('button',{name:'확인',exact:true}).click();
-  await page.waitForFunction(async () => (await window.sshOS.task.list(0)).rows.length === 2);
+  await expect.poll(() => page.evaluate(async () => (await window.sshOS.task.list(0)).rows.length),{timeout:15000}).toBe(2);
   assert.equal(fixture.metrics.mutations.length,mutationsBeforeForget);
   await page.getByRole('button',{name:'작업 닫기',exact:true}).click();
   assert.equal(await explorer.getByRole('listitem').count(),6);
