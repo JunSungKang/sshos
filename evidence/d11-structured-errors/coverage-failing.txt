@@ -1,0 +1,155 @@
+
+> sshos@0.1.0 pretest:coverage
+> tsc -p tsconfig.json
+
+
+> sshos@0.1.0 test:coverage
+> vitest run --coverage
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+      Coverage enabled with v8
+
+
+ Test Files  65 passed (65)
+      Tests  375 passed (375)
+   Start at  19:01:22
+   Duration  6.35s (tests 85%, import 11%, worker 3%, transform 1%)
+
+    Isolate  65 workers spawned · ~119ms startup each (spawn + environment, per file)
+             at least ~741ms faster with isolate: false — reuses workers across files instead of one per file
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   88.02 |    80.71 |   91.87 |    96.3 |                   
+ main              |   85.59 |    76.45 |   87.93 |   94.69 |                   
+  connections.ts   |    90.8 |    83.61 |   86.04 |   99.24 | 158               
+  ...nostic-log.ts |    95.4 |    85.41 |     100 |     100 | 14,19-22          
+  ...ne-gateway.ts |   98.24 |    96.72 |   91.66 |     100 | 34,38             
+  ...ion-output.ts |   94.54 |    93.33 |     100 |     100 | 10,12,20          
+  ...n-previews.ts |     100 |    98.03 |     100 |     100 | 25                
+  executions.ts    |   82.23 |    76.16 |   94.28 |   97.22 | 37                
+  files.ts         |   95.76 |    89.74 |   93.33 |   98.27 | 27                
+  licenses.ts      |   97.56 |    96.42 |     100 |     100 | 12                
+  mutations.ts     |   73.07 |     55.2 |   76.74 |   83.48 | ...33-137,140-149 
+  probes.ts        |   92.72 |    85.71 |   70.58 |     100 | ...12-15,17,21-25 
+  ...rivate-key.ts |   95.65 |    88.23 |     100 |     100 | 11,22             
+  ...pt-channel.ts |   97.01 |    95.91 |     100 |     100 | 15,26             
+  ...rer-memory.ts |     100 |    93.75 |     100 |     100 | 15-18             
+  security.ts      |    92.1 |     90.9 |   85.71 |   96.29 | 15                
+  settings.ts      |   96.59 |    93.61 |     100 |     100 | 16,20,24          
+  shutdown.ts      |   98.27 |    94.59 |   93.75 |     100 | 14-15             
+  ...e-recovery.ts |     100 |    94.44 |     100 |     100 | 6                 
+  ...l-gestures.ts |     100 |    96.87 |     100 |     100 | 6                 
+  terminals.ts     |   69.62 |    62.84 |    66.1 |   81.48 | ...52,62,67,69-70 
+  ...r-previews.ts |   84.72 |    76.74 |   96.77 |   96.82 | 86,110            
+  ...selections.ts |   91.66 |    80.43 |   92.85 |     100 | 16,20,26-30,40-42 
+  transfers.ts     |   81.01 |    60.11 |   80.64 |   94.36 | 31,89,106-107     
+  viewers.ts       |   66.25 |    50.43 |   94.44 |   81.96 | ...68,78,87,90-94 
+ main/persistence  |   89.63 |    83.68 |   96.62 |   97.47 |                   
+  receipts.ts      |   90.07 |    86.11 |     100 |   98.43 | 81                
+  ...repository.ts |   92.38 |    87.83 |   96.42 |     100 | ...72-73,80-86,94 
+  store.ts         |   86.36 |    74.41 |   92.85 |   94.79 | 119,121,135-137   
+ shared            |   98.53 |    96.77 |     100 |   99.33 |                   
+  ...n-protocol.ts |     100 |    88.88 |     100 |     100 | 4                 
+  executions.ts    |     100 |    93.75 |     100 |     100 | 11-21             
+  files.ts         |   94.73 |      100 |     100 |      90 | 14                
+  ...sfer-state.ts |   91.66 |       90 |     100 |     100 | 21                
+  transfers.ts     |    91.3 |    91.42 |     100 |     100 | 24-25,27          
+ shared/viewers    |    99.7 |    99.68 |     100 |   98.98 |                   
+  image-header.ts  |   99.67 |    99.67 |     100 |   98.79 | 84                
+ worker            |    94.9 |    91.89 |     100 |     100 |                   
+  probe.ts         |    92.8 |     87.8 |     100 |     100 | 13,24,26-31,33-35 
+  ...ipt-writer.ts |   97.14 |      100 |     100 |     100 |                   
+  ...e-recovery.ts |   96.66 |    93.93 |     100 |     100 | 12-13             
+ worker/connection |   87.84 |    81.74 |   94.33 |   95.78 |                   
+  ...ry-sockets.ts |    86.3 |    64.28 |   93.75 |   96.29 | 46                
+  host-verifier.ts |    90.9 |     92.3 |     100 |     100 | 21                
+  key-parser.ts    |      96 |    87.09 |   92.85 |     100 | 13,20,29,41       
+  os-release.ts    |     100 |    95.83 |     100 |     100 | 10                
+  ...on-manager.ts |   82.07 |    74.43 |   92.15 |   90.47 | ...6-81,86,97,117 
+  ...-key-agent.ts |      85 |     86.2 |     100 |     100 | 13-17,30,40,55-57 
+ worker/execution  |   83.37 |    78.11 |   90.52 |   94.94 |                   
+  channels.ts      |   82.48 |     83.6 |    93.1 |   96.29 | 32                
+  gui.ts           |   77.14 |     70.5 |   84.78 |   90.47 | 18-19,44,56       
+  inspect.ts       |   85.71 |       80 |     100 |     100 | 9-10              
+  output-ring.ts   |   94.31 |    88.09 |     100 |     100 | 10-11,24,29-30    
+ worker/files      |   86.89 |    79.57 |   88.88 |   96.92 |                   
+  browser.ts       |   86.32 |    73.41 |   85.71 |     100 | ...58,62,70-76,85 
+  mutations.ts     |   85.71 |    80.43 |   88.23 |   93.54 | 43,73,78-79       
+ worker/terminal   |   88.67 |    77.86 |    88.4 |    91.8 |                   
+  input.ts         |   96.55 |    96.96 |     100 |     100 | 5                 
+  sessions.ts      |   85.38 |    71.51 |   83.67 |   86.48 | 15-16,32,43,49    
+  stream.ts        |   95.71 |    86.95 |     100 |     100 | 14,16             
+ worker/transfers  |   89.64 |    81.54 |   93.85 |   97.82 |                   
+  coordinator.ts   |   84.74 |    79.06 |   86.48 |      95 | 67-68,105         
+  io.ts            |   95.41 |    90.47 |   93.75 |     100 | 11,36,43,57       
+  local.ts         |   85.13 |    72.16 |     100 |   98.11 | 87                
+  ports.ts         |   93.38 |    84.48 |     100 |     100 | ...40,53,58,64,73 
+  progress.ts      |   90.32 |    88.46 |     100 |     100 | 6-8,18            
+  queue.ts         |   85.71 |    83.33 |   73.68 |   89.65 | 13-14,43          
+  runner.ts        |   92.34 |    84.95 |   92.85 |     100 | ...98,111,115,118 
+  scope.ts         |   87.85 |    78.48 |      96 |   97.67 | 49                
+ worker/viewers    |   84.14 |    71.91 |   92.72 |   97.45 |                   
+  reader.ts        |   85.12 |     73.8 |   91.42 |    97.5 | 68,124            
+  sftp-channel.ts  |    75.6 |     57.5 |      90 |   96.42 | 42                
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 88.02% ( 6423/7297 )
+Branches     : 80.71% ( 4155/5148 )
+Functions    : 91.87% ( 1187/1292 )
+Lines        : 96.3% ( 2423/2516 )
+================================================================================
+ERROR: Coverage for branches (83.61%) does not meet global threshold (85%) for src/main/connections.ts
+ERROR: Coverage for statements (82.23%) does not meet global threshold (90%) for src/main/executions.ts
+ERROR: Coverage for branches (76.16%) does not meet global threshold (85%) for src/main/executions.ts
+ERROR: Coverage for statements (73.07%) does not meet global threshold (90%) for src/main/mutations.ts
+ERROR: Coverage for branches (55.2%) does not meet global threshold (85%) for src/main/mutations.ts
+ERROR: Coverage for statements (86.36%) does not meet global threshold (90%) for src/main/persistence/store.ts
+ERROR: Coverage for branches (74.41%) does not meet global threshold (85%) for src/main/persistence/store.ts
+ERROR: Coverage for statements (69.62%) does not meet global threshold (90%) for src/main/terminals.ts
+ERROR: Coverage for branches (62.84%) does not meet global threshold (85%) for src/main/terminals.ts
+ERROR: Coverage for statements (84.72%) does not meet global threshold (90%) for src/main/transfer-previews.ts
+ERROR: Coverage for branches (76.74%) does not meet global threshold (85%) for src/main/transfer-previews.ts
+ERROR: Coverage for branches (80.43%) does not meet global threshold (85%) for src/main/transfer-selections.ts
+ERROR: Coverage for statements (81.01%) does not meet global threshold (90%) for src/main/transfers.ts
+ERROR: Coverage for branches (60.11%) does not meet global threshold (85%) for src/main/transfers.ts
+ERROR: Coverage for statements (66.25%) does not meet global threshold (90%) for src/main/viewers.ts
+ERROR: Coverage for branches (50.43%) does not meet global threshold (85%) for src/main/viewers.ts
+ERROR: Coverage for statements (86.3%) does not meet global threshold (90%) for src/worker/connection/auxiliary-sockets.ts
+ERROR: Coverage for branches (64.28%) does not meet global threshold (85%) for src/worker/connection/auxiliary-sockets.ts
+ERROR: Coverage for statements (82.07%) does not meet global threshold (90%) for src/worker/connection/session-manager.ts
+ERROR: Coverage for branches (74.43%) does not meet global threshold (85%) for src/worker/connection/session-manager.ts
+ERROR: Coverage for statements (85%) does not meet global threshold (90%) for src/worker/connection/single-key-agent.ts
+ERROR: Coverage for statements (82.48%) does not meet global threshold (90%) for src/worker/execution/channels.ts
+ERROR: Coverage for branches (83.6%) does not meet global threshold (85%) for src/worker/execution/channels.ts
+ERROR: Coverage for statements (77.14%) does not meet global threshold (90%) for src/worker/execution/gui.ts
+ERROR: Coverage for branches (70.5%) does not meet global threshold (85%) for src/worker/execution/gui.ts
+ERROR: Coverage for statements (85.71%) does not meet global threshold (90%) for src/worker/execution/inspect.ts
+ERROR: Coverage for branches (80%) does not meet global threshold (85%) for src/worker/execution/inspect.ts
+ERROR: Coverage for statements (86.32%) does not meet global threshold (90%) for src/worker/files/browser.ts
+ERROR: Coverage for branches (73.41%) does not meet global threshold (85%) for src/worker/files/browser.ts
+ERROR: Coverage for statements (85.71%) does not meet global threshold (90%) for src/worker/files/mutations.ts
+ERROR: Coverage for branches (80.43%) does not meet global threshold (85%) for src/worker/files/mutations.ts
+ERROR: Coverage for statements (85.38%) does not meet global threshold (90%) for src/worker/terminal/sessions.ts
+ERROR: Coverage for branches (71.51%) does not meet global threshold (85%) for src/worker/terminal/sessions.ts
+ERROR: Coverage for statements (84.74%) does not meet global threshold (90%) for src/worker/transfers/coordinator.ts
+ERROR: Coverage for branches (79.06%) does not meet global threshold (85%) for src/worker/transfers/coordinator.ts
+ERROR: Coverage for statements (85.13%) does not meet global threshold (90%) for src/worker/transfers/local.ts
+ERROR: Coverage for branches (72.16%) does not meet global threshold (85%) for src/worker/transfers/local.ts
+ERROR: Coverage for branches (84.48%) does not meet global threshold (85%) for src/worker/transfers/ports.ts
+ERROR: Coverage for statements (85.71%) does not meet global threshold (90%) for src/worker/transfers/queue.ts
+ERROR: Coverage for branches (83.33%) does not meet global threshold (85%) for src/worker/transfers/queue.ts
+ERROR: Coverage for branches (84.95%) does not meet global threshold (85%) for src/worker/transfers/runner.ts
+ERROR: Coverage for statements (87.85%) does not meet global threshold (90%) for src/worker/transfers/scope.ts
+ERROR: Coverage for branches (78.48%) does not meet global threshold (85%) for src/worker/transfers/scope.ts
+ERROR: Coverage for statements (85.12%) does not meet global threshold (90%) for src/worker/viewers/reader.ts
+ERROR: Coverage for branches (73.8%) does not meet global threshold (85%) for src/worker/viewers/reader.ts
+ERROR: Coverage for statements (75.6%) does not meet global threshold (90%) for src/worker/viewers/sftp-channel.ts
+ERROR: Coverage for branches (57.5%) does not meet global threshold (85%) for src/worker/viewers/sftp-channel.ts

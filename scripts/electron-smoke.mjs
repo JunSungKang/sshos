@@ -1,4 +1,4 @@
-import { _electron as electron } from '@playwright/test';
+import { _electron as electron,expect } from '@playwright/test';
 import { strict as assert } from 'node:assert';
 import { writeFileSync } from 'node:fs';
 import { root, localPath, runtimeEnvironment,closeTestApplication } from './environment.mjs';
@@ -34,9 +34,9 @@ try {
   await page.mouse.move(initial.x + 180, initial.y + 20); await page.mouse.down(); await page.mouse.move(initial.x + 230, initial.y + 55, { steps: 5 }); await page.mouse.up();
   const moved = await settingsWindow.boundingBox(); assert.ok(moved); assert.ok(moved.x > initial.x);
   await page.getByRole('button', { name: '설정 최소화', exact: true }).click();
-  assert.equal(await settingsWindow.isVisible(), false);
+  await expect(settingsWindow).toBeHidden();
   await page.locator('.taskbar').getByRole('button', { name: '⚙ 설정', exact: true }).click();
-  const restored = await settingsWindow.boundingBox(); assert.ok(restored); assert.equal(restored.x, moved.x); assert.equal(restored.y, moved.y);
+  await expect.poll(async()=>{const value=await settingsWindow.boundingBox();return value ? {x:value.x,y:value.y}:null;}).toEqual({x:moved.x,y:moved.y});
   await page.getByRole('button', { name: '설정 최대화 또는 복원', exact: true }).click();
   const maximized = await settingsWindow.boundingBox(); assert.ok(maximized); assert.equal(maximized.y, 44);
   await page.getByRole('button', { name: '설정 닫기', exact: true }).click();

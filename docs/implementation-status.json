@@ -125,7 +125,11 @@
     "Development-only packaging pipeline replaces release-readiness circular prerequisite; clean revision/source archive/hash manifest, six production fuses, target-specific notices/SBOM, no native accelerators or tests; actual artifact build verification pending",
     "Local performance harness performs five100-row durable registrations/five real warm Electron launches/100 UI feedback measurements; target performance remains untested and command returns2",
     "Revision-bound unresolved receipt cache removes repeated per-claim clone/sort while preserving durable writes and conflict invalidation",
-    "Real development artifacts built for all three architectures; macOS ASAR embedded header/member integrity verified; stronger Windows audit found Pageant-driven smart unpacking and corrected rebuild is pending"
+    "Real development artifacts built for all three architectures; macOS ASAR embedded header/member integrity verified; stronger Windows audit found Pageant-driven smart unpacking and corrected rebuild is pending",
+    "Shared structured fixed-code error model across main desktop apps, actual last-confirmed phase in task summaries, explicit unknown/partial outcome priority, no raw bridge error text",
+    "All17 current-host integration suites pass after fixed-message assertion updates;375 unit cases pass; coverage88.02/80.71 with26 failing files remains blocking",
+    "Corrected Windows static inspection verifies923 ASAR member hashes and embedded header; no Pageant helper or smart-unpacked SSH code",
+    "Contribution/security/NOTICE documents, native six-combination verification handoff and explicitly unperformed G0/G2/G3 evaluation status"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -532,10 +536,10 @@
       "summary": "Required per-file statement90% / branch85% unit coverage is not met. Real report retained; no threshold reduction or exclusion to claim pass."
     }
   ],
-  "next_action": "Continue mandatory D11 per-file statement/branch coverage and performance/security audit; then D12 development packages/fuses/notices/SBOM and D13 user handoff.",
+  "next_action": "Continue required per-file coverage, bounded resync/resource review, Windows launcher notices/source, and final development artifact rebuild. Native target/signing evidence remains user-owned.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-coverage-security",
+  "latest_evidence_directory": "evidence/d11-structured-errors",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
