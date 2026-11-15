@@ -40,3 +40,5 @@ describe('main-owned native transfer selections',() => {
     clock.mockReturnValue(120000);expect(await profiles.handle('profile:pickKey',undefined)).toHaveProperty('token');
   });
 });
+
+it('rejects a native key selection that finishes after renderer capability invalidation',async()=>{let resolve!:(value:{canceled:boolean;filePaths:string[]})=>void;vi.mocked(dialog.showOpenDialog).mockImplementation(()=>new Promise(done=>{resolve=done;}));const profiles=new ProfileController({} as StateRepository,()=>window,()=>false,new NativeDialogGate()),pending=profiles.handle('profile:pickKey',undefined),failure=expect(pending).rejects.toThrow('REQUEST_CANCELLED');profiles.invalidate();resolve({canceled:false,filePaths:['fixture-key']});await failure;});

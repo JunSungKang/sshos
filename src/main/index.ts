@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, protocol, session, utilityProcess, safeStorage } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, dialog, protocol, session, utilityProcess, safeStorage } from 'electron';
 import { readFile, mkdir, realpath } from 'node:fs/promises';
 import { resolve, relative, isAbsolute, sep, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
       return new Response(new Uint8Array(data), { headers: { 'Content-Type': asset.mime, 'Content-Security-Policy': CSP, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } });
     } catch { return new Response(null, { status: 404 }); }
   });
-  let win: BrowserWindow | null = null;
+  let win: BrowserWindow | null = null;let replacingRenderer=false;
   const dataRoot = resolve(app.getPath('userData'), 'data');
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
@@ -92,18 +92,18 @@ async function main(): Promise<void> {
     if (repositoryOpening) return repositoryOpening;
     repositoryOpening = (async () => {
       if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot);
-      profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false,dialogGate);
+      profiles?.invalidate();profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false,dialogGate);
     })().finally(() => { repositoryOpening = null; });
     return repositoryOpening;
   };
   try { await openRepository(); } catch { /* Keep a locked, visible recovery UI instead of resetting data. */ }
   let receipts:ReceiptRepository|null=null;
   try { receipts=await ReceiptRepository.open(dataRoot); } catch { /* Keep changes locked and reads available. */ }
-  const epoch = randomUUID();
+  let epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
-  const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
-  const storageRecovery=new MainStorageRecovery(epoch,worker);
-  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message => worker.postMessage(message));
+  let worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
+  let storageRecovery=new MainStorageRecovery(epoch,worker);
+  let receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   let executions:ExecutionController|null=null;
   let terminals:TerminalController|null=null;
@@ -119,11 +119,13 @@ async function main(): Promise<void> {
   executions=new ExecutionController(executionPreviews,connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),()=>receiptChannel.settled());
   terminals=new TerminalController(connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),()=>win,pasteGesture,()=>receiptChannel.settled());
   const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if(row.kind === 'gui_exec')await executions!.releaseRecord(row);else if(row.kind === 'pty')await terminals!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays(),...terminals!.overlays()],id => transfers!.taskState(id));
-  worker.on('message', (message: unknown) => {
-    const parsed = workerEventSchema.safeParse(message);
-    if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
+  let engineStopping:Promise<void>=Promise.resolve(),engineRestarting=false;
+  const observeEngine=(observed:Electron.UtilityProcess,observedEpoch:string):Promise<void>=>new Promise((resolveReady,rejectReady)=>{
+    let ready=false;const timer=setTimeout(()=>{if(!ready){observed.kill();rejectReady(new Error('ENGINE_STOPPED'));}},10000);timer.unref();
+    observed.on('message',(message:unknown)=>{if(worker !== observed || epoch !== observedEpoch)return;const parsed=workerEventSchema.safeParse(message);if(parsed.success && parsed.data.backendEpoch === observedEpoch){ready=true;clearTimeout(timer);engine='ready';resolveReady();}});
+    observed.on('exit',()=>{clearTimeout(timer);if(!ready)rejectReady(new Error('ENGINE_STOPPED'));if(worker !== observed || epoch !== observedEpoch)return;engine='stopped';const previous=connections!.views();connections!.engineStopped();for(const row of previous){executions!.sessionChanged(row.serverId,row.generation,false);terminals!.sessionChanged(row.serverId,row.generation,false);}viewers.interruptRenderer();transfers!.invalidateRenderer();executionPreviews.invalidate();profiles?.invalidate();engineStopping=Promise.allSettled([mutations.settled(),transfers!.engineStopped(),executions!.engineStopped(),terminals!.engineStopped()]).then(()=>{});});
   });
-  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped();void executions?.engineStopped();void terminals?.engineStopped(); });
+  void observeEngine(worker,epoch).catch(()=>{});
   const budget = new RequestBudget();
   const terminalInputBudget=new RequestBudget(undefined,240,720);
   const viewerDataBudget=new RequestBudget(undefined,32,128);
@@ -146,7 +148,7 @@ async function main(): Promise<void> {
     ipcMain.handle(action, async (event, payload: unknown) => {
       validateSender(event);
       try {
-        if (!connections || engine !== 'ready') throw new Error('ENGINE_STOPPED');
+        if (!connections || action !== 'session:list' && engine !== 'ready') throw new Error('ENGINE_STOPPED');
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
         return await connections.handle(action, payload);
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
@@ -220,6 +222,11 @@ async function main(): Promise<void> {
     finally {recoveryAccepting=false;storageRecovering=false;}
 
   });
+  ipcMain.handle('lifecycle:restartEngine',async(event,payload:unknown)=>{
+    validateSender(event);if(payload !== undefined)throw new Error('INPUT_INVALID');if(engine !== 'stopped' || gateway.running || engineRestarting || storageRecovering)throw new Error('REQUEST_BUSY');engineRestarting=true;
+    try{await engineStopping;if(engine !== 'stopped')throw new Error('REQUEST_BUSY');engine='starting';epoch=randomUUID();worker=utilityProcess.fork(resolve(__dirname,'../worker/index.js'),[epoch],{stdio:'ignore',serviceName:'sshOS connection engine'});storageRecovery=new MainStorageRecovery(epoch,worker);receiptChannel=new MainReceiptChannel(epoch,()=>receipts,()=>Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message=>worker.postMessage(message));gateway.restart(worker,epoch,receiptChannel);await observeEngine(worker,epoch);}
+    catch{worker.kill();engine='stopped';throw new Error('ENGINE_STOPPED');}finally{engineRestarting=false;}
+  });
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);
     if (payload !== undefined) throw new Error('INPUT_INVALID');
@@ -234,16 +241,17 @@ async function main(): Promise<void> {
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
     let loaded=false;
-    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
     win.webContents.on('did-finish-load',() => {loaded=true;});
-    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();});
-    win.on('ready-to-show', () => win?.show());
-    win.on('closed', () => { win = null; });
+    const owner=win;let recoveringRenderer=false;
+    win.webContents.on('render-process-gone',(_event,details) => {profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();if(details.reason === 'clean-exit' || recoveringRenderer || owner.isDestroyed())return;recoveringRenderer=true;void dialog.showMessageBox(owner,{type:'warning',title:'sshOS 화면 복구',message:'화면 프로세스가 종료되었습니다.',detail:'연결 엔진과 작업은 계속 실행 중일 수 있습니다. 화면을 다시 열면 현재 상태를 복원하며 원격 작업을 다시 실행하지 않습니다.',buttons:['화면 다시 열기','나중에'],defaultId:0,cancelId:1,noLink:true}).then(async result=>{if(result.response===0 && !owner.isDestroyed()){replacingRenderer=true;try{owner.destroy();createWindow();}finally{replacingRenderer=false;}}}).catch(()=>{}).finally(()=>{recoveringRenderer=false;});});
+    win.on('ready-to-show', () => {if(!owner.isDestroyed())owner.show();});
+    win.on('closed', () => {if(win===owner)win=null;});
     void win.loadURL('app://ui/');
   };
   app.on('second-instance', () => { if (win?.isMinimized()) win.restore(); win?.focus(); });
   app.on('activate', () => { if (!win) createWindow(); });
-  app.on('window-all-closed', () => app.quit());
+  app.on('window-all-closed', () => {if(!replacingRenderer)app.quit();});
   app.on('before-quit', () => { worker.kill(); });
   createWindow();
 }

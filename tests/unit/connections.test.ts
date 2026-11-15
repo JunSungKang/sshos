@@ -22,7 +22,7 @@ async function fixture(unknown=false) {
   }} as unknown as EngineGateway;
   const vault={encrypt:async () => {encryptionStarted=true;return encrypted.promise;}} as unknown as SecretVault;
   controller=new ConnectionController(() => repo,gateway,vault,() => healthy);
-  return {repo,profile,controller,encrypted,setHealthy:(value:boolean) => {healthy=value;},get started(){return encryptionStarted;},get connects(){return connects;}};
+  return {repo,profile,controller,encrypted,vault,setHealthy:(value:boolean) => {healthy=value;},get started(){return encryptionStarted;},get connects(){return connects;}};
 }
 describe('connection readiness and credential lifetime',() => {
   it('issues a resource capability only after inspection and requested secret storage finish',async () => {
@@ -48,4 +48,11 @@ describe('connection readiness and credential lifetime',() => {
     const approval=f.controller.approve(challenge.challengeId);const rejected=expect(approval).rejects.toThrow('CONNECTION_LOST');for (let i=0;i<20 && !saving;i++) await Promise.resolve();
     await f.controller.disconnect(f.profile.id);await expect(f.controller.connect(f.profile.id,{password:'fixture-only',saveSecret:false})).rejects.toThrow('SESSION_BUSY');gate.resolve();await rejected;expect(f.connects).toBe(1);expect(f.controller.views()[0]?.sessionToken).toBeNull();
   });
+});
+
+it('rejects stale secret rotation and authentication after engine loss while allowing an explicitly newer generation',async()=>{
+ const f=await fixture(),secretId=crypto.randomUUID(),original=Buffer.from('old fixture ciphertext').toString('base64'),newer=Buffer.from('new fixture ciphertext').toString('base64'),gate=deferred<void>();let decrypting=false;
+ await f.repo.store.update(state=>({...state!,profiles:state!.profiles.map(row=>({...row,secretId})),encryptedSecrets:[{id:secretId,profileId:f.profile.id,endpoint:'example.invalid:22',username:'fixture',ciphertext:original}]}));
+ f.vault.decrypt=async(_ciphertext,persist)=>{decrypting=true;await gate.promise;await persist(Buffer.from('stale replacement').toString('base64'));return 'old fixture password';};
+ const pending=f.controller.connect(f.profile.id,{saveSecret:false}),failure=expect(pending).rejects.toThrow('CONNECTION_LOST');await vi.waitFor(()=>expect(decrypting).toBe(true));f.controller.engineStopped();await f.controller.connect(f.profile.id,{password:'new fixture password',saveSecret:false});await f.repo.store.update(state=>({...state!,encryptedSecrets:state!.encryptedSecrets.map(row=>({...row,ciphertext:newer}))}));gate.resolve();await failure;expect(f.repo.snapshot().encryptedSecrets[0]?.ciphertext).toBe(newer);expect(f.connects).toBe(1);expect(f.controller.views()[0]).toMatchObject({status:'connected',generation:2});
 });

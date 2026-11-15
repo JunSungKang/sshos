@@ -83,7 +83,7 @@ export class TransferController {
   }
   get isRegistering():boolean {return this.registrations.size>0;}
   async settled():Promise<void> {await Promise.allSettled([...this.registrations]);}
-  async acknowledge(row:TransferReceipt):Promise<void> {if (this.isActive(row.taskId)) throw new Error('REQUEST_BUSY');await this.gateway.request({action:'transfer:acknowledge',serverId:row.serverId,generation:row.generation,taskId:row.taskId}).catch(error => {if (!(error instanceof Error) || error.message !== 'ENGINE_STOPPED') throw error;});this.jobs.delete(row.taskId);}
+  async acknowledge(row:TransferReceipt):Promise<void> {if (this.isActive(row.taskId)) throw new Error('REQUEST_BUSY');if(row.backendEpoch===this.gateway.epoch)await this.gateway.request({action:'transfer:acknowledge',serverId:row.serverId,generation:row.generation,taskId:row.taskId}).catch(error => {if (!(error instanceof Error) || error.message !== 'ENGINE_STOPPED') throw error;});this.jobs.delete(row.taskId);}
   shelf():TransferShelf {
     const repo=this.storage();if (repo && (repo !== this.countRepository || repo.revision !== this.countRevision)) {this.countRepository=repo;this.countRevision=repo.revision;const rows=repo.snapshots();this.unresolved=rows.filter(receiptUnresolved).length;this.failed=rows.filter(row => row.kind === 'file_transfer' && ['failed','interrupted','result_unknown'].includes(row.phase)).length;}
     const rows=[...this.jobs.values()],active:TransferShelfRow[]=[];let queued=0,registering=0;

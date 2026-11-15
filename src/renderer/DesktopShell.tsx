@@ -28,6 +28,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   const [activeServer, setActiveServer] = useState<string | null>(null);
   const [terminalClose,setTerminalClose]=useState<{preview:TerminalClosePreview;windowId:string}|null>(null);
   const [executionClose,setExecutionClose]=useState<{preview:ExecutionActionPreview;windowId:string}|null>(null);
+  const [engineBusy,setEngineBusy]=useState(false);
   const [notice, setNotice] = useState('');
   const [startMenu, setStartMenu] = useState(false);
   const [picker, setPicker] = useState<WindowKind | null>(null);
@@ -107,7 +108,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       </WindowFrame>)}
       {notice && <p className="desktop-notice" role="alert">{notice}</p>}
       {snapshot?.storage.status === 'unavailable' && <div className="storage-error" role="alert"><p>앱 데이터를 읽지 못했습니다. 기존 데이터를 초기화하지 않고 변경 기능을 잠갔습니다.</p><p>{snapshot.storage.path}</p><button onClick={() => { void window.sshOS.settings.retryStorage().catch(() => setNotice('저장소를 다시 확인하지 못했습니다.')); }}>저장소 다시 확인</button></div>}
-      <output className="engine-state" aria-live="polite" data-testid="engine-state">{error ? '앱 상태를 확인하지 못했습니다.' : snapshot?.engine === 'ready' ? '연결 엔진 준비됨' : snapshot?.engine === 'stopped' ? '연결 엔진이 종료됐습니다.' : '연결 엔진 시작 중'}</output>
+      <div className="engine-state"><output aria-live="polite" data-testid="engine-state">{error ? '앱 상태를 확인하지 못했습니다.' : snapshot?.engine === 'ready' ? '연결 엔진 준비됨' : snapshot?.engine === 'stopped' ? '연결 엔진이 종료됐습니다.' : '연결 엔진 시작 중'}</output>{snapshot?.engine === 'stopped' && <button disabled={engineBusy} onClick={()=>{setEngineBusy(true);void window.sshOS.lifecycle.restartEngine().catch(()=>setNotice('연결 엔진을 다시 시작하지 못했습니다. 다시 시도하세요.')).finally(()=>setEngineBusy(false));}}>연결 엔진 다시 시작</button>}</div>
       {picker && <dialog ref={pickerDialog} className="server-picker" aria-label="서버 선택" onCancel={() => setPicker(null)}><h2>작업할 서버 선택</h2><select aria-label="대상 서버" value={chosenServer} onChange={event => setChosenServer(event.target.value)}><option value="">선택하세요</option>{sessions.filter(row => row.status === 'connected').map(row => <option key={row.serverId} value={row.serverId}>{row.serverName}</option>)}</select><button disabled={!chosenServer} onClick={() => { const server = sessions.find(row => row.serverId === chosenServer); const kind = picker; setPicker(null); if (server) void openFor(kind, server); }}>열기</button><button onClick={() => setPicker(null)}>취소</button></dialog>}
     </div>
     {terminalClose && <TerminalCloseDialog preview={terminalClose.preview} close={()=>setTerminalClose(null)} done={()=>removeWindow(terminalClose.windowId)}/>}

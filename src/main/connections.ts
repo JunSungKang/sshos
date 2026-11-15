@@ -74,8 +74,10 @@ export class ConnectionController {
         const saved = state.encryptedSecrets.find(row => row.id === profile.secretId && row.profileId === id && row.endpoint === endpointFor(profile) && row.username === profile.username);
         if (!saved) throw new Error('SECRET_UNAVAILABLE');
         const value = await this.secrets.decrypt(saved.ciphertext, async ciphertext => {
-          await repository.store.update(current => {
-            if (!current) throw new Error('STORAGE_FAILED');
+          this.requireLiveOperation(id,generation);const activeRepository=this.repository();
+          await activeRepository.store.update(current => {
+            this.requireLiveOperation(id,generation);if (!current) throw new Error('STORAGE_FAILED');
+            if(!current.encryptedSecrets.some(secret=>secret.id===saved.id && secret.ciphertext===saved.ciphertext && secret.profileId===id))throw new Error('SECRET_UNAVAILABLE');
             return { ...current, encryptedSecrets: current.encryptedSecrets.map(secret => secret.id === saved.id ? { ...secret, ciphertext } : secret) };
           });
         });
@@ -175,7 +177,7 @@ export class ConnectionController {
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); this.clearInput(pending.input); } this.pending.clear();
     for (const [id, old] of this.sessions) this.sessions.set(id, { ...old, status: 'disconnected', errorCode: 'ENGINE_STOPPED' });
     for (const [id,old] of this.sessions) this.closingGenerations.set(id,old.generation);
-    this.tokens.clear();this.readyGenerations.clear();
+    this.tokens.clear();this.readyGenerations.clear();this.credentialOperations.clear();
   }
   private clearInput(input: ConnectInput): void { input.keyBytes?.fill(0); delete input.keyBytes; delete input.password; delete input.passphrase; }
 }

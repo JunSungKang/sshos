@@ -3,7 +3,7 @@ import { clipboard,type BrowserWindow,type Input,type MouseInputEvent } from 'el
 export class TerminalPasteGesture {
  private at=Number.NEGATIVE_INFINITY;private used=true;private owner:BrowserWindow|null=null;private generation=0;
  constructor(private readonly clock:()=>number=()=>performance.now(),private readonly read:()=>string|Promise<string>=()=>clipboard.readText()) {}
- bind(window:BrowserWindow):void {this.owner=window;this.invalidate();window.webContents.on('before-input-event',(_event,input)=>this.key(input));window.webContents.on('before-mouse-event',(_event,input)=>this.mouse(input));}
+ bind(window:BrowserWindow):void {this.owner=window;this.invalidate();window.webContents.on('before-input-event',(_event,input)=>{if(this.owner===window)this.key(input);});window.webContents.on('before-mouse-event',(_event,input)=>{if(this.owner===window)this.mouse(input);});}
  key(input:Pick<Input,'type'|'key'|'meta'|'control'|'shift'>):void {if(input.type === 'keyDown' && input.key.toLowerCase() === 'v' && (input.meta || input.control && input.shift)){this.at=this.clock();this.used=false;}}
  mouse(input:Pick<MouseInputEvent,'type'|'button'>):void {if(input.type === 'mouseDown' && input.button === 'left'){this.at=this.clock();this.used=false;}}
  invalidate():void {this.generation++;this.at=Number.NEGATIVE_INFINITY;this.used=true;}

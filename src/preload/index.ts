@@ -63,7 +63,7 @@ contextBridge.exposeInMainWorld('sshOS', Object.freeze({
     previewRecordAction:(id:string,action:string) => ipcRenderer.invoke('task:previewRecordAction',{id,action}),
     applyRecordAction:(token:string) => ipcRenderer.invoke('task:applyRecordAction',token)
   }),
-  lifecycle: Object.freeze({ getSnapshot: () => ipcRenderer.invoke('lifecycle:getSnapshot') }),
+  lifecycle: Object.freeze({ getSnapshot: () => ipcRenderer.invoke('lifecycle:getSnapshot'),restartEngine:()=>ipcRenderer.invoke('lifecycle:restartEngine') }),
   settings: Object.freeze({ retryStorage: () => ipcRenderer.invoke('settings:retryStorage') }),
   desktop: Object.freeze({
     getWindowSnapshot: () => ipcRenderer.invoke('desktop:getWindowSnapshot'),
