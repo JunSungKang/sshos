@@ -1,0 +1,17 @@
+{
+  "src/main/licenses.ts": "f9f68680197112eb001fb5f0f7bb52e1da1de929629207cd4c90a1e8db7305f0",
+  "src/shared/licenses.ts": "91203796194d118e80a2b729f83448d38ab7fb4a1a41c726dca52ec82bf960cc",
+  "src/renderer/LicenseDialog.tsx": "9e31e3ba1ad3b4988a3c178d36dae518cc00a5a6d56e38a45e31417e352bc6ab",
+  "src/main/index.ts": "0522e6f1f89a02482b937c730b15b718189254852d5f81ed6876809c0faa1eee",
+  "src/preload/index.ts": "4801901f1397e3c96b8268a5caf71cc9a859d4e3f1fe3f0d31eb5d4a184adf8c",
+  "src/shared/contracts.ts": "d7ab6035328a400196940477131e134c8f13d2110d2ff85d61c577f1544a3462",
+  "src/renderer/SettingsPane.tsx": "ff7f3119156e73463b0ad1fe83782324984ac3a9183a41d4a087782db81e6bf1",
+  "scripts/prepare-licenses.mjs": "f74a27ad0dffd31b28d51a726469ffcee521d45be98f30a26df5153f8659264c",
+  "scripts/package.mjs": "6475afeffa1aa6299b697b25b983a1aa337daac0da0d0ad23b443b64ec7a253f",
+  "scripts/package-after-pack.cjs": "c7963d73c7e275711b76b013cb5f264e10e1b962d86f8389189c029778013d73",
+  "electron-builder.json": "2ebb71804fae8f6c52a51a19b0a48816203a1f8660231e873e56ebc7d980f8d9",
+  "vite.config.ts": "45e60af976462b33f4e23020ea65b7ba39d0c25223f1985bb4473246cc73a29c",
+  "tests/unit/licenses.test.ts": "88eaf0b5c382651dd68fbb4be6e65a65acb85828dd95fd4ab52814260f595104",
+  "tests/unit/viewer-formats.test.ts": "3cd3d9f744991b997d5a286ea5b7ffccba0c1c95472ff1571d62ebcea736f784",
+  "scripts/settings-gui-smoke.mjs": "bb80e1aaa88e36d1106be64e9968ad4a624208d31c71059a7bb135f30f89aaf9"
+}

@@ -120,7 +120,9 @@
     "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed",
     "Bounded late file-mutation ACK observations retain original unknown/partial phase, generation/path identity and restrictions without completion promotion or replay; duplicate callbacks ignored",
     "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty",
-    "Strict host syntax rejects legacy octal/hex/short IPv4 and bracketed non-IPv6 instead of accepting URL/IDNA reinterpretation"
+    "Strict host syntax rejects legacy octal/hex/short IPv4 and bracketed non-IPv6 instead of accepting URL/IDNA reinterpretation",
+    "Fixed local license inventory and32KiB UTF8 pages through named IPC; plaintext upstream Electron/Chromium notices, SHA256/size/no-symlink checks and actual settings GUI paging",
+    "Development-only packaging pipeline replaces release-readiness circular prerequisite; clean revision/source archive/hash manifest, six production fuses, target-specific notices/SBOM, no native accelerators or tests; actual artifact build verification pending"
   ],
   "local_verification": {
     "typecheck": "pass",
