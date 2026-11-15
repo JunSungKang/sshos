@@ -1,4 +1,5 @@
 import { engineRequestCapacity } from '../shared/engine-priority';
+import { SSHProbe } from './probe';
 import { Client } from 'ssh2';
 import { z } from 'zod';
 import { SessionManager } from './connection/session-manager';
@@ -23,13 +24,15 @@ let transfers:TransferCoordinator|null=null;
 let executions:GUIExecutions|null=null;let executionSequence=0;let terminals:TerminalSessions|null=null;let terminalSequence=0;
 const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message),() => transfers?.storageFault());
 let sequence = 0;
-let readers:ViewerReader|null=null;
+let readers:ViewerReader|null=null;let probes:SSHProbe|null=null;
 const sessions = new SessionManager(snapshot => {
+  probes?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status==='connected');
   executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   transfers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   readers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot });
 });
+probes=new SSHProbe(epoch,(serverId,generation)=>sessions.probeAccess(serverId,generation));
 readers=new ViewerReader((serverId,generation) => sessions.readClient(serverId,generation));
 const files = new FileBrowser((serverId, generation) => sessions.control(serverId, generation));
 const locks=new PathLocks();
@@ -45,7 +48,9 @@ const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {
   try {
     let result: unknown;
-    if(request.action === 'pty:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=terminals!.start(request.receipt);}
+    if(request.action==='probe:run')result=await probes!.run({serverId:request.serverId,sessionGeneration:request.generation,backendEpoch:epoch,probeEpoch:request.probeEpoch,probeId:request.probeId,transferActive:request.transferActive});
+    else if(request.action==='probe:invalidate')probes!.invalidate(request.serverId,request.generation,request.probeEpoch);
+    else if(request.action === 'pty:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=terminals!.start(request.receipt);}
     else if(request.action === 'pty:freeze')result=terminals!.freeze(request.serverId,request.generation,request.terminalId,request.restoreToken,request.clear);
     else if(request.action === 'pty:restoreAck')terminals!.acknowledge(request.serverId,request.generation,request.terminalId,request.restoreToken,request.offset);
     else if(request.action === 'pty:read')result=terminals!.read(request.serverId,request.generation,request.terminalId,request.cursor);

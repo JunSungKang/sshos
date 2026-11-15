@@ -20,7 +20,7 @@ describe('isolated authenticated sockets',() => {
   it('shares one opening socket per role and isolates auxiliary close from control',async () => {
     const remote=await fixture();const manager=new SessionManager(() => {});const serverId=crypto.randomUUID();
     try {
-      await manager.connect(serverId,1,remote.input);expect(() => manager.auxiliary(serverId,1,'transfer')).toThrow('OS_UNKNOWN');manager.confirmOS(serverId,1);
+      await manager.connect(serverId,1,remote.input);expect(manager.probeAccess(serverId,1).client).toBeDefined();expect(manager.probeAccess(serverId,1).metadataBusy).toBe(false);expect(() => manager.auxiliary(serverId,1,'transfer')).toThrow('OS_UNKNOWN');manager.confirmOS(serverId,1);
       const transfer=manager.auxiliary(serverId,1,'transfer');expect(manager.auxiliary(serverId,1,'transfer')).toBe(transfer);
       const execution=manager.auxiliary(serverId,1,'execution');expect(execution).not.toBe(transfer);await Promise.all([transfer.ready,execution.ready]);expect(remote.auth()).toBe(3);
       transfer.close();expect(() => manager.auxiliary(serverId,1,'transfer')).toThrow('SESSION_BUSY');await transfer.closed;expect(manager.snapshots()[0]?.status).toBe('connected');

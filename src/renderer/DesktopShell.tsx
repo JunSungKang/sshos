@@ -4,6 +4,7 @@ import type { RuntimeSnapshot } from '../shared/contracts';
 import type { SessionView } from '../shared/session-contracts';
 import { ProfileManager } from './ProfileManager';
 import { FileExplorer } from './FileExplorer';
+import { ProbeStatus } from './ProbeStatus';
 import { TerminalPane } from './TerminalPane';
 import { TerminalCloseDialog } from './TerminalCloseDialog';
 import type { TerminalClosePreview } from '../shared/terminal-ui';
@@ -31,6 +32,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   const [engineBusy,setEngineBusy]=useState(false);
   const [notice, setNotice] = useState('');
   useEffect(()=>{if(snapshot && snapshot.powerSequence>0)setNotice('절전 전 연결을 종료했습니다. 서버에 다시 연결하세요.');},[snapshot?.powerSequence]);
+  useEffect(()=>{let alive=true;void window.sshOS.session.selectActiveServer(activeServer).catch(async()=>{if(!alive)return;await window.sshOS.session.selectActiveServer(null).catch(()=>{});if(alive && activeServer)setNotice('활성 서버의 응답시간 측정을 시작하지 못했습니다. 서버를 다시 선택하세요.');});return()=>{alive=false;};},[activeServer]);
   const [startMenu, setStartMenu] = useState(false);
   const [picker, setPicker] = useState<WindowKind | null>(null);
   const [chosenServer, setChosenServer] = useState('');
@@ -70,7 +72,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       const available=current.sessions.filter(session => session.status === 'connected' && session.sessionToken);
       if (available.length === 1) {await openFor(kind,available[0]);return;}
       if (available.length === 0) {await openFor('connections');return;}
-      setChosenServer('');setPicker(kind);
+      setChosenServer(available.some(row=>row.serverId===activeServer) ? activeServer!:'');setPicker(kind);
     } catch {setNotice('연결 상태를 읽지 못했습니다. 연결 화면에서 확인하세요.');}
   };
   useEffect(() => {
@@ -96,7 +98,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   }, []);
   const selected = sessions.find(row => row.serverId === activeServer);
   return <main className="desktop">
-    <header><strong>sshOS <small>시오스</small></strong><span>데스크톱</span><span className="connection">{selected ? `${selected.serverName} · ${selected.status === 'connected' ? '연결됨' : '연결 끊김'}` : `연결 ${snapshot?.connectedServers ?? 0}`}</span></header>
+    <header><strong>sshOS <small>시오스</small></strong><span>데스크톱</span><span className="connection"><select className="active-server-select" aria-label="활성 서버" value={activeServer ?? ''} onChange={event=>setActiveServer(event.target.value || null)} disabled={sessions.length===0}><option value="">활성 서버 선택</option>{sessions.map(row=><option key={row.serverId} value={row.serverId}>{row.serverName}</option>)}</select>{selected ? <><span>{{idle:'연결 대기',connecting:'연결 중',authenticating:'인증 중',connected:'연결됨',awaiting_host_trust:'지문 확인 대기',disconnecting:'연결 해제 중',disconnected:'연결 끊김',failed:'연결 실패'}[selected.status]}</span>{selected.status==='connected' && <ProbeStatus value={snapshot?.probe} serverId={selected.serverId} generation={selected.generation}/>}</> : <span>연결 {snapshot?.connectedServers ?? 0}</span>}</span></header>
     <div className="desktop-area">
       <nav className="desktop-icons" aria-label="앱 실행">{(['connections','files','terminal','settings'] as WindowKind[]).map(kind => <button key={kind} onDoubleClick={() => launch(kind)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); launch(kind); } }}><span aria-hidden="true">{icons[kind]}</span>{labels[kind]}</button>)}</nav>
       {windows.map(row => <WindowFrame key={row.windowId} model={row} title={`${row.kind === 'terminal' ? titles[row.windowId]?.name ?? labels[row.kind]:labels[row.kind]}${row.kind !== 'terminal' && titles[row.windowId] ? ` / ${titles[row.windowId]!.name}` : ''}${row.serverId ? ` · ${sessions.find(session => session.serverId === row.serverId)?.serverName ?? titles[row.windowId]?.serverName ?? '연결 끊김'}` : ''}`}

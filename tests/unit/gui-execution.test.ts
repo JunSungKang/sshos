@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { afterEach,describe,expect,it,vi } from 'vitest';
 import { PassThrough } from 'node:stream';
 import type { Client,ClientChannel } from 'ssh2';
@@ -9,13 +10,13 @@ import { executionReceipt } from '../fixtures/executions';
 afterEach(()=>vi.useRealTimers());const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
 function fixture(options:{storageFailure?:boolean;mode?:number}={}) {
  const row=executionReceipt(),expected={type:'file' as const,size:10,mtime:1,mode:options.mode ?? 0o100700},spec={path:row.source!,cwd:row.cwd!,mode:'direct' as const,argv:['sensitive-argument']};const saved:FileReceipt[]=[],commands:string[]=[],events:ExecutionRuntime[]=[];let callback!:(error:Error|undefined,channel:ClientChannel)=>void,resolveClosed!:()=>void;let closing=false;
- const client={exec:(command:string,done:typeof callback)=>{commands.push(command);callback=done;}} as unknown as Client;
+ const client=Object.assign(new EventEmitter(),{exec:(command:string,done:typeof callback)=>{commands.push(command);callback=done;}}) as unknown as Client;
  const lease:AuxiliaryLease={ready:Promise.resolve(client),closed:new Promise(done=>{resolveClosed=done;}),get closing(){return closing;},close:()=>{closing=true;queueMicrotask(resolveClosed);}};
  const access={check:()=>{},quarantine:()=>{throw new Error('Unexpected quarantine');},sftp:{lstat:(path:string,done:(error:undefined,stat:unknown)=>void)=>queueMicrotask(()=>done(undefined,{size:10,mtime:1,mode:expected.mode,isDirectory:()=>path==='/home',isFile:()=>path==='/home/program.sh',isSymbolicLink:()=>false})),realpath:(path:string,done:(error:undefined,path:string)=>void)=>queueMicrotask(()=>done(undefined,path))}};
  const sessions={control:()=>access,auxiliary:()=>lease,withMetadata:async(_server:string,_generation:number,action:()=>Promise<unknown>)=>action()} as unknown as Pick<SessionManager,'control'|'auxiliary'|'withMetadata'>;
  const writer={faulted:false,persist:async(receipt:FileReceipt)=>{if(options.storageFailure)throw new Error('STORAGE_FAILED');saved.push(structuredClone(receipt));}};
  const executions=new GUIExecutions(row.backendEpoch,sessions,writer,value=>events.push(value));const channel=new PassThrough() as unknown as ClientChannel;channel.stderr=new PassThrough();channel.signal=vi.fn();channel.close=vi.fn(()=>channel);const end=vi.spyOn(channel,'end');
- return {row,expected,spec,executions,saved,commands,events,channel,end,accept:()=>callback(undefined,channel),reject:()=>callback(new Error('denied'),undefined as unknown as ClientChannel)};
+ return {row,expected,spec,executions,saved,commands,events,channel,end,socketClosed:()=>{client.emit('close');resolveClosed();},accept:()=>callback(undefined,channel),reject:()=>callback(new Error('denied'),undefined as unknown as ClientChannel)};
 }
 describe('GUI exec lifecycle and bounded output owner',()=>{
  it('durably gates dispatch, keeps stdin open and distinguishes observed exit from channel termination',async()=>{
@@ -36,3 +37,5 @@ it('reconciles only failed execution records without replay and preserves backup
  const options={storageFailure:false},f=fixture(options);f.executions.start(f.row,f.spec,f.expected);await tick();f.accept();await tick();options.storageFailure=true;f.channel.emit('exit',7);await tick();expect(f.executions.snapshot(f.row.serverId,1)[0]?.recordError).toBe(true);options.storageFailure=false;await f.executions.reconcileStorage([]);expect(f.executions.snapshot(f.row.serverId,1)[0]).toMatchObject({receipt:{phase:'running',exitCode:7},recordError:false,active:true});expect(f.commands).toHaveLength(1);f.channel.emit('close');await tick();expect(f.executions.snapshot(f.row.serverId,1)[0]?.receipt.phase).toBe('exited');
  const g=fixture();g.executions.start(g.row,g.spec,g.expected);await tick();await g.executions.reconcileStorage([{taskId:g.row.taskId,fromPhase:'dispatching'}]);g.accept();await tick();g.channel.emit('exit',0);g.channel.emit('close');await tick();expect(g.executions.snapshot(g.row.serverId,1)[0]?.receipt).toMatchObject({phase:'result_unknown',recoveryUncertain:true,recoveredFromPhase:'dispatching',exitCode:0,channelClosed:true});expect(g.commands).toHaveLength(1);
 });
+
+it('preserves observed exit information but never confirms channel close or exited after socket loss',async()=>{const f=fixture();f.executions.start(f.row,f.spec,f.expected);await tick();f.accept();await tick();f.channel.emit('exit',0);f.socketClosed();f.channel.emit('close');await tick();expect(f.executions.snapshot(f.row.serverId,1)[0]).toMatchObject({receipt:{phase:'result_unknown',exitObserved:true,exitCode:0,channelClosed:false},active:false});});

@@ -1,3 +1,4 @@
+import { probeViewSchema } from './probes';
 import { z } from 'zod';
 import type { TerminalDescriptor,TerminalInputResult,TerminalPastePreview,TerminalClosePreview,TerminalFrame } from './terminal-ui';
 import type { ExecutionContext,ExecutionPreview,ExecutionDescriptor,ExecutionFrame,ExecutionActionPreview } from './execution-ui';
@@ -15,6 +16,7 @@ import type { ViewerFrame, ViewerDescriptor } from './viewers/reader';
 export const runtimeSnapshotSchema = z.object({
   backendEpoch: z.uuid(),
   engine: z.enum(['starting', 'ready', 'stopped']),
+  probe:probeViewSchema.default(()=>({serverId:null,generation:null,status:'idle' as const,sample:null})),
   closing:z.boolean().default(false),powerSequence:z.int().nonnegative().default(0),
   connectedServers: z.int().min(0).max(3),
   storage: z.object({ status: z.enum(['ready', 'recovered', 'unavailable']), path: z.string().max(4096) }).strict(),
@@ -44,6 +46,7 @@ export interface DesktopBridge {
   };
   settings: { retryStorage(): Promise<void> };
   session: {
+    selectActiveServer(id:string|null):Promise<void>;
     list(): Promise<{ sessions: SessionView[]; challenges: HostChallenge[] }>;
     connect(id: string, credentials: SessionCredentials): Promise<void>;
     disconnect(id: string): Promise<void>;
