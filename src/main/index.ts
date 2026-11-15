@@ -1,3 +1,4 @@
+import { RendererMemoryGuard } from './renderer-memory';
 import { ResponseProbe } from './probes';
 import { z } from 'zod';
 import { inShutdownScope,shutdownSummary,runShutdown,type ShutdownScope } from './shutdown';
@@ -253,12 +254,13 @@ async function main(): Promise<void> {
     try{await engineStopping;if(engine !== 'stopped')throw new Error('REQUEST_BUSY');engine='starting';epoch=randomUUID();worker=utilityProcess.fork(resolve(__dirname,'../worker/index.js'),[epoch],{stdio:'ignore',serviceName:'sshOS connection engine'});storageRecovery=new MainStorageRecovery(epoch,worker);receiptChannel=new MainReceiptChannel(epoch,()=>receipts,()=>Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message=>worker.postMessage(message));gateway.restart(worker,epoch,receiptChannel);await observeEngine(worker,epoch);}
     catch{worker.kill();engine='stopped';throw new Error('ENGINE_STOPPED');}finally{engineRestarting=false;}
   });
+  ipcMain.handle('lifecycle:ackDisplayLimit',(event,payload:unknown)=>{validateSender(event);const token=z.uuid().parse(payload),owner=win;if(!owner || owner.isDestroyed() || !memoryGuard.acknowledge(`${owner.webContents.id}:${owner.webContents.getOSProcessId()}`,token))throw new Error('TOKEN_EXPIRED');});
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);
     if (payload !== undefined) throw new Error('INPUT_INVALID');
     return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: connections.views().filter(row => row.status === 'connected').length,
       storage: { status: !repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
-      probe:responseProbe!.view(),powerSequence,closing:lifecycleClosing,appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
+      displayLimitToken:memoryGuard.displayToken,probe:responseProbe!.view(),powerSequence,closing:lifecycleClosing,appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {
     uiReady=false;win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
@@ -270,15 +272,16 @@ async function main(): Promise<void> {
     win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
     win.webContents.on('did-finish-load',() => {loaded=true;uiReady=true;responseProbe?.invalidate();});
     const owner=win;let recoveringRenderer=false;
-    win.webContents.on('render-process-gone',(_event,details) => {uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();if(details.reason === 'clean-exit' || recoveringRenderer || owner.isDestroyed())return;recoveringRenderer=true;void dialog.showMessageBox(owner,{type:'warning',title:'sshOS 화면 복구',message:'화면 프로세스가 종료되었습니다.',detail:'연결 엔진과 작업은 계속 실행 중일 수 있습니다. 화면을 다시 열면 현재 상태를 복원하며 원격 작업을 다시 실행하지 않습니다.',buttons:['화면 다시 열기','나중에'],defaultId:0,cancelId:1,noLink:true}).then(async result=>{if(result.response===0 && !owner.isDestroyed()){replacingRenderer=true;try{owner.destroy();createWindow();}finally{replacingRenderer=false;}}}).catch(()=>{}).finally(()=>{recoveringRenderer=false;});});
+    win.webContents.on('render-process-gone',(_event,details) => {if(owner!==win || replacingRenderer)return;uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();if(details.reason === 'clean-exit' || recoveringRenderer || owner.isDestroyed())return;recoveringRenderer=true;void dialog.showMessageBox(owner,{type:'warning',title:'sshOS 화면 복구',message:'화면 프로세스가 종료되었습니다.',detail:'연결 엔진과 작업은 계속 실행 중일 수 있습니다. 화면을 다시 열면 현재 상태를 복원하며 원격 작업을 다시 실행하지 않습니다.',buttons:['화면 다시 열기','나중에'],defaultId:0,cancelId:1,noLink:true}).then(async result=>{if(result.response===0 && !owner.isDestroyed()){replacingRenderer=true;try{owner.destroy();createWindow();}finally{replacingRenderer=false;}}}).catch(()=>{}).finally(()=>{recoveringRenderer=false;});});
     win.on('ready-to-show', () => {if(!owner.isDestroyed())owner.show();});
     win.on('closed', () => {if(win===owner){win=null;uiReady=false;}});
     void win.loadURL('app://ui/');
   };
+  const memoryGuard=new RendererMemoryGuard(()=>{const owner=win;if(!owner || owner.isDestroyed() || !uiReady || lifecycleClosing)return null;const pid=owner.webContents.getOSProcessId();return {key:`${owner.webContents.id}:${pid}`,workingSetKiB:app.getAppMetrics().find(row=>row.pid===pid)?.memory.workingSetSize ?? null};},()=>terminals!.blockDisplays(),key=>{const owner=win;if(!owner || owner.isDestroyed() || `${owner.webContents.id}:${owner.webContents.getOSProcessId()}`!==key || lifecycleClosing)return;uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();replacingRenderer=true;try{owner.webContents.forcefullyCrashRenderer();owner.destroy();createWindow();}finally{replacingRenderer=false;}});
   app.on('second-instance', () => { if (win?.isMinimized()) win.restore(); win?.focus(); });
   app.on('activate', () => { if (!win) createWindow(); });
   app.on('window-all-closed', () => {if(!replacingRenderer)app.quit();});
-  app.on('before-quit',event=>{if(quitFinal){responseProbe?.dispose();worker.kill();return;}event.preventDefault();void requestQuit();});
+  app.on('before-quit',event=>{if(quitFinal){memoryGuard.dispose();responseProbe?.dispose();worker.kill();return;}event.preventDefault();void requestQuit();});
   createWindow();
 }
 

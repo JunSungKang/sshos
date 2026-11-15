@@ -18,6 +18,7 @@ export const runtimeSnapshotSchema = z.object({
   engine: z.enum(['starting', 'ready', 'stopped']),
   probe:probeViewSchema.default(()=>({serverId:null,generation:null,status:'idle' as const,sample:null})),
   closing:z.boolean().default(false),powerSequence:z.int().nonnegative().default(0),
+  displayLimitToken:z.uuid().nullable().default(null),
   connectedServers: z.int().min(0).max(3),
   storage: z.object({ status: z.enum(['ready', 'recovered', 'unavailable']), path: z.string().max(4096) }).strict(),
   appVersion: z.string().max(32),
@@ -36,7 +37,7 @@ export interface DesktopBridge {
   viewer:{probe(entryToken:string):Promise<{probeToken:string;viewerId:string;readGeneration:number}>;next(token:string,readGeneration:number,sequence:number):Promise<ViewerFrame>;releaseProbe(token:string):Promise<void>;open(entryToken:string,kind:'text'|'image'):Promise<WindowModel>;get(windowId:string):Promise<ViewerDescriptor>;reread(viewerToken:string):Promise<ViewerDescriptor>;stopRead(token:string,readGeneration:number):Promise<void>};
   file: { open(windowId: string): Promise<DirectoryPage>; list(directoryToken: string): Promise<DirectoryPage>; enter(entryToken: string): Promise<DirectoryPage>; page(pageToken: string, offset: number): Promise<DirectoryPage>; previewMutation(input:{operation:'mkdir'|'delete'|'rename';targetToken:string;name?:string}):Promise<MutationPreview>; startMutation(confirmationToken:string):Promise<string> };
   task: {list(offset:number):Promise<TaskPage>;inspect(id:string):Promise<FileReceipt & {recordError?:boolean}>;previewRecordAction(id:string,action:'acknowledge'|'forget'):Promise<RecordActionPreview>;applyRecordAction(confirmationToken:string):Promise<void>};
-  lifecycle: { getSnapshot(): Promise<RuntimeSnapshot>;restartEngine():Promise<void> };
+  lifecycle: { getSnapshot(): Promise<RuntimeSnapshot>;restartEngine():Promise<void>;ackDisplayLimit(token:string):Promise<void> };
   profile: {
     list(): Promise<ProfileView[]>;
     create(input: ProfileDraft): Promise<ProfileView>;

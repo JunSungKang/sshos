@@ -1,0 +1,9 @@
+{
+  "typecheck": "pass",
+  "unitTests": 265,
+  "unitFiles": 49,
+  "build": "pass",
+  "memoryGUI": "memory-gui.json",
+  "reference": "https://www.electronjs.org/docs/latest/api/structures/memory-info",
+  "scope": "Injected metric values; actual disposal/event-loop blockage/process replacement. No supported-target acceptance."
+}

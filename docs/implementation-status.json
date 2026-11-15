@@ -107,14 +107,15 @@
     "Suspend and resume generation invalidation with best-effort interrupt/close intents, immediate scoped disconnect and no automatic replay",
     "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue",
     "Foreground active-server SSH command-completion response metric with literal /bin/true, actual-close cooldown, identity validation, 5s delayed/15s freshness and no reconnect",
-    "Pinned ssh2 paused-channel disposal preserves genuine protocol close and frees slots without closing sibling PTYs; transport loss cannot imply observed channel close"
+    "Pinned ssh2 paused-channel disposal preserves genuine protocol close and frees slots without closing sibling PTYs; transport loss cannot imply observed channel close",
+    "Main1s renderer working-set observer with strict1536MiB two-sample boundary, immediate PTY input revocation/pause, synchronous xterm disposal ACK and2s UI replacement fallback; manual ring-clear recovery only"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 263,
-      "evidence": "evidence/d10-probe/verification.json"
+      "tests": 265,
+      "evidence": "evidence/d10-memory/verification.json"
     },
     "build": "pass",
     "electron_smoke": {
@@ -435,6 +436,20 @@
         "disconnect removes displayed number"
       ],
       "limitation": "Foreground focus and native disconnect decision mocked in test main; actual physical focus/sleep, target OpenSSH/OS and controlled network performance remain."
+    },
+    "renderer_memory_guard": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "production1s observer with injected2000MiB renderer working set",
+        "two consecutive high samples revoke input/pause PTY and dispose actual xterm",
+        "responsive renderer acknowledges synchronous disposal and remains alive",
+        "blocked display rejects automatic history restore; explicit clear resumes existing shell",
+        "unresponsive renderer replaced after missing ACK while worker epoch and shell remain",
+        "new UI does not automatically replay blocked ring or input"
+      ],
+      "limitation": "Memory values injected via test-main app.getAppMetrics; renderer event loop actually blocked and renderer actually replaced. No OS OOM, physical allocation threshold or target-platform result claimed."
     }
   },
   "remaining_D01": [
@@ -451,10 +466,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 PTY renderer-memory guard, then D11 functional/security/performance audit and D12-D13.",
+  "next_action": "D10 sequence/lifetime audit; implement D11 saved-trust/secret settings, redacted diagnostics and remaining functional/security/performance checks, then D12-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-probe",
+  "latest_evidence_directory": "evidence/d10-memory",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -469,7 +484,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 PTY renderer-memory guard remains.",
+    "D10 sequence/lifetime consistency audit remains.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
 }
