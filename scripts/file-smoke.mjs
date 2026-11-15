@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { root, localPath, runtimeEnvironment } from './environment.mjs';
+import { root, localPath, runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 
 const fixtureRoot = localPath(`fixtures/files-${randomUUID()}`);
@@ -78,6 +78,7 @@ try {
   await explorer.getByRole('button',{name:'상위 폴더',exact:true}).click();
   await explorer.getByRole('listitem').filter({hasText:'hello.txt'}).waitFor();
   await page.screenshot({path:join(localPath('evidence'),'d05-files.png')});
+  await application.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await page.evaluate(id => window.sshOS.session.disconnect(id),profileId);
   await explorer.getByRole('status').filter({hasText:'연결 끊김'}).waitFor();
   assert.equal(await explorer.getByRole('button',{name:'새로고침',exact:true}).isDisabled(),true);
@@ -87,6 +88,6 @@ try {
   const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['real SSH/SFTP directory enumeration','folder navigation with spaces','untrusted names as text','symlink is metadata only','explicit refresh sees external changes','renderer reload restores cached directory without remote enumeration','GUI preview sends no mutation before confirmation','confirmed mkdir0700 and nonrecursive delete with durable receipts','unsupported hardlink preserves original file','task details and confirmed local receipt deletion without remote mutation','disconnect preserves readonly last listing'],limitation:'Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance.'};
   await fs.writeFile(join(localPath('evidence'),'d05-files.json'),JSON.stringify(report,null,2)+'\n'); console.log(JSON.stringify(report));
 } finally {
-  if (application) await application.close(); await fixture.close();
+  if (application) await closeTestApplication(application); await fixture.close();
   await fs.rm(fixtureRoot,{recursive:true,force:true}); await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});
 }

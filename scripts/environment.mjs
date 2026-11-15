@@ -22,3 +22,6 @@ export function runtimeEnvironment(name) {
   delete env.ELECTRON_RUN_AS_NODE;
   return env;
 }
+
+// Teardown chooses the product shutdown action in this owned test process.
+export async function closeTestApplication(application){await application.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});}).catch(()=>{});await application.close();}

@@ -1,7 +1,7 @@
 import { _electron as electron } from '@playwright/test';
 import { strict as assert } from 'node:assert';
 import { writeFileSync } from 'node:fs';
-import { root, localPath, runtimeEnvironment } from './environment.mjs';
+import { root, localPath, runtimeEnvironment,closeTestApplication } from './environment.mjs';
 const env = runtimeEnvironment('smoke');
 Object.assign(process.env, env);
 const { default: executablePath } = await import('electron');
@@ -66,4 +66,4 @@ try {
   const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no signing or Windows/Ubuntu result.' };
   writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
-} finally { await application.close(); }
+} finally { await closeTestApplication(application); }

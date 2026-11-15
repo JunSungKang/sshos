@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { root,localPath,runtimeEnvironment } from './environment.mjs';
+import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 
 function crc(bytes) {let value=0xffffffff;for (const byte of bytes) {value^=byte;for (let bit=0;bit<8;bit++) value=value&1 ? (value>>>1)^0xedb88320 : value>>>1;}return (value^0xffffffff)>>>0;}
@@ -60,7 +60,8 @@ try {
   await explorer.getByRole('listitem').filter({hasText:'unknown.bin'}).dblclick();
   await page.getByRole('dialog',{name:'파일 열기 형식 선택'}).getByRole('button',{name:'텍스트로 열기',exact:true}).click();
   const selectedText=page.getByRole('region',{name:'텍스트 / unknown.bin · Viewer 검사',exact:true});await selectedText.getByRole('textbox',{name:'텍스트 내용'}).getByText('read as plain text',{exact:true}).waitFor();
+  await application.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await page.evaluate(id => window.sshOS.session.disconnect(id),profileId);await selectedText.getByText('연결 끊김 · 마지막 표시 내용을 읽기 전용으로 유지합니다.',{exact:false}).waitFor();assert.equal(await selectedText.getByRole('button',{name:'다시 읽기',exact:true}).isDisabled(),true);
   const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['actual Electron SSH/SFTP text read through restricted preload','HTML and ANSI source as plain text','virtual text and scroll restoration','explicit reread updates content','PNG signature despite unknown extension','isolated Worker decode to one bitmaprenderer canvas','pixel correctness and zoom without remote reread','JPEG EXIF orientations1–8 with dimensions and corner pixels','static WebP decode','multi-MiB PNG stream paced within IPC budget','invalid UTF8 refusal and successful explicit reread','unknown file explicit text selection','disconnected viewer cache and disabled reread'],limitation:'Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance.'};
   await fs.writeFile(join(localPath('evidence'),'d06-viewers.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
-} finally {if (application) await application.close();if (fixture) await fixture.close();await fs.rm(fixtureRoot,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}
+} finally {if (application) await closeTestApplication(application);if (fixture) await fixture.close();await fs.rm(fixtureRoot,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}

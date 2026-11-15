@@ -1,0 +1,23 @@
+
+> sshos@0.1.0 pretest:unit
+> tsc -p tsconfig.json
+
+
+> sshos@0.1.0 test:unit
+> vitest run
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+
+ Test Files  45 passed (45)
+      Tests  242 passed (242)
+   Start at  15:50:07
+   Duration  3.22s (tests 80%, import 16%, transform 3%, worker 1%)
+
+    Isolate  45 workers spawned · ~114ms startup each (spawn + environment, per file)
+             at least ~455ms faster with isolate: false — reuses workers across files instead of one per file
+

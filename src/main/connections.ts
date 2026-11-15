@@ -130,11 +130,11 @@ export class ConnectionController {
     const pending = this.pending.get(challengeId);
     if (!pending || performance.now() > pending.deadline || this.generations.get(pending.profile.id) !== pending.challenge.generation) { this.reject(challengeId); throw new Error('HOST_TRUST_REQUIRED'); }
     this.pending.delete(challengeId); clearTimeout(pending.timer);
-    this.credentialOperations.set(pending.profile.id,pending.challenge.generation);
+    let operationGeneration=pending.challenge.generation;this.credentialOperations.set(pending.profile.id,operationGeneration);
     try {
       await this.repository().trust(pending.challenge.endpoint, Buffer.from(pending.publicKey, 'base64'), pending.challenge.fingerprint);
       this.requireLiveOperation(pending.profile.id,pending.challenge.generation);
-      const generation = this.nextGeneration(pending.profile.id);
+      const generation = this.nextGeneration(pending.profile.id);operationGeneration=generation;
       this.credentialOperations.set(pending.profile.id,generation);this.readyGenerations.delete(pending.profile.id);this.closingGenerations.delete(pending.profile.id);
       pending.input.trustedHostKey = pending.publicKey;
       const old = this.sessions.get(pending.profile.id)!; this.sessions.set(pending.profile.id, { ...old, generation, status: 'connecting' });
@@ -142,10 +142,10 @@ export class ConnectionController {
     } catch (error) {
       this.clearInput(pending.input);
       const old = this.sessions.get(pending.profile.id);
-      if (old) this.sessions.set(old.serverId, { ...old, status: 'failed', errorCode: error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR' });
-      if (old) void this.gateway.request({ action: 'session:disconnect', serverId: old.serverId, generation: old.generation }).catch(() => {});
+      if (old?.generation===operationGeneration) this.sessions.set(old.serverId, { ...old, status: 'failed', errorCode: error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR' });
+      if (old?.generation===operationGeneration) void this.gateway.request({ action: 'session:disconnect', serverId: old.serverId, generation: old.generation }).catch(() => {});
       throw error;
-    } finally {this.credentialOperations.delete(pending.profile.id);}
+    } finally {if(this.credentialOperations.get(pending.profile.id)===operationGeneration)this.credentialOperations.delete(pending.profile.id);}
   }
   reject(challengeId: string): void {
     const pending = this.pending.get(challengeId); if (!pending) return;
@@ -154,14 +154,18 @@ export class ConnectionController {
     if (old?.generation === pending.challenge.generation) this.sessions.set(old.serverId, { ...old, status: 'disconnected' });
     void this.gateway.request({ action: 'session:disconnect', serverId: pending.profile.id, generation: pending.challenge.generation }).catch(() => {});
   }
-  async disconnect(id: string): Promise<void> {
+  beginDisconnect(id:string,expectedGeneration?:number):number|null {
+    const old=this.sessions.get(id);if(!old || expectedGeneration!==undefined && old.generation!==expectedGeneration)return null;this.closingGenerations.set(id,old.generation);this.readyGenerations.delete(id);for(const [token,value]of this.tokens)if(value.serverId===id)this.tokens.delete(token);this.sessions.set(id,{...old,status:'disconnecting'});return old.generation;
+  }
+  async disconnect(id: string,expectedGeneration?:number): Promise<void> {
+    if(expectedGeneration!==undefined && this.sessions.get(id)?.generation!==expectedGeneration)return;
     for (const [challengeId, pending] of this.pending) if (pending.profile.id === id) this.reject(challengeId);
     const old = this.sessions.get(id); if (!old) return;
     this.closingGenerations.set(id,old.generation);this.readyGenerations.delete(id);
     for (const [token,value] of this.tokens) if (value.serverId === id) this.tokens.delete(token);
     this.sessions.set(id,{...old,status:'disconnecting'});
     await this.gateway.request({ action: 'session:disconnect', serverId: id, generation: old.generation });
-    this.sessions.set(id, { ...old, status: 'disconnected', errorCode: null });
+    if(this.sessions.get(id)?.generation===old.generation)this.sessions.set(id, { ...old, status: 'disconnected', errorCode: null });
   }
   async confirmOS(id: string, generation: number): Promise<void> { await this.gateway.request({ action: 'session:confirmOS', serverId: id, generation }); }
   async handle(action: string, payload: unknown): Promise<unknown> {

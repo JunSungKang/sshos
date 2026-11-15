@@ -6,7 +6,7 @@ import ssh2 from 'ssh2';
 import { strict as assert } from 'node:assert';
 import { writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { root, localPath, runtimeEnvironment } from './environment.mjs';
+import { root, localPath, runtimeEnvironment,closeTestApplication } from './environment.mjs';
 
 const env = runtimeEnvironment(`session-${randomUUID()}`); Object.assign(process.env, env);
 const { Server, utils } = ssh2;
@@ -44,13 +44,14 @@ try {
   // Capability rejection must not turn a valid SSH connection into a failure.
   await page.evaluate(id => window.sshOS.session.confirmOS(id, 2), id);
   await page.screenshot({ path: `${localPath('evidence')}/d03-session.png` });
+  await application.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await page.evaluate(async id => { await window.sshOS.session.disconnect(id); await window.sshOS.profile.delete(id); }, id);
   const dataPath = join(env.SSHOS_RUNTIME_ROOT, 'data');
   for (const name of readdirSync(dataPath)) if (name.endsWith('.json') || name.endsWith('.bak')) assert.equal(readFileSync(join(dataPath, name), 'utf8').includes('test-only'), false);
   const report = { status: 'pass', host: process.platform, architecture: process.arch, authenticationRequests, assertions: ['unknown host rejected before authentication', 'native GUI host trust confirmation', 'fresh verified SSH password authentication', 'SFTP rejection leaves SSH connected', 'session-specific OS confirmation', 'disconnect and profile cleanup'], limitation: 'Loopback ssh2 fixture, not a manual Ubuntu/OpenSSH target acceptance result.' };
   writeFileSync(`${localPath('evidence')}/d03-session.json`, JSON.stringify(report, null, 2) + '\n'); console.log(JSON.stringify(report));
 } finally {
-  if (application) await application.close();
+  if (application) await closeTestApplication(application);
   for (const connection of connections) connection.end();
   await new Promise(resolve => server.close(resolve));
   await rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});

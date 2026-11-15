@@ -28,6 +28,8 @@ export class TransferController {
     if (!runtime) return base;
     return {...base,phase:runtime.phase,transferredBytes:runtime.transferredBytes,verifiedBytes:runtime.verifiedBytes,tempCreated:runtime.tempCreated,destinationCreated:runtime.destinationCreated,cleanupState:runtime.cleanupState,lastConfirmedPhase:runtime.lastConfirmedPhase,errorCode:runtime.errorCode,updatedAt:runtime.updatedAt,recordError:runtime.recordError};
   }
+  hasFinalizing(serverId?:string,generation?:number):boolean {return [...this.jobs.values()].some(job=>(!serverId || job.spec.row.serverId===serverId && job.spec.row.generation===generation) && ['finalize_intent_pending','finalizing'].includes(job.runtime?.phase ?? job.spec.row.phase));}
+  async cancelForShutdown(serverId?:string,generation?:number):Promise<void> {await Promise.allSettled([...this.jobs.values()].filter(job=>(!serverId || job.spec.row.serverId===serverId && job.spec.row.generation===generation) && this.taskState(job.spec.row.taskId).cancelable).map(job=>this.gateway.request({action:'transfer:cancel',serverId:job.spec.row.serverId,generation:job.spec.row.generation,taskId:job.spec.row.taskId})));}
   taskState(id:string) {const job=this.jobs.get(id),phase=job?.runtime?.phase ?? job?.spec.row.phase;return {active:this.isActive(id),registering:job?.registering ?? false,cancelable:Boolean(job && this.isActive(id) && !job.registering && !['finalize_intent_pending','finalizing','cancel_requested'].includes(phase!)),bytesPerSecond:job?.runtime?.bytesPerSecond ?? null,cleanupPending:job?.runtime?.cleanupPending ?? false};}
   overlays():(TransferReceipt & {recordError?:boolean})[] {return [...this.jobs.values()].map(job => this.merged(job));}
   observe(runtime:TransferRuntime,gap:boolean,sequence:number):void {

@@ -98,7 +98,10 @@
     "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure",
     "Same-live-worker execution receipt continuity during explicit storage verification, with conservative backup uncertainty and ACK-gated metadata reconciliation that preserves established PTY input",
     "Explicit stopped-worker epoch replacement with no automatic replay/reconnect; actual renderer-crash and engine-SIGKILL recovery through desktop UI",
-    "Generation-aware native key selection invalidation and stale saved-secret rotation guards during engine replacement"
+    "Generation-aware native key selection invalidation and stale saved-secret rotation guards during engine replacement",
+    "Aggregate native app-close/disconnect confirmation with active task counts and frozen server generation, explicit keep choices and bounded shutdown",
+    "Shared monotonic shutdown budget, queued cancellation and finalizing protection; actual held-link/late-success restart remains unknown with no replay",
+    "Generation-guarded late trust approval/disconnect callbacks and stable DOM window identity for same-title multi-generation windows"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -369,6 +372,21 @@
         "explicit reconnect creates a newer generation and a separately requested new PTY"
       ],
       "limitation": "Current-host emulated SSH fixture, native recovery dialog response mocked. OS sleep/close dialogs, target platform and native clipboard/IME remain separate."
+    },
+    "aggregate_shutdown": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "elapsedMs": 9685.775083,
+      "assertions": [
+        "native confirmation receives combined active GUI-exec/PTY and transfer/queue metadata",
+        "keep-connection and keep-running choices leave SSH and sessions alive",
+        "approved disconnect closes exec/PTY channels as unknown and preserves application",
+        "approved app close cancels queued transfer and waits for finalizing link within shared10s budget",
+        "real held remote hardlink forces app deadline; late remote success after app exit remains unknown on restart",
+        "relaunch performs no authentication/command replay and preserves cancelled queue record"
+      ],
+      "limitation": "Native message-box choices and file picker are mocked in test main, SSH programs are fixture streams; observed timing includes process-exit overhead on this development host and does not certify target-platform acceptance."
     }
   },
   "remaining_D01": [
@@ -385,10 +403,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 aggregate app/disconnect shutdown deadlines, sleep invalidation, SSH response probe and memory display circuit breaker; then D11-D13.",
+  "next_action": "Implement D10 sleep invalidation, SSH response probe and PTY renderer-memory circuit breaker; audit remaining lifecycle/channel boundaries, then D11-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-engine-lifetime",
+  "latest_evidence_directory": "evidence/d10-shutdown",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -403,7 +421,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
+    "D10 sleep invalidation, SSH response probe and PTY renderer-memory guard remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
 }

@@ -17,6 +17,7 @@ export class MutationController {
   private readonly current=new Map<string,MutationReceipt & {recordError?:boolean}>();
   private readonly recordActions=new Map<string,{id:string;action:'acknowledge'|'forget';updatedAt:string|null;deadline:number}>();
   constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean,private readonly otherActive:(id:string)=>boolean=()=>false,private readonly closeOtherRecord:(row:FileReceipt)=>Promise<void>=async ()=>{},private readonly extraSnapshots:()=> (FileReceipt & {recordError?:boolean})[]=()=>[],private readonly otherState:(id:string)=>{cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean}=()=>({cancelable:false,registering:false,bytesPerSecond:null,cleanupPending:false})) {}
+  isActive(id:string):boolean {return this.running.has(id);}
   get hasRunning():boolean {return this.running.size>0;}
   async settled():Promise<void> { while (this.running.size) await new Promise(resolve => setTimeout(resolve,50)); }
   private repository():ReceiptRepository { const repo=this.storage(); if (!repo || repo.faulted || !this.stateHealthy()) throw new Error('STORAGE_FAILED'); return repo; }

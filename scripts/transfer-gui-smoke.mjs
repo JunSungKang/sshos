@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { randomUUID,createHash } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
-import { root,localPath,runtimeEnvironment } from './environment.mjs';
+import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 const fixtureRoot=localPath(`fixtures/transfer-gui-${randomUUID()}`),nativeRoot=join(fixtureRoot,'native'),env=runtimeEnvironment(`transfer-gui-${randomUUID()}`);Object.assign(process.env,env);
 const {default:executablePath}=await import('electron');let application,fixture;
@@ -46,4 +46,4 @@ try {
   assert.equal((await page.evaluate(()=>window.sshOS.session.list())).sessions.find(row=>row.serverId===profileId).status,'connected');assert.equal(fixture.metrics.authenticationRequests,5);
   const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['GUI native-selection adapter returns only names and tokens','readonly conflict preview makes no temp or auxiliary authentication','explicit destination rename rotates confirmation','whole-batch upload accepted through restricted preload','4MiB hash/readback upload continues after explorer close and renderer reload','always-visible transfer shelf and persisted task detail','Ctrl/Cmd two-file selection and GUI download','full byte/hash verification and no-overwrite preservation','one fresh authenticated transfer socket per task and control survives'],limitation:'OS native dialogs replaced in this test process; current-host loopback fixture only, target OS/Ubuntu/OpenSSH and signed production packages remain untested.'};
   await fs.writeFile(join(localPath('evidence'),'d07-transfer-gui.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
-}finally {if(application)await application.close();if(fixture)await fixture.close();await fs.rm(fixtureRoot,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}
+}finally {if(application)await closeTestApplication(application);if(fixture)await fixture.close();await fs.rm(fixtureRoot,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}

@@ -173,3 +173,13 @@ renderer 충돌은 native ‘화면 다시 열기/나중에’를 제공하고 �
 renderer·engine 교체는 private-key picker/paste/execution preview 권한을 무효화한다. 늦은 native key 선택과 이전 BrowserWindow 입력으로 새 권한을 발급하지 않는다. engine loss 뒤 대기 중인 decrypt/re-encrypt가 새 generation의 secret을 덮어쓰거나 이전 인증을 재개하지 못하도록 현재 generation과 ciphertext 일치를 JSON writer 안에서 다시 검사한다.
 
 237개 단위 검사·타입/build·실제 renderer crash와 utilityProcess SIGKILL GUI·기존 PTY GUI/저장 복구 회귀가 통과했다. 화면 교체 때 새 shell0개, 엔진 재시작 때 신규 인증0회, 이전 capability 거절, 명시적 재접속의 새 generation/PTY를 확인했다. native 복구 dialog 선택은 test main에서 대체했으며 OS modal 실기 검증은 아니다. evidence/d10-engine-lifetime에 출력·화면2장·source hash를 보존했다. D10의 앱 종료·연결 해제 확인/기한·절전·probe·메모리 제한과 지원 OS 검증은 남아 있다.
+
+## 앱 종료·연결 해제의 확인과 공통 기한
+
+native 확인에는 전송·대기·파일 변경·GUI 실행·PTY·미확인 수와 진행 작업의 서버/대상을 표시한다. 연결 해제는 username@host:port와 세대를 고정한다. 사용자 유지/취소는 자원을 변경하지 않는다. 승인 뒤 해당 세션 capability를 즉시 폐기하고 취소 가능한 전송·실행/PTY 채널 닫기를 요청한다. 최종 확정 중인 전송은 취소하지 않으며 같은 monotonic 기한 안에서 기다린 후 control을 닫는다. 다른 서버와 새 generation을 이전 요청의 늦은 callback으로 닫지 않는다.
+
+앱 close와 before-quit은 동일 확인을 거친다. 승인 뒤 신규 변경/인증을 잠그되 결과 영수증 ACK는 계속 허용한다. 앱 전체는10초 상한의 프로세스 정리 여유를 위해 자원 정리에9.5초를 배정하고 그 시점에 worker 종료와 app.exit를 요청한다. 정상 정리가 먼저 끝나면 즉시 종료한다. 연결 해제의 비종료 절차는10초 공통 예산을 사용하며 취소 RPC가 미응답이어도 socket 닫기 요청을 기한에 발행한다. 종결되지 않은 원격 결과는 재실행하지 않고 기존 durable intent의 복구 규칙을 적용한다. OS 강제 종료나 OS 스케줄러 지연까지 절대 보장했다고 주장하지 않는다.
+
+native 상세는 plain text·제어문자 escape·제한된 길이의 작업 행을 사용하며 생략 행 수를 표시한다. 원격 프로세스 전체 종료를 보장하지 않는 문구를 포함한다. renderer의 종료 중 상태는 저장소 손상 상태와 구별한다. native key/trust 승인 또는 disconnect의 오래된 completion은 새 generation의 상태·secret·연결을 변경하지 못하게 검사한다.
+
+242개 단위 검사·타입/build·실제 app close/disconnect GUI와 Electron/session/file/viewer/renderer-crash/전송 GUI 회귀가 통과했다. 실제 SSH에서 GUI 실행+PTY 유지 선택, 승인 해제의 불명 결과, 전송1+대기1+실행1+PTY1의 종료를 검사했다. 최종 hardlink 응답을 고정 지연하여 deadline 경로를 실행했고 IPC 요청부터 프로세스 close까지 현재 호스트에서9685.775083ms를 관측했다. app 종료 뒤 fixture가 실제 link를 완료해도 재실행한 기록은 result_unknown이며 대기 전송은 cancelled, 신규 인증/명령 재전송은0회다. native 확인 응답·picker는 test main에서 대체했다. 이 관측은 지원 OS 전체10초 수용 판정이 아니다. evidence/d10-shutdown에 실제 출력·화면·source hash를 보존했다. 다음은 절전·probe·PTY 메모리 차단이다.
