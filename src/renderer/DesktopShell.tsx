@@ -4,6 +4,9 @@ import type { RuntimeSnapshot } from '../shared/contracts';
 import type { SessionView } from '../shared/session-contracts';
 import { ProfileManager } from './ProfileManager';
 import { FileExplorer } from './FileExplorer';
+import { ExecutionPane } from './ExecutionPane';
+import { ExecutionActionDialog } from './ExecutionActionDialog';
+import type { ExecutionActionPreview } from '../shared/execution-ui';
 import { TransferShelf } from './TransferShelf';
 import { TaskManager } from './TaskManager';
 import { ViewerPane } from './ViewerPane';
@@ -20,6 +23,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   const [titles,setTitles]=useState<Record<string,{name:string;serverName:string}>>({});
   const [sessions, setSessions] = useState<SessionView[]>([]);
   const [activeServer, setActiveServer] = useState<string | null>(null);
+  const [executionClose,setExecutionClose]=useState<{preview:ExecutionActionPreview;windowId:string}|null>(null);
   const [notice, setNotice] = useState('');
   const [startMenu, setStartMenu] = useState(false);
   const [picker, setPicker] = useState<WindowKind | null>(null);
@@ -48,6 +52,10 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       update();
     } catch (error) {if (!manager.current!.snapshot().some(row => row.windowId === registered.windowId)) await window.sshOS.desktop.closeWindow(registered.windowId).catch(() => {});throw error;}
   };
+  const addExecutionWindow=(registered:WindowModel)=>{if(manager.current!.snapshot().some(row=>row.windowId === registered.windowId))manager.current!.restore(registered.windowId);else{nextId.current=registered.windowId;manager.current!.open('execution',registered.serverId,registered.sessionGeneration,registered.resourceId);}update();};
+  const reopenExecution=(id:string)=>{void window.sshOS.execution.reopen(id).then(addExecutionWindow).catch(()=>setNotice('출력 창을 열지 못했습니다. 열린 창 한도와 기록 상태를 확인하세요.'));};
+  const removeWindow=(id:string)=>{manager.current!.close(id);mirrored.current.delete(id);setTitles(value=>{const next={...value};delete next[id];return next;});update();};
+  const closeWindow=async(row:WindowModel)=>{try{if(row.kind === 'execution'){const preview=await window.sshOS.execution.previewAction(row.windowId,'close_window');if(preview.active){setExecutionClose({preview,windowId:row.windowId});return;}}await window.sshOS.desktop.closeWindow(row.windowId);removeWindow(row.windowId);}catch{setNotice('창을 닫지 못했습니다. 실행 상태를 확인한 뒤 다시 시도하세요.');}};
   const launch = async (kind: WindowKind) => {
     setStartMenu(false);
     if (!['files','terminal'].includes(kind)) {await openFor(kind);return;}
@@ -77,7 +85,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
         void window.sshOS.desktop.updateWindowLayout(layout).catch(() => { mirrored.current.delete(row.windowId); });
       }
     }, 250);
-    const poll = setInterval(() => { void window.sshOS.session.list().then(value => { if (alive) setSessions(value.sessions); }).catch(() => {}); }, 1000);
+    const pollSessions=()=>{void window.sshOS.session.list().then(value=>{if(alive)setSessions(value.sessions);}).catch(()=>{});};pollSessions();const poll=setInterval(pollSessions,1000);
     return () => { alive = false; clearInterval(timer); clearInterval(poll); window.removeEventListener('resize', resized); };
   }, []);
   const selected = sessions.find(row => row.serverId === activeServer);
@@ -90,14 +98,15 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
         minimize={() => { manager.current!.minimize(row.windowId); update(); }}
         maximize={() => { manager.current!.toggleMaximize(row.windowId); update(); }}
         move={bounds => { manager.current!.moveResize(row.windowId, bounds); update(); }}
-        close={() => { void window.sshOS.desktop.closeWindow(row.windowId).then(() => { manager.current!.close(row.windowId); mirrored.current.delete(row.windowId); setTitles(value => {const next={...value};delete next[row.windowId];return next;}); update(); }).catch(() => setNotice('창을 닫지 못했습니다. 다시 시도하세요.')); }}>
-        {row.kind === 'text' || row.kind === 'image' ? <ViewerPane windowId={row.windowId} kind={row.kind} onName={(name,serverName) => setTitles(value => ({...value,[row.windowId]:{name,serverName}}))} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'files' ? <FileExplorer storageHealthy={Boolean(snapshot && snapshot.storage.status !== 'unavailable')} openViewer={openViewer} newWindow={() => {const session=sessions.find(value => value.serverId === row.serverId);if (session) void openFor('files',session,true);}} windowId={row.windowId} generation={row.sessionGeneration!} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <TaskManager /> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
+        close={() => {void closeWindow(row);}}>
+        {row.kind === 'execution' ? <ExecutionPane windowId={row.windowId} visible={row.mode !== 'minimized'} onName={(name,serverName)=>setTitles(value=>({...value,[row.windowId]:{name,serverName}}))}/> : row.kind === 'text' || row.kind === 'image' ? <ViewerPane windowId={row.windowId} kind={row.kind} onName={(name,serverName) => setTitles(value => ({...value,[row.windowId]:{name,serverName}}))} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'files' ? <FileExplorer openExecution={addExecutionWindow} storageHealthy={Boolean(snapshot && snapshot.storage.status !== 'unavailable')} openViewer={openViewer} newWindow={() => {const session=sessions.find(value => value.serverId === row.serverId);if (session) void openFor('files',session,true);}} windowId={row.windowId} generation={row.sessionGeneration!} {...(sessions.find(session => session.serverId === row.serverId) ? {session:sessions.find(session => session.serverId === row.serverId)!} : {})} /> : row.kind === 'connections' ? <ProfileManager disabled={!snapshot || snapshot.storage.status === 'unavailable'} /> : row.kind === 'settings' ? <section className="app-content"><h2>sshOS(시오스)</h2><p>버전 {snapshot?.appVersion ?? '0.1.0'}</p><p>프로젝트 라이선스 AGPL-3.0-only</p><p>인증 정보는 연결 시 저장을 선택한 경우에만 OS 암호화로 보관합니다.</p></section> : row.kind === 'tasks' ? <TaskManager openExecution={reopenExecution} /> : <section className="app-content"><h2>{labels[row.kind]}</h2><p>서버 연결과 기능 지원 상태를 확인하세요.</p></section>}
       </WindowFrame>)}
       {notice && <p className="desktop-notice" role="alert">{notice}</p>}
       {snapshot?.storage.status === 'unavailable' && <div className="storage-error" role="alert"><p>앱 데이터를 읽지 못했습니다. 기존 데이터를 초기화하지 않고 변경 기능을 잠갔습니다.</p><p>{snapshot.storage.path}</p><button onClick={() => { void window.sshOS.settings.retryStorage().catch(() => setNotice('저장소를 다시 확인하지 못했습니다.')); }}>저장소 다시 확인</button></div>}
       <output className="engine-state" aria-live="polite" data-testid="engine-state">{error ? '앱 상태를 확인하지 못했습니다.' : snapshot?.engine === 'ready' ? '연결 엔진 준비됨' : snapshot?.engine === 'stopped' ? '연결 엔진이 종료됐습니다.' : '연결 엔진 시작 중'}</output>
       {picker && <dialog ref={pickerDialog} className="server-picker" aria-label="서버 선택" onCancel={() => setPicker(null)}><h2>작업할 서버 선택</h2><select aria-label="대상 서버" value={chosenServer} onChange={event => setChosenServer(event.target.value)}><option value="">선택하세요</option>{sessions.filter(row => row.status === 'connected').map(row => <option key={row.serverId} value={row.serverId}>{row.serverName}</option>)}</select><button disabled={!chosenServer} onClick={() => { const server = sessions.find(row => row.serverId === chosenServer); const kind = picker; setPicker(null); if (server) void openFor(kind, server); }}>열기</button><button onClick={() => setPicker(null)}>취소</button></dialog>}
     </div>
+    {executionClose && <ExecutionActionDialog preview={executionClose.preview} close={()=>setExecutionClose(null)} hidden={()=>removeWindow(executionClose.windowId)}/>}
     <TransferShelf openTasks={() => {void launch('tasks');}}/>
     <footer className="taskbar"><button aria-label="시작" onClick={() => setStartMenu(!startMenu)}>▦</button>{windows.map(row => <button className={row.focused ? 'active' : ''} aria-pressed={row.focused} key={row.windowId} onClick={() => { manager.current!.restore(row.windowId); update(); }}>{icons[row.kind]} {titles[row.windowId]?.name ?? labels[row.kind]}</button>)}<span>연결 {snapshot?.connectedServers ?? 0}</span></footer>
     {startMenu && <nav className="start-menu" aria-label="시작 메뉴">{(['connections','files','terminal','tasks','settings'] as WindowKind[]).map(kind => <button key={kind} onClick={() => launch(kind)}>{icons[kind]} {labels[kind]}</button>)}</nav>}

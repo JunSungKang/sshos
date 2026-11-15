@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { UtilityProcess } from 'electron';
 import { engineEventSchema, engineRequestSchema, type EngineCommand } from '../shared/engine-protocol';
 import { sessionSnapshotSchema, type SessionSnapshot } from '../shared/session-contracts';
+import type { ExecutionRuntime } from '../shared/execution-ui';
 import type { TransferRuntime } from '../shared/transfer-protocol';
 
 export class EngineGateway {
@@ -9,12 +10,13 @@ export class EngineGateway {
   private stopped = false;
   private lastSequence = 0;
   private lastTransferSequence=0;
-  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void) {
+  private lastExecutionSequence=0;
+  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void) {
     worker.on('message', (raw: unknown) => {
       if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
-      if (data.type === 'execution') return;
+      if (data.type === 'execution') {if(data.sequence<=this.lastExecutionSequence)return;const gap=data.sequence !== this.lastExecutionSequence+1;this.lastExecutionSequence=data.sequence;this.executionChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'transfer') {if (data.sequence<=this.lastTransferSequence) return;const gap=data.sequence !== this.lastTransferSequence+1;this.lastTransferSequence=data.sequence;this.transferChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'session') {
         if (data.sequence <= this.lastSequence) return;

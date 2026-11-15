@@ -19,6 +19,8 @@ import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
 import { TransferSelections } from './transfer-selections';
 import { TransferPreviews } from './transfer-previews';
+import { ExecutionPreviews } from './execution-previews';
+import { ExecutionController } from './executions';
 import { MainStorageRecovery } from './storage-recovery';
 import { TransferController } from './transfers';
 
@@ -100,7 +102,8 @@ async function main(): Promise<void> {
   const storageRecovery=new MainStorageRecovery(epoch,worker);
   const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
-  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence));
+  let executions:ExecutionController|null=null;
+  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted && !storageRecovering && !recoveryLocked));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
@@ -108,12 +111,14 @@ async function main(): Promise<void> {
   const selections=new TransferSelections(dialogGate,() => win);
   const transferPreviews=new TransferPreviews(files,connections,gateway,selections,() => {if (!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked) throw new Error('STORAGE_FAILED');});
   transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),() => receiptChannel.settled());
-  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id),async row => {if (row.kind === 'file_transfer') await transfers!.acknowledge(row);},() => transfers!.overlays(),id => transfers!.taskState(id));
+  const executionPreviews=new ExecutionPreviews(files,connections,gateway,()=>{if(!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked)throw new Error('STORAGE_FAILED');});
+  executions=new ExecutionController(executionPreviews,connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),()=>receiptChannel.settled());
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id) || executions!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if('exitObserved' in row)await executions!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays()],id => transfers!.taskState(id));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
   });
-  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped(); });
+  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped();void executions?.engineStopped(); });
   const budget = new RequestBudget();
   const viewerDataBudget=new RequestBudget(undefined,32,128);
   const validateSender = (event: Electron.IpcMainInvokeEvent,requestBudget=budget) => {
@@ -146,8 +151,9 @@ async function main(): Promise<void> {
       validateSender(event);
       try {
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        if(action === 'desktop:closeWindow' && typeof payload === 'string' && desktop.findWindow(payload)?.kind === 'execution' && executions!.needsCloseConfirmation(payload))throw new Error('CLOSE_CONFIRM_REQUIRED');
         const result = desktop.handle(action, payload);
-        if (action === 'desktop:closeWindow' && typeof payload === 'string') {await viewers.closeWindow(payload);await files.closeWindow(payload).catch(() => {});}
+        if (action === 'desktop:closeWindow' && typeof payload === 'string') {executions?.detachWindow(payload);await viewers.closeWindow(payload);await files.closeWindow(payload).catch(() => {});}
         return result;
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
@@ -178,6 +184,9 @@ async function main(): Promise<void> {
       catch (error) {throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INPUT_INVALID');}
     });
   }
+  for(const action of ['execution:context','execution:preview','execution:releasePreview','execution:start','execution:get','execution:reopen','execution:next','execution:previewAction','execution:applyAction']) {
+    ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'execution:next' ? viewerDataBudget:budget);try{if(payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536)throw new Error('INPUT_INVALID');return await executions!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
+  }
   for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
     ipcMain.handle(action,async (event,payload:unknown) => {
       validateSender(event,action === 'viewer:next' ? viewerDataBudget : budget);
@@ -191,7 +200,7 @@ async function main(): Promise<void> {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
     if (storageRecovering) throw new Error('REQUEST_BUSY');
     const faulted=!repository || repository.store.faulted || !receipts || receipts.faulted || recoveryLocked;
-    if (!faulted && (mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
+    if (!faulted && (executions!.hasActive || mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
     storageRecovering=true;let barrier:string|null=null;
     try {
       await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
@@ -214,9 +223,9 @@ async function main(): Promise<void> {
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
     let loaded=false;
-    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();}});
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();}});
     win.webContents.on('did-finish-load',() => {loaded=true;});
-    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();});
+    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();});
     win.on('ready-to-show', () => win?.show());
     win.on('closed', () => { win = null; });
     void win.loadURL('app://ui/');
