@@ -49,7 +49,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if(request.action === 'pty:restoreAck')terminals!.acknowledge(request.serverId,request.generation,request.terminalId,request.restoreToken,request.offset);
     else if(request.action === 'pty:read')result=terminals!.read(request.serverId,request.generation,request.terminalId,request.cursor);
     else if(request.action === 'pty:pause')terminals!.pause(request.serverId,request.generation,request.terminalId);
-    else if(request.action === 'pty:input')await terminals!.input(request.serverId,request.generation,request.terminalId,request.sequence,request.bytes,request.source);
+    else if(request.action === 'pty:input'){try{await terminals!.input(request.serverId,request.generation,request.terminalId,request.sequence,request.bytes,request.source);}finally{request.bytes.fill(0);}}
     else if(request.action === 'pty:resize')terminals!.resize(request.serverId,request.generation,request.terminalId,request.size);
     else if(request.action === 'pty:close')terminals!.close(request.serverId,request.generation,request.terminalId);
     else if(request.action === 'pty:forget')await terminals!.forget(request.serverId,request.generation,request.terminalId);

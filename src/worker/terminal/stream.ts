@@ -18,6 +18,6 @@ export class PTYStream {
  }
  acknowledgeRestore(token:string,offset:number):void {const frozen=this.frozen;if(!frozen || frozen.token !== token || offset !== frozen.end || this.expected !== frozen.end)throw new Error('TOKEN_EXPIRED');this.frozen=null;this.last=null;this.ackOffset=offset;this.expected=offset;this.uiReady=true;this.setPaused(false);}
  clearDisplayHistory():void {this.interrupt();this.ring.clear(this.id);this.ackOffset=this.end;this.expected=this.end;}
- close():void {this.interrupt();this.ring.terminal(this.id);}
+ close():void {this.ring.terminal(this.id);this.setPaused(!this.uiReady || this.frozen !== null);}
  forget():void {this.interrupt();this.ring.forget(this.id);}
 }

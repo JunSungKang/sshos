@@ -1,6 +1,22 @@
 import { contextBridge, ipcRenderer } from 'electron';
 // Keep this entry self-contained: sandboxed preload cannot require local modules.
 contextBridge.exposeInMainWorld('sshOS', Object.freeze({
+  terminal:Object.freeze({
+    open:(token:string)=>ipcRenderer.invoke('terminal:open',token),
+    pause:(token:string)=>ipcRenderer.invoke('terminal:pause',token),
+    get:(id:string)=>ipcRenderer.invoke('terminal:get',id),
+    input:(terminalToken:string,sequence:number,bytes:Uint8Array)=>ipcRenderer.invoke('terminal:input',{terminalToken,sequence,bytes}),
+    next:(token:string,readGeneration:number,cursor:number)=>ipcRenderer.invoke('terminal:next',{token,readGeneration,cursor}),
+    restore:(terminalToken:string,clear:boolean)=>ipcRenderer.invoke('terminal:restore',{terminalToken,clear}),
+    restoreAck:(terminalToken:string,restoreToken:string,offset:number)=>ipcRenderer.invoke('terminal:restoreAck',{terminalToken,restoreToken,offset}),
+    resize:(terminalToken:string,cols:number,rows:number)=>ipcRenderer.invoke('terminal:resize',{terminalToken,size:{cols,rows}}),
+    previewPaste:(terminalToken:string,text:string)=>ipcRenderer.invoke('terminal:previewPaste',{terminalToken,text}),
+    paste:(confirmationToken:string,bracketed:boolean)=>ipcRenderer.invoke('terminal:paste',{confirmationToken,bracketed}),
+    releasePaste:(token:string)=>ipcRenderer.invoke('terminal:releasePaste',token),
+    requestPaste:(token:string)=>ipcRenderer.invoke('terminal:requestPaste',token),
+    previewClose:(id:string)=>ipcRenderer.invoke('terminal:previewClose',id),
+    close:(token:string)=>ipcRenderer.invoke('terminal:close',token)
+  }),
   execution:Object.freeze({
     context:(token:string)=>ipcRenderer.invoke('execution:context',token),
     preview:(input:unknown)=>ipcRenderer.invoke('execution:preview',input),
