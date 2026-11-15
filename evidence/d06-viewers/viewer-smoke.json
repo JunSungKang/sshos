@@ -1,0 +1,21 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "actual Electron SSH/SFTP text read through restricted preload",
+    "HTML and ANSI source as plain text",
+    "virtual text and scroll restoration",
+    "explicit reread updates content",
+    "PNG signature despite unknown extension",
+    "isolated Worker decode to one bitmaprenderer canvas",
+    "pixel correctness and zoom without remote reread",
+    "JPEG EXIF orientations1–8 with dimensions and corner pixels",
+    "static WebP decode",
+    "multi-MiB PNG stream paced within IPC budget",
+    "invalid UTF8 refusal and successful explicit reread",
+    "unknown file explicit text selection",
+    "disconnected viewer cache and disabled reread"
+  ],
+  "limitation": "Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance."
+}

@@ -10,7 +10,7 @@ function fixture(data:Buffer,options:{short?:number;declaredSize?:number}={}) {
     lstat:(path:string,done:Function) => done(null,path === '/home' ? {...stats(),isFile:() => false,isDirectory:() => true} : stats()),
     realpath:(path:string,done:Function) => done(null,path),open:(_path:string,_flags:string,done:Function) => done(null,Buffer.from('handle')),
     fstat:(_handle:Buffer,done:Function) => done(null,stats()),close:(_handle:Buffer,done:Function) => done(null),
-    read:(_handle:Buffer,bytes:Buffer,offset:number,length:number,position:number,done:Function) => {reads++;if (hang) return;const count=Math.max(0,Math.min(length,options.short ?? length,data.length-position));data.copy(bytes,offset,position,position+count);done(null,count);}
+    read:(_handle:Buffer,bytes:Buffer,offset:number,length:number,position:number,done:Function) => {reads++;if (hang) return;const count=Math.max(0,Math.min(length,options.short ?? length,data.length-position));if (count) data.copy(bytes,offset,position,position+count);done(null,count);}
   } as unknown as SFTPWrapper;
   const service=new ViewerReader(() => ({} as Client),() => ({ready:Promise.resolve(sftp),closed:closure,cancel:() => {cancels++;closed();}}));
   const serverId=crypto.randomUUID(),viewerId=crypto.randomUUID();const open=(kind:ViewerReadKind='text') => service.open({serverId,generation:1,viewerId,readGeneration:1,path:'/home/file',parent:'/home',kind});

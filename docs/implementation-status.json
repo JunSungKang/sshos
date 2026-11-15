@@ -46,14 +46,17 @@
     "Predecode PNG/JPEG/EXIF/WebP structure/dimension validation",
     "Pinned ssh2 read-channel cancellation adapter and bounded FIFO viewer read pool",
     "Demand-driven viewer reading with one64KiB replay chunk,32KiB SFTP reads, actual-byte bounds and final fstat/EOF validation",
-    "Queued viewer read scheduling, isolated read deadlines/cancellation and generation-bound worker RPC; generic RPC cache excludes file content"
+    "Queued viewer read scheduling, isolated read deadlines/cancellation and generation-bound worker RPC; generic RPC cache excludes file content",
+    "Main-owned viewer/probe capabilities with server/generation/epoch binding, window deduplication and explicit interrupted-read recovery",
+    "Text virtual scroll and isolated Worker image validation/decode with one transferable bitmap canvas, fit/zoom, EXIF1-8 and cached readonly display",
+    "Actual multi-MiB image streaming with consumer ACK and aggregate data pacing separate from control IPC budget"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 90,
-      "evidence": "evidence/d06-reader/test-unit.txt"
+      "tests": 96,
+      "evidence": "evidence/d06-viewers/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -150,6 +153,27 @@
         "disconnect preserves readonly last listing"
       ],
       "limitation": "Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."
+    },
+    "viewer_gui_smoke": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron SSH/SFTP text read through restricted preload",
+        "HTML and ANSI source as plain text",
+        "virtual text and scroll restoration",
+        "explicit reread updates content",
+        "PNG signature despite unknown extension",
+        "isolated Worker decode to one bitmaprenderer canvas",
+        "pixel correctness and zoom without remote reread",
+        "JPEG EXIF orientations1–8 with dimensions and corner pixels",
+        "static WebP decode",
+        "multi-MiB PNG stream paced within IPC budget",
+        "invalid UTF8 refusal and successful explicit reread",
+        "unknown file explicit text selection",
+        "disconnected viewer cache and disabled reread"
+      ],
+      "limitation": "Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance."
     }
   },
   "remaining_D01": [
@@ -166,15 +190,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Connect viewer/probe capabilities in main and restricted preload, renderer consume ACK, decode Worker and actual text/image DOM windows. Reader core is tested; end-user viewer flow is not yet available.",
+  "next_action": "Implement D07 durable transfer queue, isolated authenticated transfer sockets, bounded I/O and exclusive finalization, then GUI enqueue/progress. D06 lifecycle integration and target tests remain.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d06-reader",
+  "latest_evidence_directory": "evidence/d06-viewers",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D06 format/channel/read engine implemented; main/preload/renderer viewer wiring remains",
-    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed single-file mutations and task receipts. Viewers/transfer/exec/PTY still in progress.",
+    "current_stage": "D06 end-user text/image viewer implemented and locally verified; D07 begins, lifecycle integration and target checks remain",
+    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {

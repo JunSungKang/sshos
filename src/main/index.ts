@@ -14,6 +14,7 @@ import { DesktopController } from './desktop';
 import { FileController } from './files';
 import { ReceiptRepository } from './persistence/receipts';
 import { MutationController } from './mutations';
+import { ViewerController } from './viewers';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -91,6 +92,7 @@ async function main(): Promise<void> {
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
+  const viewers=new ViewerController(files,connections,desktop,gateway);
   const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
@@ -98,9 +100,10 @@ async function main(): Promise<void> {
   });
   worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped(); });
   const budget = new RequestBudget();
-  const validateSender = (event: Electron.IpcMainInvokeEvent) => {
+  const viewerDataBudget=new RequestBudget(undefined,32,128);
+  const validateSender = (event: Electron.IpcMainInvokeEvent,requestBudget=budget) => {
     if (!win || win.isDestroyed() || event.sender !== win.webContents || event.senderFrame !== win.webContents.mainFrame || !isAppOrigin(event.senderFrame.url)) throw new Error('IPC_DENIED');
-    if (!budget.take()) throw new Error('INPUT_INVALID');
+    if (!requestBudget.take()) throw new Error('INPUT_INVALID');
   };
   for (const action of ['profile:list', 'profile:create', 'profile:update', 'profile:delete', 'profile:pickKey']) {
     ipcMain.handle(action, async (event, payload: unknown) => {
@@ -129,7 +132,7 @@ async function main(): Promise<void> {
       try {
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
         const result = desktop.handle(action, payload);
-        if (action === 'desktop:closeWindow' && typeof payload === 'string') await files.closeWindow(payload).catch(() => {});
+        if (action === 'desktop:closeWindow' && typeof payload === 'string') {await viewers.closeWindow(payload);await files.closeWindow(payload).catch(() => {});}
         return result;
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
@@ -153,6 +156,15 @@ async function main(): Promise<void> {
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }
+  for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
+    ipcMain.handle(action,async (event,payload:unknown) => {
+      validateSender(event,action === 'viewer:next' ? viewerDataBudget : budget);
+      try {
+        if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>(action === 'viewer:next' ? 256 : 65536)) throw new Error('INPUT_INVALID');
+        return await viewers.handle(action,payload);
+      } catch (error) {throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INPUT_INVALID');}
+    });
+  }
   ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
     try { await mutations.settled(); await receipts?.settled(); await openRepository(); receipts=await ReceiptRepository.open(dataRoot); } catch { throw new Error('STORAGE_FAILED'); }
@@ -169,6 +181,10 @@ async function main(): Promise<void> {
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
+    let loaded=false;
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) viewers.interruptRenderer();});
+    win.webContents.on('did-finish-load',() => {loaded=true;});
+    win.webContents.on('render-process-gone',() => viewers.interruptRenderer());
     win.on('ready-to-show', () => win?.show());
     win.on('closed', () => { win = null; });
     void win.loadURL('app://ui/');

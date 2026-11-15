@@ -37,12 +37,12 @@ export async function resolveAsset(root: string, raw: string): Promise<{ path: s
 }
 
 export class RequestBudget {
-  private tokens = 60;
+  private tokens:number;
   private at: number;
-  constructor(private readonly clock: () => number = () => performance.now()) { this.at = clock(); }
+  constructor(private readonly clock: () => number = () => performance.now(),private readonly capacity=60,private readonly perSecond=30) { this.at = clock();this.tokens=capacity; }
   take(): boolean {
     const now = this.clock();
-    this.tokens = Math.min(60, this.tokens + Math.max(0, now - this.at) * 30 / 1000);
+    this.tokens = Math.min(this.capacity, this.tokens + Math.max(0, now - this.at) * this.perSecond / 1000);
     this.at = now;
     if (this.tokens < 1) return false;
     this.tokens--;

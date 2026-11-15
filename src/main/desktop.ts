@@ -5,7 +5,9 @@ import type { ConnectionController } from './connections';
 
 export class DesktopController {
   private readonly windows = new Map<string, WindowModel>();
+  private readonly resources=new Map<string,(token:string)=>{serverId:string;generation:number;resourceId:string}>();
   constructor(private readonly connections: ConnectionController) {}
+  registerResourceResolver(kind:string,resolve:(token:string)=>{serverId:string;generation:number;resourceId:string}):void {this.resources.set(kind,resolve);}
   requireWindow(id: string, kind: string): WindowModel {
     const window = this.windows.get(id);
     if (!window || window.kind !== kind) throw new Error('TOKEN_EXPIRED');
@@ -16,15 +18,18 @@ export class DesktopController {
     if (action === 'desktop:registerWindow') {
       const input = z.object({ kind: windowKindSchema, resourceToken: z.uuid().optional() }).strict().parse(payload);
       const global = ['connections', 'tasks', 'settings'].includes(input.kind);
-      const capability = global ? null : input.resourceToken ? this.connections.sessionCapability(input.resourceToken) : null;
+      const resolver=this.resources.get(input.kind);
+      if (['text','image','execution'].includes(input.kind) && !resolver) throw new Error('INPUT_INVALID');
+      const capability:{serverId:string;generation:number;resourceId?:string}|null = global ? null : input.resourceToken ? resolver ? resolver(input.resourceToken) : this.connections.sessionCapability(input.resourceToken) : null;
       if (!global && !capability) throw new Error('SESSION_UNAVAILABLE');
-      const existing = global ? [...this.windows.values()].find(row => row.kind === input.kind) : undefined;
+      const resourceId=capability?.resourceId ?? null;
+      const existing = [...this.windows.values()].find(row => row.kind === input.kind && (global || resourceId !== null && row.resourceId === resourceId && row.serverId === capability?.serverId && row.sessionGeneration === capability?.generation));
       if (existing) return structuredClone(existing);
       if (this.windows.size >= 12) throw new Error('WINDOW_LIMIT');
       if (input.kind === 'files' && [...this.windows.values()].filter(row => row.kind === 'files').length >= 6) throw new Error('WINDOW_LIMIT');
       if (['text','image'].includes(input.kind) && [...this.windows.values()].filter(row => ['text','image'].includes(row.kind)).length >= 4) throw new Error('WINDOW_LIMIT');
       const bounds = { x: 0, y: 44, width: 720, height: 440 };
-      const model: WindowModel = { windowId: randomUUID(), kind: input.kind, serverId: capability?.serverId ?? null, sessionGeneration: capability?.generation ?? null, resourceId: global ? null : randomUUID(), bounds, restoreBounds: bounds, mode: 'normal', restoreMode: 'normal', focused: false, lastFocusedSequence: 0 };
+      const model: WindowModel = { windowId: randomUUID(), kind: input.kind, serverId: capability?.serverId ?? null, sessionGeneration: capability?.generation ?? null, resourceId: global ? null : resourceId ?? randomUUID(), bounds, restoreBounds: bounds, mode: 'normal', restoreMode: 'normal', focused: false, lastFocusedSequence: 0 };
       this.windows.set(model.windowId, model); return structuredClone(model);
     }
     if (action === 'desktop:updateWindowLayout') {

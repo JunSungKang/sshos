@@ -1,6 +1,15 @@
 import { contextBridge, ipcRenderer } from 'electron';
 // Keep this entry self-contained: sandboxed preload cannot require local modules.
 contextBridge.exposeInMainWorld('sshOS', Object.freeze({
+  viewer:Object.freeze({
+    probe:(token:string) => ipcRenderer.invoke('viewer:probe',token),
+    next:(token:string,readGeneration:number,sequence:number) => ipcRenderer.invoke('viewer:next',{token,readGeneration,sequence}),
+    releaseProbe:(token:string) => ipcRenderer.invoke('viewer:releaseProbe',token),
+    open:(entryToken:string,kind:string) => ipcRenderer.invoke('viewer:open',{entryToken,kind}),
+    get:(id:string) => ipcRenderer.invoke('viewer:get',id),
+    reread:(token:string) => ipcRenderer.invoke('viewer:reread',token),
+    stopRead:(token:string,readGeneration:number) => ipcRenderer.invoke('viewer:stopRead',{token,readGeneration})
+  }),
   file: Object.freeze({
     open: (id: string) => ipcRenderer.invoke('file:open', id),
     list: (token: string) => ipcRenderer.invoke('file:list', token),

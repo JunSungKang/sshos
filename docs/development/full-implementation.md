@@ -43,3 +43,9 @@ ssh2 1.17.0의 public sftp callback은 subsystem/INIT 완료를 기다리므로 
 뷰어별32KiB SFTP 요청으로 최대64KiB 청크를 반환하고 renderer가 다음 sequence를 요청할 때 이전 청크 소비 ACK로 처리한다. 재요청은 저장한 한 청크를 반환하며 범용 RPC 완료 캐시에 파일 byte를 넣지 않는다. probe는4KiB만 읽고 전체 파일 size metadata를 보존한다. 실제 byte 수 제한·EOF·처음/끝 fstat 비교·파일 handle close ACK를 확인하고, 읽기15초/전체30초 기한과 취소는 해당 채널에만 적용한다. 대기 슬롯 시간은30초 기한에서 제외한다. 취소/연결 해제 뒤 늦은 결과는 화면 데이터로 승격하지 않는다.
 
 90개 단위 검사, 타입/build와 Electron 기반 회귀 smoke가 통과했다. short read·중복 sequence·소비 전 읽기 없음·허위 size metadata·읽는 중 파일 변경·timeout·세대 오인 방지를 검사했다. evidence/d06-reader에 실제 출력을 저장했다. 다음 작업은 main의 viewer/probe capability, preload, renderer 소비 ACK 및 decode Worker와 내부 뷰어 창을 연결하는 것이다. 사용자 파일 열기 기능의 완료를 선언하는 기록이 아니다.
+
+## 텍스트·이미지 창 연결 검증
+
+main 소유 viewer/probe token, 창·서버·세대·epoch 바인딩, 동일 자원 창 재사용, renderer 소비 ACK와 격리 decode Worker를 연결했다. 텍스트는 가상 줄 표시·읽기 전용 복사를 제공하고 HTML/ANSI를 실행하지 않는다. 이미지는 헤더 제한 검사 뒤 createImageBitmap 한 번과 bitmaprenderer canvas로 표시하며 화면맞춤·25/50/100/200% 확대를 제공한다. 다시읽기 실패 시 이전 내용을 유지하고 연결 해제 후 캐시를 읽기 전용으로 남긴다. renderer를 잃으면 진행 읽기는 중단하고 명시적 다시읽기만 허용한다. 임의 파일의 선택창에 다운로드 연결은 D07에서 추가한다.
+
+96개 단위 검사·타입·build가 통과했다. 실제 Electron/SSH/SFTP fixture에서 텍스트, 위험 문자열, PNG signature, JPEG EXIF1–8의 치수와 모서리 픽셀, WebP, 잘못된 UTF8 거절과 수정 뒤 다시읽기, 3MiB 초과 PNG 스트리밍·표시를 확인했다. 읽기는 한64KiB 청크 내 서로 다른32KiB 두 구간만 병렬 요청하고 다음 청크는 소비 ACK 뒤 읽는다. evidence/d06-viewers에 실제 출력과 화면·소스 hash를 보존한다. 지원 OS/Ubuntu/OpenSSH/서명 또는 D06 전체 수용 통과 기록이 아니다. 다음 구현은 비동기 전송이다.

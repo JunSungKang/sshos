@@ -11,3 +11,4 @@ export const viewerFrameSchema=z.discriminatedUnion('status',[
   z.object({...frameIdentity,status:z.literal('end'),metadata:viewerMetadataSchema}).strict()
 ]);
 export type ViewerFrame=z.infer<typeof viewerFrameSchema>;
+export type ViewerDescriptor={viewerToken:string;viewerId:string;readGeneration:number;kind:'text'|'image';name:string;path:string;serverId:string;generation:number;serverName:string;endpoint:string;readState:'pending'|'complete'|'failed'|'interrupted';nextSequence:number;lastReadAt:string|null;errorCode:string|null};

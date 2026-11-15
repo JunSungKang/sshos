@@ -89,17 +89,24 @@ export class ViewerReader {
   private async produce(entry:RecordEntry,sequence:number):Promise<ViewerFrame> {
     const control=entry.control!,sftp=control.sftp,metadata=entry.metadata!,handle=entry.handle!;
     const limit=entry.kind === 'probe' ? 4096 : entry.kind === 'text' ? TEXT_LIMIT : IMAGE_LIMIT;
-    const bytes=Buffer.alloc(65536);let filled=0,eof=false;
-    while (filled<bytes.length) {
-      this.check(entry);
-      const remaining=limit-entry.offset;
-      if (entry.kind === 'probe' && remaining === 0) {eof=true;break;}
-      const length=Math.min(32768,bytes.length-filled,remaining+(entry.kind === 'probe' ? 0 : 1));
-      const count=await this.observed(entry,controlCall<number>(control,done => sftp.read(handle,bytes,filled,length,entry.offset,(error,read) => done(error,read))));
-      if (!Number.isSafeInteger(count) || count<0 || count>length) throw new Error('INTERNAL_ERROR');
-      if (count === 0) {eof=true;break;}
-      entry.offset+=count;filled+=count;if (entry.offset>limit) throw new Error('VIEW_LIMIT');
-    }
+    const bytes=Buffer.alloc(65536);const sourceOffset=entry.offset;
+    const wanted=Math.min(bytes.length,limit-sourceOffset+(entry.kind === 'probe' ? 0 : 1));
+    const firstLength=Math.min(32768,wanted),secondLength=wanted-firstLength;
+    const range=async (bufferOffset:number,length:number):Promise<number> => {
+      let read=0;
+      while (read<length) {
+        this.check(entry);const remaining=length-read;
+        const count=await this.observed(entry,controlCall<number>(control,done => sftp.read(handle,bytes,bufferOffset+read,remaining,sourceOffset+bufferOffset+read,(error,count) => done(error,count))));
+        if (!Number.isSafeInteger(count) || count<0 || count>remaining) throw new Error('INTERNAL_ERROR');if (count === 0) break;read+=count;
+      }
+      return read;
+    };
+    // Two disjoint32KiB ranges fit one replay chunk. Pipeline within that chunk
+    // while waiting for the renderer ACK before reading another chunk.
+    const [first,second]=await this.observed(entry,Promise.all([range(0,firstLength),range(firstLength,secondLength)]));
+    if (first<firstLength && second>0) throw new Error('SOURCE_CHANGED');
+    const filled=first+second;entry.offset+=filled;if (entry.offset>limit) throw new Error('VIEW_LIMIT');
+    const eof=first<firstLength || second<secondLength || entry.kind === 'probe' && entry.offset === limit;
     if (eof) {
       const final=await this.observed(entry,controlCall<Stats>(control,done => sftp.fstat(handle,done)));
       if (!final.isFile() || final.size !== metadata.size || final.mtime !== metadata.mtime || entry.offset !== Math.min(metadata.size,entry.kind === 'probe' ? 4096 : metadata.size)) throw new Error('SOURCE_CHANGED');
