@@ -46,7 +46,7 @@ executions=new GUIExecutions(epoch,sessions,receiptWriter,snapshot=>process.pare
 terminals=new TerminalSessions(epoch,executions.channels,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'pty',backendEpoch:epoch,sequence:++terminalSequence,snapshot}));
 const recovery=new WorkerStorageRecovery(epoch,receiptWriter,transfers,message=>process.parentPort?.postMessage(message),[executions,terminals]);
 const transferInspector=new TransferInspector((serverId,generation) => sessions.control(serverId,generation,true));
-const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
+const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks,value=>process.parentPort?.postMessage({type:'mutation_observation',backendEpoch:epoch,...value}));
 const inFlight = new Map<string, Promise<EngineEvent>>();
 const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {

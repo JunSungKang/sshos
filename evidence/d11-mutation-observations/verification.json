@@ -1,0 +1,18 @@
+{
+  "unitTests": 318,
+  "unitFiles": 59,
+  "typecheck": "pass",
+  "build": "pass",
+  "fileGUIRegression": "pass",
+  "workerLateCallbackFixture": "controlled SFTP callbacks and15s fake clock, mkdir/delete/rmdir/link/source-remove; not actual late TCP ACK after socket destruction",
+  "assertions": [
+    "one bounded late success observation after timeout even after worker task finish",
+    "exact epoch/server/generation/task/operation/path binding",
+    "unknown phase and unresolved path restrictions preserved; no remote replay",
+    "duplicate observation ignored and forgotten receipt never resurrected",
+    "observation writer pending blocks record closure; failure retains metadata warning",
+    "explicit storage verification retains validated recovered disk phase and appends matching observed facts only",
+    "missing/different receipt identity blocks reconciliation"
+  ],
+  "coverageGate": "still fail; see d11-desktop-coverage"
+}

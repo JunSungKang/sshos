@@ -117,14 +117,16 @@
     "Utility process disables automatic network address-family retries; integration/security commands execute actual suites rather than missing-fixture gates",
     "Window cap opens actual window list with explicit close/select; active-window Tab can reach taskbar and Enter restores selected-window focus; minimized content immediately inert,150ms restore/minimize with reduced-motion override",
     "Instrumented source key-parser coordinator retains real compiled parser threads; new failure/cancellation/termination, key-file, profile/file capability, redacted-export, metadata/geometry boundary tests",
-    "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed"
+    "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed",
+    "Bounded late file-mutation ACK observations retain original unknown/partial phase, generation/path identity and restrictions without completion promotion or replay; duplicate callbacks ignored",
+    "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 313,
-      "evidence": "evidence/d11-desktop-coverage/verification.json"
+      "tests": 318,
+      "evidence": "evidence/d11-mutation-observations/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -523,10 +525,10 @@
       "summary": "Required per-file statement90% / branch85% unit coverage is not met. Real report retained; no threshold reduction or exclusion to claim pass."
     }
   ],
-  "next_action": "Fill D11 security/recovery coverage gaps and implement late file-mutation ACK metadata preservation; then measured performance/audit, D12 packages/notices/SBOM and D13 handoff.",
+  "next_action": "Continue mandatory D11 per-file statement/branch coverage and performance/security audit; then D12 development packages/fuses/notices/SBOM and D13 user handoff.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-desktop-coverage",
+  "latest_evidence_directory": "evidence/d11-mutation-observations",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,

@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 import type { Stats } from 'ssh2';
-import { mutationSpecSchema, initialStatSchema, type MutationSpec, type InitialStat, type MutationResult } from '../../shared/mutations';
+import { mutationSpecSchema, initialStatSchema, type MutationSpec, type InitialStat, type MutationResult,type MutationObservation } from '../../shared/mutations';
 import { controlCall, verifyDirectory, type ControlAccess } from './browser';
 import { PathLocks, type PathClaim } from './path-locks';
 
@@ -8,7 +8,7 @@ type Prepared = { serverId:string; generation:number; spec:MutationSpec; stat:In
 export function mutationClaims(spec:MutationSpec):PathClaim[] { return [{path:spec.parent,mode:'keep'},...[spec.source,spec.destination].flatMap(path => path ? [{path,mode:'write' as const}] : [])]; }
 export class FileMutations {
   private readonly tasks = new Map<string,Prepared>();
-  constructor(private readonly control:(serverId:string,generation:number) => ControlAccess, private readonly locks:PathLocks) {}
+  constructor(private readonly control:(serverId:string,generation:number) => ControlAccess, private readonly locks:PathLocks,private readonly observe:(value:Omit<MutationObservation,'backendEpoch'>)=>void=()=>{}) {}
   private validate(input:MutationSpec):MutationSpec {
     const spec=mutationSpecSchema.parse(input);
     if (spec.operation === 'mkdir' ? spec.source !== null || spec.destination === null || spec.type !== null : !spec.source || !spec.type || (spec.operation === 'delete' ? spec.destination !== null : !spec.destination || spec.type !== 'file')) throw new Error('INPUT_INVALID');
@@ -46,7 +46,7 @@ export class FileMutations {
     const task=this.tasks.get(taskId);
     if (!task || task.serverId !== serverId || task.generation !== generation) throw new Error('TOKEN_EXPIRED');
     if (task.busy || (stage === 'first' ? task.stage !== 'prepared' : task.stage !== 'first_ack' || task.spec.operation !== 'rename')) throw new Error('REQUEST_BUSY');
-    task.busy=true; let sent=false; let acknowledged=false;
+    task.busy=true; let sent=false; let acknowledged=false;let returned=false;let lateObserved=false;
     const result=(phase:MutationResult['phase'],errorCode:string|null,lastConfirmedPhase:string):MutationResult => ({phase,errorCode,lastConfirmedPhase,destinationCreated:task.destinationCreated,sourceRemovalConfirmed:task.sourceRemovalConfirmed});
     try {
       const control=this.control(serverId,generation); const {spec}=task;
@@ -55,8 +55,10 @@ export class FileMutations {
       if (JSON.stringify(stat) !== JSON.stringify(task.stat)) throw new Error('SOURCE_CHANGED');
       if (stage === 'first' && spec.destination) await this.absent(control,spec.destination);
       await controlCall<void>(control,done => {
+        let callbackSeen=false;
         const callback=(error:Error|undefined|null) => {
-          if (!error) { acknowledged=true; if (stage === 'remove_source' || spec.operation === 'delete') task.sourceRemovalConfirmed=true; else task.destinationCreated=true; }
+          if(callbackSeen)return;callbackSeen=true;
+          if (!error) { acknowledged=true; if (stage === 'remove_source' || spec.operation === 'delete') task.sourceRemovalConfirmed=true; else task.destinationCreated=true;if(returned && !lateObserved){lateObserved=true;try{this.observe({serverId,generation,taskId,operation:spec.operation,source:spec.source,destination:spec.destination,observation:{stage:stage==='remove_source' ? 'source_removed':spec.operation==='delete' ? 'delete_ack':spec.operation==='mkdir' ? 'mkdir_ack':'link_ack',at:new Date().toISOString()}});}catch{}} }
           done(error,undefined);
         };
         if (stage === 'remove_source') { sent=true; task.stage='remove_sent'; control.sftp.unlink(spec.source!,callback); }
@@ -84,7 +86,7 @@ export class FileMutations {
       task.stage='terminal';
       const uncertain=sent && (!confirmedFailure || acknowledged);
       return result(uncertain ? 'result_unknown' : task.destinationCreated ? 'partial' : 'failed', uncertain ? 'RESULT_UNKNOWN' : task.destinationCreated ? 'PARTIAL_RENAME' : code, task.sourceRemovalConfirmed ? 'source_removed' : task.destinationCreated ? task.spec.operation === 'mkdir' ? 'mkdir_ack' : 'link_ack' : 'prepared');
-    } finally { task.busy=false; }
+    } finally { returned=true;task.busy=false; }
   }
   finish(taskId:string,keepRestriction:boolean):void { const task=this.tasks.get(taskId); if (task?.busy) throw new Error('REQUEST_BUSY'); this.tasks.delete(taskId); if (!keepRestriction) this.locks.release(taskId); }
 }

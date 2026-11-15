@@ -4,7 +4,7 @@ import { executionReceiptSchema,executionSpecSchema } from './executions';
 import { executionRuntimeSchema } from './execution-protocol';
 import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
 import { remotePathSchema } from './files';
-import { mutationSpecSchema, initialStatSchema } from './mutations';
+import { mutationSpecSchema, initialStatSchema,mutationObservationSchema } from './mutations';
 import { viewerReadKindSchema } from './viewers/reader';
 import { stagedTransferSchema,transferRuntimeSchema } from './transfer-protocol';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
@@ -54,6 +54,7 @@ export const engineRequestSchema = z.discriminatedUnion('action', [
 export type EngineRequest = z.infer<typeof engineRequestSchema>;
 export type EngineCommand = EngineRequest extends infer T ? T extends EngineRequest ? Omit<T, 'requestId' | 'backendEpoch'> : never : never;
 export const engineEventSchema = z.discriminatedUnion('type', [
+  z.object({type:z.literal('mutation_observation')}).extend(mutationObservationSchema.shape).strict(),
   z.object({type:z.literal('pty'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:terminalRuntimeSchema}).strict(),
   z.object({type:z.literal('execution'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:executionRuntimeSchema}).strict(),
   z.object({ type: z.literal('session'), backendEpoch: z.uuid(), sequence: z.int().positive(), snapshot: sessionSnapshotSchema }).strict(),

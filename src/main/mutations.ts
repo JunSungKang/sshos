@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { posix } from 'node:path';
 import { z } from 'zod';
 import { validName } from '../shared/files';
-import { initialStatSchema, mutationResultSchema, type MutationPreview, type MutationReceipt, type MutationSpec, type InitialStat, type RecordActionPreview } from '../shared/mutations';
+import { initialStatSchema, mutationResultSchema,mutationObservationSchema,type MutationObservation, type MutationPreview, type MutationReceipt, type MutationSpec, type InitialStat, type RecordActionPreview } from '../shared/mutations';
 import { mutationClaims } from '../worker/files/mutations';
 import type { ConnectionController } from './connections';
 import type { FileController } from './files';
@@ -15,11 +15,33 @@ export class MutationController {
   private readonly previews=new Map<string,Preview>();
   private readonly running=new Set<string>();
   private readonly current=new Map<string,MutationReceipt & {recordError?:boolean}>();
+  private readonly observations=new Map<string,Promise<void>>();
   private readonly recordActions=new Map<string,{id:string;action:'acknowledge'|'forget';updatedAt:string|null;deadline:number}>();
   constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean,private readonly otherActive:(id:string)=>boolean=()=>false,private readonly closeOtherRecord:(row:FileReceipt)=>Promise<void>=async ()=>{},private readonly extraSnapshots:()=> (FileReceipt & {recordError?:boolean})[]=()=>[],private readonly otherState:(id:string)=>{cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean}=()=>({cancelable:false,registering:false,bytesPerSecond:null,cleanupPending:false})) {}
-  isActive(id:string):boolean {return this.running.has(id);}
-  get hasRunning():boolean {return this.running.size>0;}
-  async settled():Promise<void> { while (this.running.size) await new Promise(resolve => setTimeout(resolve,50)); }
+  isActive(id:string):boolean {return this.running.has(id) || this.observations.has(id);}
+  get hasRunning():boolean {return this.running.size>0 || this.observations.size>0;}
+  async settled():Promise<void> { while (this.running.size || this.observations.size) {await Promise.allSettled([...this.observations.values()]);if(this.running.size)await new Promise(resolve => setTimeout(resolve,50));} }
+  async reconcileStorage(repo:ReceiptRepository):Promise<void> {
+    await this.settled();
+    for(let pass=0;pass<101;pass++){
+      const pending=[...this.current.values()].filter(row=>row.recordError);if(!pending.length)return;
+      for(const memory of pending){const disk=repo.get(memory.taskId),identity=(row:MutationReceipt)=>[row.taskId,row.serverId,row.generation,row.backendEpoch,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.endpointSnapshot,row.hostKeyFingerprint,row.createdAt];if(!disk || disk.kind!=='file_mutation' || JSON.stringify(identity(disk))!==JSON.stringify(identity(memory)))throw new Error('STORAGE_FAILED');const row=this.mergeObservations({...disk,destinationCreated:disk.destinationCreated || memory.destinationCreated,sourceRemovalConfirmed:disk.sourceRemovalConfirmed || memory.sourceRemovalConfirmed,...(memory.lateObservations ? {lateObservations:memory.lateObservations}:{}) ,updatedAt:new Date().toISOString()});await repo.save(row);if(this.current.get(memory.taskId)===memory)this.current.delete(memory.taskId);}
+      await this.settled();
+    }
+    throw new Error('STORAGE_FAILED');
+  }
+  private mergeObservations(row:MutationReceipt):MutationReceipt {
+    const current=this.current.get(row.taskId),disk=this.storage()?.get(row.taskId),prior=current?.lateObservations ?? (disk?.kind==='file_mutation' ? disk.lateObservations:undefined) ?? [];
+    const observations=[...prior,...(row.lateObservations ?? [])].filter((value,index,all)=>all.findIndex(other=>other.stage===value.stage)===index).slice(0,2);
+    return {...row,...(observations.length ? {lateObservations:observations}:{}),destinationCreated:row.destinationCreated || observations.some(value=>value.stage==='mkdir_ack' || value.stage==='link_ack'),sourceRemovalConfirmed:row.sourceRemovalConfirmed || observations.some(value=>value.stage==='delete_ack' || value.stage==='source_removed')};
+  }
+  observe(raw:MutationObservation):void {
+    const parsed=mutationObservationSchema.safeParse(raw);if(!parsed.success || parsed.data.backendEpoch!==this.gateway.epoch)return;const value=parsed.data;
+    const matches=(row:FileReceipt|undefined):row is MutationReceipt=>Boolean(row?.kind==='file_mutation' && row.backendEpoch===value.backendEpoch && row.serverId===value.serverId && row.generation===value.generation && row.operation===value.operation && row.source===value.source && row.destination===value.destination && (value.operation==='mkdir' ? value.observation.stage==='mkdir_ack':value.operation==='delete' ? value.observation.stage==='delete_ack':['link_ack','source_removed'].includes(value.observation.stage)));
+    if(!matches(this.current.get(value.taskId) ?? this.storage()?.get(value.taskId)))return;
+    const prior=this.observations.get(value.taskId) ?? Promise.resolve();let operation:Promise<void>;
+    operation=prior.then(async()=>{if(this.gateway.epoch!==value.backendEpoch)return;const latest=this.current.get(value.taskId) ?? this.storage()?.get(value.taskId);if(!matches(latest) || latest.lateObservations?.some(row=>row.stage===value.observation.stage))return;const {recordError:_error,...base}=latest as MutationReceipt & {recordError?:boolean},row=this.mergeObservations({...base,lateObservations:[...(base.lateObservations ?? []),value.observation],updatedAt:new Date().toISOString()});this.current.set(row.taskId,row);try{await this.repository().save(row);if(!this.running.has(row.taskId) && this.current.get(row.taskId)===row)this.current.delete(row.taskId);}catch{this.current.set(row.taskId,{...row,recordError:true});}}).finally(()=>{if(this.observations.get(value.taskId)===operation)this.observations.delete(value.taskId);});this.observations.set(value.taskId,operation);
+  }
   private repository():ReceiptRepository { const repo=this.storage(); if (!repo || repo.faulted || !this.stateHealthy()) throw new Error('STORAGE_FAILED'); return repo; }
   private validateSession(serverId:string,generation:number,sessionToken:string):void {
     const capability=this.connections.sessionCapability(sessionToken); if (capability.serverId !== serverId || capability.generation !== generation) throw new Error('TOKEN_EXPIRED');
@@ -60,7 +82,7 @@ export class MutationController {
   }
   private async run(initial:MutationReceipt,preview:Preview):Promise<void> {
     let receipt=initial; let dispatched=false; let acquired=false;
-    const save=async (change:Partial<MutationReceipt>) => { receipt={...receipt,...change,updatedAt:new Date().toISOString()}; this.current.set(receipt.taskId,receipt); await this.repository().save(receipt); };
+    const save=async (change:Partial<MutationReceipt>) => { receipt=this.mergeObservations({...receipt,...change,updatedAt:new Date().toISOString()}); this.current.set(receipt.taskId,receipt); await this.repository().save(receipt); };
     try {
       while (!acquired) {
         this.validateSession(preview.serverId,preview.generation,preview.sessionToken);
@@ -79,13 +101,13 @@ export class MutationController {
       await save({...result,phase:result.phase,stage:result.phase});
     } catch (error) {
       const code=error instanceof Error && /^[A-Z_]+$/u.test(error.message) ? error.message : 'INTERNAL_ERROR';
-      receipt={...receipt,phase:dispatched ? 'result_unknown' : 'failed',errorCode:code === 'STORAGE_FAILED' ? code : dispatched ? 'RESULT_UNKNOWN' : code,updatedAt:new Date().toISOString()};
+      receipt=this.mergeObservations({...receipt,phase:dispatched ? 'result_unknown' : 'failed',errorCode:code === 'STORAGE_FAILED' ? code : dispatched ? 'RESULT_UNKNOWN' : code,updatedAt:new Date().toISOString()});
       this.current.set(receipt.taskId,{...receipt,...(code === 'STORAGE_FAILED' ? {recordError:true} : {})});
       try { await this.repository().save(receipt); } catch { this.current.set(receipt.taskId,{...receipt,recordError:true}); }
     } finally {
-      this.running.delete(receipt.taskId);
       if (acquired) await this.gateway.request({action:'mutation:finish',serverId:preview.serverId,generation:preview.generation,taskId:receipt.taskId,keepRestriction:['result_unknown','partial'].includes(receipt.phase)}).catch(() => {});
-      if (!this.current.get(receipt.taskId)?.recordError) this.current.delete(receipt.taskId);
+      this.running.delete(receipt.taskId);
+      if (!this.observations.has(receipt.taskId) && !this.current.get(receipt.taskId)?.recordError) this.current.delete(receipt.taskId);
     }
   }
   snapshots() { const values=new Map(this.storage()?.snapshots().map(row => [row.taskId,row])); for (const [id,row] of this.current) values.set(id,row);for (const row of this.extraSnapshots()) values.set(row.taskId,row); return [...values.values()].sort((a,b) => b.createdAt.localeCompare(a.createdAt)); }
@@ -107,7 +129,7 @@ export class MutationController {
     if (action === 'task:inspect') { const id=z.uuid().parse(payload); const row=this.snapshots().find(row => row.taskId === id); if (!row) throw new Error('INPUT_INVALID'); return this.display(row); }
     if (action === 'task:previewRecordAction') {
       const input=z.object({id:z.uuid(),action:z.enum(['acknowledge','forget'])}).strict().parse(payload); const row=this.snapshots().find(row => row.taskId === input.id);
-      if (this.running.has(input.id) || this.otherActive(input.id) || (!row && !this.storage()?.damagedIds().includes(input.id))) throw new Error('INPUT_INVALID');
+      if (this.isActive(input.id) || this.otherActive(input.id) || (!row && !this.storage()?.damagedIds().includes(input.id))) throw new Error('INPUT_INVALID');
       if (input.action === 'acknowledge' && (!row || !receiptUnresolved(row))) throw new Error('INPUT_INVALID');
       if (input.action === 'forget' && row && (!receiptTerminal(row) || receiptUnresolved(row))) throw new Error('INPUT_INVALID');
       for (const [token,value] of this.recordActions) if (value.deadline<performance.now()) this.recordActions.delete(token);
@@ -118,7 +140,7 @@ export class MutationController {
     if (action === 'task:applyRecordAction') {
       const token=z.uuid().parse(payload); const input=this.recordActions.get(token); this.recordActions.delete(token);
       if (!input || input.deadline<performance.now()) throw new Error('TOKEN_EXPIRED'); const row=this.snapshots().find(row => row.taskId === input.id);
-      if ((row?.updatedAt ?? null) !== input.updatedAt || this.running.has(input.id) || this.otherActive(input.id)) throw new Error('TOKEN_EXPIRED');
+      if ((row?.updatedAt ?? null) !== input.updatedAt || this.isActive(input.id) || this.otherActive(input.id)) throw new Error('TOKEN_EXPIRED');
       const repo=this.repository();
       if (input.action === 'forget') {if(row && row.kind !== 'file_mutation')await this.closeOtherRecord(row);await repo.forget(input.id);}
       else { await repo.acknowledge(input.id); if (row?.kind === 'file_mutation') await this.gateway.request({action:'mutation:finish',serverId:row.serverId,generation:row.generation,taskId:input.id,keepRestriction:false}).catch(() => {});else if (row) await this.closeOtherRecord(row); }
