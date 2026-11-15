@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 // Keep this entry self-contained: sandboxed preload cannot require local modules.
 contextBridge.exposeInMainWorld('sshOS', Object.freeze({
+  settings:Object.freeze({previewDiagnostics:()=>ipcRenderer.invoke('settings:previewDiagnostics'),exportRedactedDiagnostics:(token:string)=>ipcRenderer.invoke('settings:exportRedactedDiagnostics',token),releaseDiagnostics:(token:string)=>ipcRenderer.invoke('settings:releaseDiagnostics',token),retryStorage:()=>ipcRenderer.invoke('settings:retryStorage'),get:()=>ipcRenderer.invoke('settings:get'),update:(value:{language:'ko';saveSecrets:boolean})=>ipcRenderer.invoke('settings:update',value),removeTrust:(endpoint:string)=>ipcRenderer.invoke('settings:removeTrust',endpoint),removeSecret:(id:string)=>ipcRenderer.invoke('settings:removeSecret',id)}),
   terminal:Object.freeze({
     open:(token:string)=>ipcRenderer.invoke('terminal:open',token),
     pause:(token:string)=>ipcRenderer.invoke('terminal:pause',token),
@@ -64,7 +65,6 @@ contextBridge.exposeInMainWorld('sshOS', Object.freeze({
     applyRecordAction:(token:string) => ipcRenderer.invoke('task:applyRecordAction',token)
   }),
   lifecycle: Object.freeze({ getSnapshot: () => ipcRenderer.invoke('lifecycle:getSnapshot'),restartEngine:()=>ipcRenderer.invoke('lifecycle:restartEngine'),ackDisplayLimit:(token:string)=>ipcRenderer.invoke('lifecycle:ackDisplayLimit',token) }),
-  settings: Object.freeze({ retryStorage: () => ipcRenderer.invoke('settings:retryStorage') }),
   desktop: Object.freeze({
     getWindowSnapshot: () => ipcRenderer.invoke('desktop:getWindowSnapshot'),
     registerWindow: (kind: string, resourceToken?: string) => ipcRenderer.invoke('desktop:registerWindow', resourceToken === undefined ? { kind } : { kind, resourceToken }),

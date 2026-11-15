@@ -1,4 +1,5 @@
 import { engineRequestCapacity } from '../shared/engine-priority';
+import { setDefaultAutoSelectFamily } from 'node:net';
 import { SSHProbe } from './probe';
 import { Client } from 'ssh2';
 import { z } from 'zod';
@@ -16,6 +17,8 @@ import { WorkerStorageRecovery } from './storage-recovery';
 import { TransferInspector } from './transfers/inspect';
 
 const epoch = z.uuid().parse(process.argv[2]);
+// A user action gets one resolver-selected address, never silent family retries.
+setDefaultAutoSelectFamily(false);
 if (!process.parentPort) throw new Error('Utility process parent port required');
 // Loading the SSH implementation proves runtime linkage without connecting anywhere.
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
@@ -27,6 +30,7 @@ let sequence = 0;
 let readers:ViewerReader|null=null;let probes:SSHProbe|null=null;
 const sessions = new SessionManager(snapshot => {
   probes?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status==='connected');
+  terminals?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status==='connected');
   executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   transfers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   readers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
@@ -69,7 +73,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'execution:forget') await executions!.forget(request.serverId,request.generation,request.executionId);
     else if (request.action === 'session:connect'){try{result=await sessions.connect(request.serverId,request.generation,request.payload);}finally{request.payload.keyBytes?.fill(0);delete request.payload.keyBytes;delete request.payload.password;delete request.payload.passphrase;}}
     else if (request.action === 'session:disconnect') sessions.disconnect(request.serverId, request.generation);
-    else if (request.action === 'session:snapshot') result = sessions.snapshots();
+    else if (request.action === 'session:snapshot') result = {rows:sessions.snapshots(),sequence};
     else if (request.action === 'session:confirmOS') sessions.confirmOS(request.serverId, request.generation);
     else if (request.action === 'file:list') result = await sessions.withMetadata(request.serverId,request.generation,()=>files.list(request.serverId, request.generation, request.browserId, request.path));
     else if (request.action === 'file:page') result = files.page(request.serverId, request.generation, request.browserId, request.offset, request.snapshotId);

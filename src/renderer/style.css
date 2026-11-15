@@ -20,3 +20,7 @@
 .shutdown-overlay{position:fixed;inset:0;z-index:2147483647;background:#102d35e8;display:grid;place-items:center;color:#f0f7f1;font-size:18px}
 
 .connection{display:flex;align-items:center;gap:12px}.active-server-select{max-width:190px;background:#173d43;color:#dceee5;border:1px solid #66958a;border-radius:4px;padding:5px 8px;font:inherit}.probe-status{white-space:nowrap;color:#d7e7df;font-size:12px}.probe-status>span{font-size:10px;color:#8fc3b3}.probe-status.delayed>span{color:#efc27c}.probe-status.unavailable>span,.probe-status.paused>span,.probe-status.waiting>span{color:#a0b9b5}
+
+.settings-pane{overflow:auto;height:100%;box-sizing:border-box}.settings-record{padding:12px 0;border-bottom:1px solid #b6ceca;overflow-wrap:anywhere}.settings-record code{display:block;user-select:text}.settings-pane h3{margin-top:24px}
+
+.diagnostics-dialog{width:min(760px,85vw);max-height:80vh;box-sizing:border-box}.diagnostics-dialog pre{height:45vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;background:#eef5f2;padding:12px}

@@ -14,6 +14,9 @@ async function verify():Promise<void>{
  if(titles!==0 || limits!==1 || element!.querySelector('a'))throw new Error('Terminal parser boundary failed');
  terminal.reset();await write('Z\x1b[500b');let cells='';for(let index=0;index<terminal.buffer.active.length;index++)cells+=terminal.buffer.active.getLine(index)?.translateToString(true)??'';
  if(cells.replace(/[^Z]/gu,'').length!==501 || limits!==1)throw new Error('REP500 public parser behavior differs');
+ terminal.reset();await write('\x1b]52;c;'+ 'A'.repeat(1024**2)+'\x1b\\');await write('\x1bP9999;'+ 'B'.repeat(1024**2)+'\x1b\\');await write('e'+'\u0301'.repeat(32768)+'\r\nUTF8 한글 😀\x1b[999999999999999999999999999999999b');
+ if(titles!==0 || Number(limits)!==2 || element!.querySelector('a'))throw new Error('Long OSC/DCS/combining or numeric flood escaped parser boundary');
+ terminal.reset();
  const clipboard=new DataTransfer();clipboard.setData('text/plain','line-one\r\nline-two\n');element!.dispatchEvent(new ClipboardEvent('paste',{clipboardData:clipboard,bubbles:true,cancelable:true}));
  if(pasteText!=='line-one\r\nline-two\n' || input!=='')throw new Error('Paste capture changed bytes or reached xterm');stopPaste();
  const ready=document.createElement('output');ready.dataset['testid']='xterm-ready';ready.dataset['evalBlocked']=String(evalBlocked);ready.dataset['security']='osc-rep-paste-pass';ready.textContent=`${terminal.cols}×${terminal.rows}`;document.body.append(ready);

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { engineRequestCapacity } from '../shared/engine-priority';
 import { randomUUID } from 'node:crypto';
 import type { UtilityProcess } from 'electron';
@@ -10,14 +11,14 @@ import type { TransferRuntime } from '../shared/transfer-protocol';
 export class EngineGateway {
   private readonly pending = new Map<string, { serverId: string; generation: number; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private stopped = false;
-  private lastSequence = 0;
+  private lastSequence = 0;private readonly sessionSequences=new Map<string,number>();
   private lastTransferSequence=0;
   private lastExecutionSequence=0;
   private lastTerminalSequence=0;
   constructor(private worker: UtilityProcess, private currentEpoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void,private readonly terminalChanged?:(snapshot:TerminalRuntime,gap:boolean,sequence:number)=>void) {this.bind(worker,currentEpoch);}
   get epoch():string {return this.currentEpoch;}
   get running():boolean {return !this.stopped;}
-  restart(worker:UtilityProcess,epoch:string,receiptChannel?:{accept(raw:unknown):boolean}):void {if(!this.stopped || epoch===this.currentEpoch)throw new Error('REQUEST_BUSY');this.worker=worker;this.currentEpoch=epoch;this.receiptChannel=receiptChannel;this.stopped=false;this.lastSequence=0;this.lastTransferSequence=0;this.lastExecutionSequence=0;this.lastTerminalSequence=0;this.bind(worker,epoch);}
+  restart(worker:UtilityProcess,epoch:string,receiptChannel?:{accept(raw:unknown):boolean}):void {if(!this.stopped || epoch===this.currentEpoch)throw new Error('REQUEST_BUSY');this.worker=worker;this.currentEpoch=epoch;this.receiptChannel=receiptChannel;this.stopped=false;this.lastSequence=0;this.sessionSequences.clear();this.lastTransferSequence=0;this.lastExecutionSequence=0;this.lastTerminalSequence=0;this.bind(worker,epoch);}
   private bind(worker:UtilityProcess,epoch:string):void {
     worker.on('message', (raw: unknown) => {
       if(this.worker !== worker || this.currentEpoch !== epoch || this.stopped)return;
@@ -30,9 +31,9 @@ export class EngineGateway {
       if (data.type === 'session') {
         if (data.sequence <= this.lastSequence) return;
         const gap = data.sequence !== this.lastSequence + 1;
-        this.lastSequence = data.sequence; this.sessionChanged(data.snapshot);
+        this.lastSequence = data.sequence; this.sessionSequences.set(data.snapshot.serverId,data.sequence);this.sessionChanged(data.snapshot);
         if (gap) void this.request({ action: 'session:snapshot', serverId: data.snapshot.serverId, generation: data.snapshot.generation }).then(result => {
-          for (const snapshot of sessionSnapshotSchema.array().max(10).parse(result)) this.sessionChanged(snapshot);
+          if(this.worker!==worker || this.currentEpoch!==epoch || this.stopped)return;const page=z.object({sequence:z.int().nonnegative(),rows:sessionSnapshotSchema.array().max(10)}).strict().parse(result);for(const snapshot of page.rows){if((this.sessionSequences.get(snapshot.serverId) ?? 0)>page.sequence)continue;this.sessionSequences.set(snapshot.serverId,page.sequence);this.sessionChanged(snapshot);}this.lastSequence=Math.max(this.lastSequence,page.sequence);
         }).catch(() => {});
         return;
       }

@@ -1,3 +1,4 @@
+import { userMessage } from '../shared/errors';
 import { useEffect, useRef, useState } from 'react';
 import type { DirectoryPage, EntryView } from '../shared/files';
 import type { SessionView } from '../shared/session-contracts';
@@ -12,9 +13,7 @@ import { scheduleViewerFrame } from './viewer-stream-scheduler';
 
 const hiddenByServer = new Map<string, boolean>();
 const explain = (error: unknown) => {
-  const message = error instanceof Error ? error.message : '';
-  const messages: Record<string,string> = { PATH_UNSUPPORTED: '링크 또는 특수파일 경로는 지원하지 않습니다.', PATH_CHANGED: '조회 중 경로가 변경됐습니다. 다시 열어 주세요.', SFTP_UNAVAILABLE: '이 연결에서 SFTP를 사용할 수 없습니다.', IO_TIMEOUT: '파일 조회 응답이 지연되어 연결을 종료했습니다.', TOKEN_EXPIRED: '조회 정보가 만료됐습니다. 파일 창을 다시 열어 주세요.', REQUEST_BUSY: '이 창의 조회가 진행 중입니다.', CONNECTION_LOST: 'SSH 연결이 끊겼습니다.', WINDOW_LIMIT: '열린 창 한도에 도달했습니다. 기존 창을 닫고 다시 여세요.', VIEW_LIMIT: '지원하는 읽기 크기 또는 읽기 요청 한도를 초과했습니다.' };
-  return Object.entries(messages).find(([code]) => message.includes(code))?.[1] ?? '폴더를 읽지 못했습니다. 연결 상태와 경로 접근 권한을 확인하세요.';
+  return userMessage(error);
 };
 type TreeRow = { path: string; name: string; token: string; parent: string | null };
 export function FileExplorer({ windowId, session, generation, newWindow,openViewer,storageHealthy,openExecution }: { openExecution(model:WindowModel):void;storageHealthy:boolean;windowId: string; session?: SessionView; generation: number; newWindow():void;openViewer(entryToken:string,kind:'text'|'image'):Promise<void> }) {
