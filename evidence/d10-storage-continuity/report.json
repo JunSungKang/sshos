@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "actual main JSON/worker storage fault barrier and reconciliation with active exec and PTY",
+    "same-epoch current receipts preserve live running phase and later actual exit7",
+    "established PTY inputs continue across storage faults and explicit verification without new shell",
+    "backup uncertainty dominates live observations and remains unknown after observed exit0 and close",
+    "reconciled receipts persist and recordError clears only after ACK; control and shared socket remain"
+  ],
+  "limitation": "Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain."
+}

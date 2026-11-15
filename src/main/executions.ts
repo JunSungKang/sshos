@@ -24,7 +24,8 @@ export class ExecutionController {
   private session(serverId:string,generation:number,token:string):void {const cap=this.connections.sessionCapability(token);if(cap.serverId !== serverId || cap.generation !== generation)throw new Error('TOKEN_EXPIRED');}
   private window(resource:Resource):WindowModel {const model=this.desktop.handle('desktop:registerWindow',{kind:'execution',resourceToken:resource.windowToken}) as WindowModel;resource.windowId=model.windowId;return model;}
   isActive(id:string):boolean {const resource=this.resources.get(id);return this.starting.has(id) || Boolean(resource && (resource.runtime.active || resource.runtime.recordPending || resource.runtime.cleanupPending));}
-  get hasActive():boolean {return [...this.resources.keys()].some(id=>this.isActive(id));}
+  storageContinuity():string[] {return [...this.resources.values()].filter(resource=>resource.workerKnown && resource.epoch === this.gateway.epoch).map(resource=>resource.id);}
+ get hasActive():boolean {return [...this.resources.keys()].some(id=>this.isActive(id));}
   overlays():(ExecutionReceipt & {recordError:boolean})[] {return [...this.resources.values()].filter(row=>row.workerKnown || row.runtime.recordError).map(resource=>({...resource.runtime.receipt,acknowledgedAt:this.storage()?.get(resource.id)?.acknowledgedAt ?? resource.runtime.receipt.acknowledgedAt,recordError:resource.runtime.recordError}));}
   observe(raw:ExecutionRuntime,gap:boolean,sequence:number):void {
     if(gap){for(const resource of this.resources.values())if(resource.workerKnown)void this.resync(resource.runtime.receipt.serverId,resource.runtime.receipt.generation);}

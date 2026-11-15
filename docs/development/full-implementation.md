@@ -155,3 +155,11 @@ main 소유 terminal/output/restore capability와 실제 xterm6 DOM 창을 연�
 public xterm parser로 OSC 제목/링크/클립보드·관련 제어를 소비하고 REP500 초과를 거절한다. WebLinks/Clipboard addon과 proposed API를 사용하지 않는다. 실제 parser fixture에서 OSC0/2/8/52, REP2147483647 차단·REP500 허용, paste 이벤트의 원문 보존과 자동 입력 방지를 확인했다.
 
 타입·227개 단위 검사·build·Electron CSP/parser·actual PTY backend/GUI·기존 실행 GUI 회귀가 통과했다. GUI 검사에서 Ctrl+C byte, 다중 터미널 대상 고정, paste 확인 전 byte0, 정확한 bracketed byte, paste 뒤 DA sequence, reload 중 shell 재요청0·과거 DA 응답0, 최소화 출력 소비, 닫기 확인/결과불명과 정상 exit0를 확인했다. evidence/d09-gui에 실제 출력·화면3장·source hash를 보존했다. native focus와 clipboard read는 test main process의 모의이며 제품 우회 경로는 없다. 실제 vi/IME/OS clipboard와 지원 OS/Ubuntu/OpenSSH 수용은 미검증이다. 다음은 D10의 저장소 복구·종료/절전/crash·응답시간 표시다.
+
+## 활성 실행·PTY의 저장소 재확인 연속성
+
+같은 살아 있는 backend epoch와 main이 알고 있는 실행 ID에 한해 유효 current 영수증의 running 단계를 재확인 중 유지한다. 앱/worker 재시작과 다른 epoch는 기존 보수적 복구 규칙을 적용한다. backup은 같은 worker가 살아 있어도 result_unknown/recoveryUncertain을 우선하며, worker의 후속 exit 관측은 붙일 수 있으나 exited로 승격하지 않는다. main 소유 기록은 재확인 중 자동 prune하지 않는다. 해당 active 기록이 손상/누락되어 읽을 수 없으면 잠금을 해제하지 않는다.
+
+worker barrier는 transfer quiescence와 실행 기록 tail settlement를 기다리고 기존 PTY 입력·원격 프로그램을 강제 종료하지 않는다. JSON 재검증 후 별도 내부 recovery-ACK 구간에서 오류가 있었던 실행/PTY의 최신 metadata만 다시 저장한다. main은 이 구간에 receipt channel만 열고 사용자 신규 변경은 계속 잠근다. ACK 완료 후에만 복구를 마치며 command·shell·input을 재요청하지 않는다. 늦은 channel acceptance도 이미 불명인 단계를 running으로 되돌리지 않는다.
+
+232개 단위 검사·타입/build·actual main/utilityProcess/SSH 저장 fault·backup corruption 검사가 통과했다. 실제 동일 socket에서 실행7 정상 관측, 저장 fault 전후 PTY 입력, backup 불명 후 입력과 exit0/close의 불명 유지, 새 shell0개와 기록 오류 해제를 확인했다. 기존 terminal GUI/transfer engine 및 fault barrier 회귀도 통과했다. evidence/d10-storage-continuity에 출력과 source hash를 보존했다. 실제 disk-full/Windows 잠금·정전·지원 OS 수용은 미검증이며 D10 전체 완료가 아니다. 다음은 worker 재생성·종료/절전·probe다.

@@ -1,3 +1,4 @@
+import type { ExecutionRecoveryUncertainty } from '../../shared/storage-recovery';
 import { z } from 'zod';
 import type { ClientChannel } from 'ssh2';
 import { executionReceiptSchema,executionTerminal,type ExecutionReceipt } from '../../shared/executions';
@@ -11,6 +12,12 @@ type Job={inputClosers:Set<()=>void>;eventAt:number;eventTimer:ReturnType<typeof
 export class TerminalSessions {
  private readonly jobs=new Map<string,Job>();private readonly ring=new ExecutionOutputRing(1024**2,6*1024**2);
  constructor(private readonly epoch:string,private readonly channels:ExecutionChannels,private readonly writer:Pick<WorkerReceiptWriter,'persist'|'faulted'>,private readonly emit:(runtime:TerminalRuntime)=>void) {}
+ get hasActive():boolean {return [...this.jobs.values()].some(job=>job.active || job.pending>0 || job.cleanupPending);}
+ async settled():Promise<void> {await Promise.all([...this.jobs.values()].map(job=>job.tail));}
+ async reconcileStorage(uncertain:ExecutionRecoveryUncertainty[]):Promise<void> {
+  const byId=new Map(uncertain.map(row=>[row.taskId,row.fromPhase]));
+  await Promise.all([...this.jobs.values()].filter(job=>job.recordError || byId.has(job.row.taskId)).map(async job=>{const change:Partial<ExecutionReceipt>=byId.has(job.row.taskId) ? {phase:'result_unknown',recoveryUncertain:true,recoveredFromPhase:byId.get(job.row.taskId)!,acknowledgedAt:null,errorCode:'EXEC_RESULT_UNKNOWN'}:{};await this.persist(job,change);job.recordError=false;this.publish(job);}));
+ }
  private runtime(job:Job):TerminalRuntime {return terminalRuntimeSchema.parse({execution:{receipt:job.row,recordError:job.recordError,recordPending:job.pending>0,active:job.active,cleanupPending:job.cleanupPending},uiReady:job.stream.ready,inputUncertain:job.inputUncertain,inputInFlight:job.input.pendingBytes,nextInputSequence:job.input.nextSequence});}
  private publish(job:Job,immediate=true):void {if(this.jobs.get(job.row.taskId) !== job)return;const now=performance.now();if(!immediate && now-job.eventAt<250){job.eventTimer ??=setTimeout(()=>{job.eventTimer=null;this.publish(job);},250-(now-job.eventAt));return;}if(job.eventTimer){clearTimeout(job.eventTimer);job.eventTimer=null;}job.eventAt=now;try{this.emit(this.runtime(job));}catch{}}
  private require(serverId:string,generation:number,id:string):Job {const job=this.jobs.get(id);if(!job || job.row.serverId !== serverId || job.row.generation !== generation)throw new Error('TOKEN_EXPIRED');return job;}

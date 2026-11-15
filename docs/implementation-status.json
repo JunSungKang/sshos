@@ -95,7 +95,8 @@
     "GUI execution output is released on owning-server session end and stale post-end data is discarded",
     "Main-owned PTY capability/restore barrier, bounded renderer input queue and actual xterm internal windows with minimize/reload continuity",
     "Native-gesture one-shot asynchronous clipboard read, frozen target and multiline/large paste confirmation with exact bytes and ordered automatic responses",
-    "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure"
+    "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure",
+    "Same-live-worker execution receipt continuity during explicit storage verification, with conservative backup uncertainty and ACK-gated metadata reconciliation that preserves established PTY input"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -340,6 +341,19 @@
         "receipts exclude input/output/argv"
       ],
       "limitation": "Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain."
+    },
+    "execution_storage_continuity": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual main JSON/worker storage fault barrier and reconciliation with active exec and PTY",
+        "same-epoch current receipts preserve live running phase and later actual exit7",
+        "established PTY inputs continue across storage faults and explicit verification without new shell",
+        "backup uncertainty dominates live observations and remains unknown after observed exit0 and close",
+        "reconciled receipts persist and recordError clears only after ACK; control and shared socket remain"
+      ],
+      "limitation": "Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain."
     }
   },
   "remaining_D01": [
@@ -356,10 +370,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 active execution/PTY storage continuity, restartable worker and shutdown/disconnect/sleep/crash integration, SSH response probe and memory display circuit breaker; then D11-D13.",
+  "next_action": "Implement D10 restartable worker, app close/disconnect/sleep/crash integration, SSH response probe and memory display circuit breaker; then D11-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d09-gui",
+  "latest_evidence_directory": "evidence/d10-storage-continuity",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -374,7 +388,6 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 storage retry with a faulted but still-running execution must reconcile live worker observations before re-enabling writes; healthy active execution retry is already refused.",
     "D10 worker recreation, app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
