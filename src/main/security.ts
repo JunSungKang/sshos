@@ -3,6 +3,18 @@ import { extname, resolve, relative, isAbsolute, sep } from 'node:path';
 
 export const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-src 'none'; worker-src 'self'; form-action 'none'";
 
+// PTY paste has its own UTF-8 stream limit. JSON escaping is not body size.
+export function validateTerminalEnvelope(action:string,payload:unknown):void {
+  let metadata=payload;
+  if(action==='terminal:previewPaste') {
+    if(!payload || typeof payload!=='object' || Array.isArray(payload))throw new Error('INPUT_INVALID');
+    const input=payload as Record<string,unknown>;
+    if(typeof input['text']!=='string' || Buffer.byteLength(input['text'],'utf8')>65536)throw new Error('INPUT_INVALID');
+    metadata={...input,text:''};
+  }
+  if(metadata!==undefined && Buffer.byteLength(JSON.stringify(metadata))>65536)throw new Error('INPUT_INVALID');
+}
+
 const mimeTypes: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.png': 'image/png'

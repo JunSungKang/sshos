@@ -12,7 +12,7 @@ import type { EngineGateway } from './engine-gateway';
 import type { ConnectionController } from './connections';
 import type { ReceiptRepository } from './persistence/receipts';
 type Job={spec:StagedTransfer;runtime:TransferRuntime|null;sequence:number;registering:boolean;commitSent:boolean};
-const snapshots=z.object({sequence:z.int().nonnegative(),rows:z.array(transferRuntimeSchema).max(100),nextOffset:z.int().nonnegative().nullable()}).strict();
+const snapshots=z.object({sequence:z.int().nonnegative(),rows:z.array(transferRuntimeSchema).max(100),nextOffset:z.int().min(0).max(10000).nullable()}).strict();
 export class TransferController {
   private readonly jobs=new Map<string,Job>();
   private readonly registrations=new Set<Promise<unknown>>();
@@ -44,9 +44,11 @@ export class TransferController {
   private async resync(serverId:string,generation:number):Promise<void> {
     const key=`${serverId}:${generation}`;if (this.resyncing.has(key)) return;this.resyncing.add(key);
     try {
+      const epoch=this.gateway.epoch;
       for (let attempt=0;attempt<3;attempt++) {
-        let offset:number|null=0,version:number|null=null,stable=true;const seen=new Set<string>();
-        while (offset !== null) {const page=snapshots.parse(await this.gateway.request({action:'transfer:snapshot',serverId,generation,offset}));if (version !== null && version !== page.sequence) stable=false;version=page.sequence;for (const row of page.rows) {seen.add(row.taskId);this.observe(row,false,page.sequence);}offset=page.nextOffset;}
+        let offset:number|null=0,version:number|null=null,stable=true,pages=0;const seen=new Set<string>();
+        while (offset !== null && pages++<100) {const page=snapshots.parse(await this.gateway.request({action:'transfer:snapshot',serverId,generation,offset}));if(this.gateway.epoch!==epoch)return;if (version !== null && version !== page.sequence) stable=false;version=page.sequence;for (const row of page.rows) {seen.add(row.taskId);this.observe(row,false,page.sequence);}if(page.nextOffset!==null && page.nextOffset<=offset)throw new Error('INPUT_INVALID');offset=page.nextOffset;}
+        if(offset!==null)return; // Never infer absence from an incomplete bounded snapshot.
         if (!stable) continue;
         for (const [id,job] of this.jobs) if (job.spec.row.serverId === serverId && job.spec.row.generation === generation && job.commitSent && !job.registering && job.sequence<=(version ?? 0) && !seen.has(id)) {
           const saved=this.storage()?.get(id);if (saved?.kind === 'file_transfer' && transferTerminal(saved.phase)) this.jobs.delete(id);

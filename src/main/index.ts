@@ -12,7 +12,7 @@ import { readFile, mkdir, realpath } from 'node:fs/promises';
 import { resolve, relative, isAbsolute, sep, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { CSP, isAppOrigin, RequestBudget, resolveAsset } from './security';
+import { CSP, isAppOrigin, RequestBudget, resolveAsset, validateTerminalEnvelope } from './security';
 import { runtimeSnapshotSchema, workerEventSchema, type RuntimeSnapshot } from '../shared/contracts';
 import { StateRepository } from './persistence/state-repository';
 import { ProfileController } from './profiles';
@@ -236,7 +236,7 @@ async function main(): Promise<void> {
     ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'execution:next' ? viewerDataBudget:budget);try{if(payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536)throw new Error('INPUT_INVALID');return await executions!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
   }
   for(const action of ['terminal:open','terminal:pause','terminal:get','terminal:input','terminal:next','terminal:restore','terminal:restoreAck','terminal:resize','terminal:previewPaste','terminal:paste','terminal:releasePaste','terminal:requestPaste','terminal:previewClose','terminal:close']) {
-    ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'terminal:input' ? terminalInputBudget:action === 'terminal:next' ? viewerDataBudget:budget);try{if(payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536)throw new Error('INPUT_INVALID');return await terminals!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
+    ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'terminal:input' ? terminalInputBudget:action === 'terminal:next' ? viewerDataBudget:budget);try{validateTerminalEnvelope(action,payload);return await terminals!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
   }
   for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
     ipcMain.handle(action,async (event,payload:unknown) => {

@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import type { ExecutionRecoveryUncertainty } from '../../shared/storage-recovery';
 import { z } from 'zod';
 import type { ClientChannel } from 'ssh2';
@@ -27,7 +28,7 @@ export class TerminalSessions {
   if(this.writer.faulted)throw new Error('STORAGE_FAILED');const row=executionReceiptSchema.parse(input);if(row.kind !== 'pty' || row.backendEpoch !== this.epoch || row.phase !== 'prepared' || row.channelAccepted || row.channelClosed || row.exitObserved || row.exitCode !== null || row.exitSignal !== null || row.errorCode !== null || row.recoveredFromPhase !== null || row.stopRequestedAt !== null || row.acknowledgedAt !== null || row.recoveryUncertain || this.jobs.has(row.taskId) || this.jobs.size>=1000)throw new Error('INPUT_INVALID');
   let job!:Job;const stream=new PTYStream(row.taskId,this.ring,()=>{job.channel?.pause();job.channel?.stderr.pause();},()=>{job.channel?.resume();job.channel?.stderr.resume();});job={sessionEnded:false,inputClosers:new Set(),eventAt:0,eventTimer:null,row,channel:null,ticket:null,stream,input:new TerminalInputBoundary(),active:true,recordError:false,pending:0,cleanupPending:false,inputUncertain:false,closedByUser:false,channelError:false,tail:Promise.resolve()};this.jobs.set(row.taskId,job);
   try {const ticket=this.channels.open(row.taskId,row.serverId,row.generation,{kind:'pty'},()=>this.persist(job,{phase:'dispatching',lastConfirmedPhase:'dispatch_intent'}),channel=>this.accepted(job,channel));job.ticket=ticket;
-   void ticket.ready.catch(error=>{job.cleanupPending=ticket.cleanupPending;if(!executionTerminal(job.row.phase))this.save(job,{phase:ticket.requestSent ? error instanceof Error && error.message === 'PTY_UNAVAILABLE' ? 'rejected':'result_unknown':'cancelled_not_sent',errorCode:error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'CONNECTION_LOST'});});
+   void ticket.ready.catch(error=>{job.cleanupPending=ticket.cleanupPending;if(!executionTerminal(job.row.phase))this.save(job,{phase:ticket.requestSent ? error instanceof Error && error.message === 'PTY_UNAVAILABLE' ? 'rejected':'result_unknown':'cancelled_not_sent',errorCode:errorCodeOf(error)});});
    void ticket.closed.then(()=>{job.active=false;job.cleanupPending=false;for(const close of [...job.inputClosers])close();job.stream.close();if(!job.row.channelClosed)this.save(job,{channelClosed:ticket.channelCloseObserved,...(!executionTerminal(job.row.phase) ? {phase:ticket.requestSent ? 'result_unknown':'cancelled_not_sent',errorCode:ticket.requestSent ? 'EXEC_RESULT_UNKNOWN':job.row.errorCode} : {})});this.publish(job);});this.publish(job);return this.runtime(job);
   }catch(error){this.jobs.delete(row.taskId);stream.forget();throw error;}
  }

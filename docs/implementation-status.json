@@ -131,14 +131,18 @@
     "Corrected Windows static inspection verifies923 ASAR member hashes and embedded header; no Pageant helper or smart-unpacked SSH code",
     "Contribution/security/NOTICE documents, native six-combination verification handoff and explicitly unperformed G0/G2/G3 evaluation status",
     "Pinned supported NSIS toolset1.2.1/vendor3.12 bundle; exact archive/build string and official StdUtils DLL/source/notice hashes verified",
-    "Windows afterPack includes unmodified StdUtils LGPL notice/clarification/corresponding source and nested notices; NSIS/StdUtils added to CycloneDX inventory; direct zlib payload removes Nsis7z/nsisunz dependency"
+    "Windows afterPack includes unmodified StdUtils LGPL notice/clarification/corresponding source and nested notices; NSIS/StdUtils added to CycloneDX inventory; direct zlib payload removes Nsis7z/nsisunz dependency",
+    "Canonical allowlisted worker error codes reject untrusted SFTP descriptions before durable receipts; numeric protocol status owns classification.",
+    "Transfer resync bounds pagination and attempts, checks engine epoch and never infers absence from an incomplete snapshot.",
+    "PTY paste body accepts exactly64KiB UTF8 independently of JSON escaping and bounded control metadata.",
+    "Synchronous SFTP inspection exceptions release their timeout timer."
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 344,
-      "evidence": "evidence/d11-coverage-security/verification.json"
+      "tests": 534,
+      "evidence": "evidence/d11-boundaries/coverage-pass.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -491,19 +495,20 @@
     },
     "integration_suite": {
       "status": "pass",
-      "suites": 16,
-      "evidence": "evidence/d11-settings-diagnostics/integration/report.json"
+      "suites": 17,
+      "evidence": "evidence/d11-boundaries/integration-report.json",
+      "sourceUnchanged": true
     },
     "coverage": {
-      "status": "fail",
-      "statements": 85.63,
-      "branches": 76.89,
+      "status": "pass",
+      "statements": 96.06,
+      "branches": 91.55,
       "requiredStatements": 90,
       "requiredBranches": 85,
       "perFile": true,
-      "failingModules": 38,
-      "evidence": "evidence/d11-coverage-security/coverage-failing.txt",
-      "scope": "Measured before latest2 native gesture cases. Per-file requirements remain unmet."
+      "failingModules": 0,
+      "evidence": "evidence/d11-boundaries/coverage-summary.json",
+      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded."
     },
     "desktop_ui": {
       "status": "pass",
@@ -517,6 +522,12 @@
         "150ms transition and OS reduced-motion override"
       ],
       "limitation": "Current-host development Electron and loopback SSH fixture. Native keyboard layout/IME/screen reader/scale matrix and target OS acceptance remain."
+    },
+    "security_current": {
+      "status": "pass",
+      "unitTests": 61,
+      "evidence": "evidence/d11-boundaries/security-report.json",
+      "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
     }
   },
   "remaining_D01": [
@@ -531,22 +542,17 @@
       "id": "DEP-001",
       "severity": "moderate",
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
-    },
-    {
-      "id": "TEST-001",
-      "severity": "release_blocking_verification_gap",
-      "summary": "Required per-file statement90% / branch85% unit coverage is not met. Real report retained; no threshold reduction or exclusion to claim pass."
     }
   ],
-  "next_action": "Continue required per-file coverage, bounded resync/resource review, Windows launcher notices/source, and final development artifact rebuild. Native target/signing evidence remains user-owned.",
+  "next_action": "Rebuild all three current-source development packages, finish specification/security traceability audit and obtain independent current-head review. Native target/signing evidence remains user-owned.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-structured-errors",
+  "latest_evidence_directory": "evidence/d11-boundaries",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D11 feature/security verification;16 local integration suites pass",
-    "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings and redacted diagnostics. Final coverage/performance audit and packaging remain.",
+    "current_stage": "D11 automated local verification passed; final D12 development packages and independent review in progress",
+    "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and local license viewer. Per-file coverage passes; final package and traceability audit remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {
@@ -556,7 +562,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D11 desktop accessibility/window-limit UX, measured coverage/performance/security audit remain.",
-    "D12 development packages, fuses, third-party notices and SBOM/source correspondence; target signing unavailable."
+    "D11 final specification/security traceability audit and independent review. Native target/performance/accessibility evidence remains user-owned.",
+    "D12 final current-source development package rebuild and source/hash handoff; publisher signing/notarization unavailable."
   ]
 }

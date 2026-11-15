@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import { Client, type SFTPWrapper } from 'ssh2';
 import { MetadataQueue } from './metadata-queue';
 import { createPrivateKey } from 'node:crypto';
@@ -83,7 +84,7 @@ export class SessionManager {
         if (input.password === undefined) throw new Error('INPUT_INVALID');
         method = { type: 'password', username: input.username, password: input.password };
       }
-    } catch (error) { if(!['disconnecting','disconnected'].includes(entry.snapshot.status))this.changed(entry, { status: 'failed', errorCode: error instanceof Error ? error.message : 'KEY_INVALID' }); this.release(entry); throw error; }
+    } catch (error) { if(!['disconnecting','disconnected'].includes(entry.snapshot.status))this.changed(entry, { status: 'failed', errorCode: errorCodeOf(error) }); this.release(entry); throw error; }
     return new Promise<ConnectOutcome>((resolve, reject) => {
       let settled = false;
       const finish = (error: string | null, value?: ConnectOutcome) => {
@@ -120,7 +121,8 @@ export class SessionManager {
   private async timed<T>(action: (done: (error: Error | undefined | null, value: T) => void) => void): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('IO_TIMEOUT')), 15000);
-      action((error, value) => { clearTimeout(timer); if (error) reject(error); else resolve(value); });
+      try { action((error, value) => { clearTimeout(timer); if (error) reject(error); else resolve(value); }); }
+      catch(error) { clearTimeout(timer);reject(error); }
     });
   }
   private async inspect(entry: RecordEntry): Promise<void> {

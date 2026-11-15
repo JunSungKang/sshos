@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import type { ExecutionRecoveryUncertainty } from '../../shared/storage-recovery';
 import type { ClientChannel } from 'ssh2';
 import { executionCommand,executionReceiptSchema,executionSpecSchema,executionTerminal,type ExecutionReceipt,type ExecutionSpec } from '../../shared/executions';
@@ -9,7 +10,7 @@ import { ExecutionInspector } from './inspect';
 import { ExecutionOutputRing,type OutputBatch } from './output-ring';
 export type ExecutionRuntime={receipt:ExecutionReceipt;recordError:boolean;recordPending:boolean;active:boolean;cleanupPending:boolean};
 type Job={sessionEnded:boolean;row:ExecutionReceipt;ticket:ChannelTicket|null;channel:ClientChannel|null;active:boolean;cleanupPending:boolean;recordError:boolean;pending:number;tail:Promise<void>;closeRequested:boolean;channelError:boolean;stopTimer:ReturnType<typeof setTimeout>|null;outputTimer:ReturnType<typeof setTimeout>|null;outputAt:number};
-const errorCode=(error:unknown)=>error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INTERNAL_ERROR';
+const errorCode=errorCodeOf;
 export class GUIExecutions {
   private readonly jobs=new Map<string,Job>();readonly output=new ExecutionOutputRing();readonly channels:ExecutionChannels;readonly inspector:ExecutionInspector;
   constructor(private readonly epoch:string,private readonly sessions:Pick<SessionManager,'control'|'auxiliary'|'withMetadata'>,private readonly writer:Pick<WorkerReceiptWriter,'persist'|'faulted'>,private readonly emit:(row:ExecutionRuntime)=>void) {

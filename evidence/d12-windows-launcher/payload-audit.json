@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "sourceRevision": "eb777ee7c25e1c0e19488696bcb67077aa590bb1",
+  "stdutilsEmbeddedSHA256": "b72e9013a6204e9f01076dc38dabbf30870d44dfc66962adbf73619d4331601e",
+  "stdutilsSourceSHA256": "c5e3b1a66219bc9564c2ccc1702691327eecf044ad33404ac268d725d22dca49",
+  "nsis7zAbsent": true,
+  "nsisunzAbsent": true,
+  "scope": "Read-only7zip extraction to stdout and source hash; no native Windows launch"
+}

@@ -1,0 +1,32 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+ ❯ tests/unit/session-retirement.test.ts (5 tests | 1 failed) 14ms
+   ❯ control generation socket retirement (5)
+     × does not leave a deadline timer after a synchronous SFTP inspection exception 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/session-retirement.test.ts > control generation socket retirement > does not leave a deadline timer after a synchronous SFTP inspection exception
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ tests/unit/session-retirement.test.ts:22:458
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  20:02:43
+   Duration  240ms (import 58%, transform 29%, tests 10%, worker 2%)
+
