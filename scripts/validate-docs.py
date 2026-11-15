@@ -74,6 +74,8 @@ def validate(root):
         need(path == (archive / item['originalPath']).resolve() and path.is_relative_to(archive), 'Archive mapping escaped: ' + item['originalPath'])
         need(path.is_file() and sha(path) == item['sha256'], 'Archived bytes changed: ' + item['originalPath'])
     need(len(seen) == 127, 'Expected127 original files')
+    if errors:
+        return {'documentation_valid': False, 'errors': errors, 'limitation': 'Archived code is not loaded after a provenance failure.'}
     spec_path = archive / 'docs/spec-v6.json'
     original = json.loads(spec_path.read_text())
     module_spec = importlib.util.spec_from_file_location('sshos_original_validator', archive / 'docs/validate-plan.py')
