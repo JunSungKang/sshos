@@ -1,21 +1,21 @@
-# sshOS 보안 제보와 검증 범위
+# Security Policy
 
-현재 버전은 개발 중이며 공개 배포 준비 상태는 `docs/implementation-status.json`의 `release_ready`로 관리한다. 개발용 Windows 파일은 배포자 서명이 없고 macOS 앱은 ad-hoc 서명만 사용한다. 개발용 산출물의 무결성 검사로 배포자 인증·공증·지원 OS 실행 시험을 대신하지 않는다.
+sshOS 0.1.0 is a development version. [Release Readiness](docs/developer/guides/release-readiness.md) separates implementation from native/security/public-release acceptance. Existing Windows development binaries are unsigned; macOS is ad-hoc only, without publisher notarization.
 
-## 취약점 제보
+## Report a Vulnerability
 
-GitHub의 비공개 취약점 제보 기능이 제공되면 그 경로를 사용한다. 제공되지 않으면 공개 issue에는 영향을 받는 기능 범주와 비공개 연락 경로 요청만 남기고 유지관리자와 상세 전달 경로를 정한다. 비밀번호·개인키·passphrase·토큰·서버 주소·사용자명·실제 파일 내용·전체 진단 원문을 공개 issue에 첨부하지 않는다.
+Use GitHub private vulnerability reporting if enabled for this repository. If unavailable, open a public issue containing only the affected feature category and a request for a private contact path, then agree a channel with the maintainer. Do not publish exploit details, credentials, private keys, passphrases, tokens, real endpoints/usernames/paths, raw terminal/file bodies or full diagnostic dumps.
 
-제보에는 가능한 범위에서 source revision, 앱 버전, OS·CPU, 격리 fixture의 재현 순서, 예상 결과와 실제 결과를 포함한다. 본인 소유 또는 명시적으로 허가받은 시험 환경에서 재현한다. 실제 사용자 서버에 장애·권한·저장소 손상 시험을 적용하지 않는다.
+Where safe, provide source/artifact hash, app version, OS/CPU, isolated reproduction, expected/actual result and affected boundary. Test only systems you own or are explicitly authorized to assess; never apply destructive/disk-full/permission/trust fault fixtures to user production servers. No response-time or remediation SLA is promised.
 
-## 보호 경계
+## Protected Boundaries
 
-Renderer는 Node 접근 권한이 없으며 이름이 정해진 preload 메서드만 호출한다. SSH 인증과 파일 내용 처리는 utility process에서 수행하고, main이 호스트 신뢰·OS 암호화 저장·로컬 기록을 소유한다. 서버 지문이 다르면 인증 전에 중단한다. 외부 SSH agent·원격 서버 앱·관리 HTTP listener를 사용하지 않는다.
+Renderer is sandboxed and has only named preload capabilities. Main owns trust/native selection/OS vault/JSON; utilityProcess owns SSH and remote I/O. Every socket verifies the pinned host key before authentication. No external SSH agent, remote helper, management listener or database.
 
-파일 변경·전송·실행은 durable intent의 ACK 이후 요청한다. SSH 연결 종료나 요청 timeout을 원격 성공·원격 프로세스 종료로 해석하지 않는다. 결과를 확정할 수 없으면 `result_unknown`을 유지하고 자동 재실행하지 않는다. 업데이트·검색·AI·분석·crash upload용 자동 통신은 없다.
+Changing operations and exec/PTY creation await durable intent ACK. Timeout/local close is not proof of remote failure or process termination. Unknown outcomes remain unknown with no automatic replay. No app-origin AI/search/telemetry/crash upload/updater traffic; explicit user-run remote programs have their own behavior.
 
-기본 진단 로그는 허용된 고정 오류 코드·작업 ID·상태·시간·버전만 기록한다. 로컬 작업 기록에는 서버 endpoint와 경로가 남으며 익명 데이터가 아니다. 진단 내보내기는 내용 미리보기와 명시적 파일 선택 후 수행한다. 공개 제보 전에 사용자가 내용을 검토한다.
+Default diagnostics use fixed codes and allowlisted metadata. Local receipts contain endpoint/path information and are not anonymous. Redacted export requires preview/native selection; review before sharing. Viewer/terminal bodies, argv and credentials do not belong in default logs.
 
-## 출시 차단 기준
+## Release Blocking Conditions
 
-적용 가능한 미해결 high·critical 취약점, 출처 또는 라이선스가 확인되지 않은 배포 의존성, 필수 보안 검사 실패는 공개 출시를 차단한다. scanner 결과를 제외하려면 해당 버전·실제 도달 경로·근거·검토자를 기록한다. 검사 환경이 없으면 미검사로 남기며 passing으로 기록하지 않는다.
+Applicable unresolved high/critical vulnerabilities, unknown/incompatible distribution licenses and failed required security checks block public release. Exclusions need exact version, reachability, evidence and reviewer; do not arbitrarily lower severity. Missing environments remain untested. The project license does not certify security, and independent code approval is not target/publication approval.

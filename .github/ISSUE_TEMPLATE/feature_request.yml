@@ -1,0 +1,21 @@
+name: Feature proposal
+description: Describe a user task, its tradeoffs and the affected scope.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: User task and problem
+      description: Describe the concrete workflow and current difficulty.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior and tradeoffs
+      description: Include alternatives, affected requirements and compatibility with the client-only scope.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "A proposal does not approve changes to security, supported targets or acceptance. Do not include private server details."

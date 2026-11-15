@@ -7,4 +7,7 @@
 *.gif binary
 
 # Preserve exact reviewed upstream notices and source archive bytes.
-docs/third-party/** -text -whitespace
+docs/developer/architecture/third-party/** -text -whitespace
+
+# Immutable original contracts, approvals, evidence and legal input bytes.
+docs/developer/architecture/history/pre-english-20261115/** -text -whitespace
