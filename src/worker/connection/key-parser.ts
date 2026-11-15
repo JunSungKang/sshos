@@ -7,8 +7,10 @@ const resultSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), code: z.enum(['KEY_INVALID', 'AUTH_UNSUPPORTED']) }).strict()
 ]);
 export interface ParsedPrivateKey { privatePEM: string; publicSSH: string }
+type ParserWorker=Pick<Worker,'on'|'terminate'>;
 
 export class PrivateKeyParser {
+  constructor(private readonly spawn:(bytes:Buffer,passphrase?:string)=>ParserWorker=(bytes,passphrase)=>new Worker(resolve(__dirname,'key-parser-thread.js'),{workerData:{bytes,passphrase}})) {}
   private pending=0;private tail:Promise<void>=Promise.resolve();
   async parse(bytes:Buffer,passphrase?:string,current:()=>boolean=()=>true):Promise<ParsedPrivateKey> {
     if(this.pending>=3 || bytes.length===0 || bytes.length>512*1024 || passphrase!==undefined && Buffer.byteLength(passphrase)>1024)throw new Error('KEY_INVALID');this.pending++;
@@ -16,9 +18,9 @@ export class PrivateKeyParser {
   }
   private async parseOne(bytes: Buffer, passphrase?: string): Promise<ParsedPrivateKey> {
     if ( bytes.length === 0 || bytes.length > 512 * 1024 || (passphrase !== undefined && Buffer.byteLength(passphrase) > 1024)) throw new Error('KEY_INVALID');
-    let worker: Worker | undefined;
+    let worker: ParserWorker | undefined;
     try {
-      worker = new Worker(resolve(__dirname, 'key-parser-thread.js'), { workerData: { bytes, passphrase } });
+      worker = this.spawn(bytes,passphrase);
       const running = worker;
       return await new Promise<ParsedPrivateKey>((resolveResult, reject) => {
         let settled = false;

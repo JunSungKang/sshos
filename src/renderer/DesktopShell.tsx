@@ -1,3 +1,5 @@
+import { reportWindowLimit,WINDOW_LIST_EVENT } from './window-limit';
+import { WindowList } from './WindowList';
 import { SettingsPane } from './SettingsPane';
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react';
 import { WindowManager, windowModelSchema, resizeBounds, type ResizeEdge, type Bounds, type WindowKind, type WindowModel } from '../shared/windows';
@@ -21,6 +23,8 @@ const icons: Record<WindowKind, string> = { connections: '▤', files: '▱', te
 const getArea = (): Bounds => ({ x: 0, y: 44, width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight - 160) });
 
 export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | null; error: boolean }) {
+  const [windowList,setWindowList]=useState(false);
+  useEffect(()=>{const show=()=>setWindowList(true);window.addEventListener(WINDOW_LIST_EVENT,show);return()=>window.removeEventListener(WINDOW_LIST_EVENT,show);},[]);
   const nextId = useRef('');
   const manager = useRef<WindowManager | null>(null);
   if (!manager.current) manager.current = new WindowManager(getArea(), () => nextId.current);
@@ -41,17 +45,18 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   useEffect(() => { if (picker) pickerDialog.current?.showModal(); }, [picker]);
   const mirrored = useRef(new Map<string, string>());
   const update = () => { const rows = manager.current!.snapshot(); setWindows(rows); const focused = rows.find(row => row.focused && row.serverId); if (focused?.serverId) setActiveServer(focused.serverId); };
+  const restoreWindow=(id:string)=>{manager.current!.restore(id);update();requestAnimationFrame(()=>document.querySelector<HTMLElement>(`.internal-window[data-window-id="${id}"]`)?.focus());};
   const openFor = async (kind: WindowKind, session?: SessionView, newWindow=false) => {
     try {
       if (kind === 'files' && session && !newWindow) {
         const previous = manager.current!.snapshot().filter(row => row.kind === 'files' && row.serverId === session.serverId && row.sessionGeneration === session.generation).sort((a,b) => b.lastFocusedSequence-a.lastFocusedSequence)[0];
-        if (previous) { manager.current!.restore(previous.windowId); update(); return; }
+        if (previous) { restoreWindow(previous.windowId);return; }
       }
       const registered = windowModelSchema.parse(await (kind === 'terminal' && session?.sessionToken ? window.sshOS.terminal.open(session.sessionToken):window.sshOS.desktop.registerWindow(kind,session?.sessionToken ?? undefined)));
       if (manager.current!.snapshot().some(row => row.windowId === registered.windowId)) manager.current!.restore(registered.windowId);
       else { nextId.current = registered.windowId; manager.current!.open(kind, registered.serverId, registered.sessionGeneration, registered.resourceId); }
       setNotice(''); update();
-    } catch { setNotice('창을 열지 못했습니다. 연결 상태 또는 열린 창 수를 확인하세요.'); }
+    } catch (error) { reportWindowLimit(error);setNotice('창을 열지 못했습니다. 연결 상태 또는 열린 창 수를 확인하세요.'); }
   };
   const openViewer=async (entryToken:string,kind:'text'|'image') => {
     const registered=windowModelSchema.parse(await window.sshOS.viewer.open(entryToken,kind));
@@ -62,7 +67,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
     } catch (error) {if (!manager.current!.snapshot().some(row => row.windowId === registered.windowId)) await window.sshOS.desktop.closeWindow(registered.windowId).catch(() => {});throw error;}
   };
   const addExecutionWindow=(registered:WindowModel)=>{if(manager.current!.snapshot().some(row=>row.windowId === registered.windowId))manager.current!.restore(registered.windowId);else{nextId.current=registered.windowId;manager.current!.open('execution',registered.serverId,registered.sessionGeneration,registered.resourceId);}update();};
-  const reopenExecution=(id:string)=>{void window.sshOS.execution.reopen(id).then(addExecutionWindow).catch(()=>setNotice('출력 창을 열지 못했습니다. 열린 창 한도와 기록 상태를 확인하세요.'));};
+  const reopenExecution=(id:string)=>{void window.sshOS.execution.reopen(id).then(addExecutionWindow).catch(error=>{reportWindowLimit(error);setNotice('출력 창을 열지 못했습니다. 열린 창 한도와 기록 상태를 확인하세요.');});};
   const removeWindow=(id:string)=>{manager.current!.close(id);mirrored.current.delete(id);setTitles(value=>{const next={...value};delete next[id];return next;});update();};
   const closeWindow=async(row:WindowModel)=>{try{if(row.kind === 'terminal'){const preview=await window.sshOS.terminal.previewClose(row.windowId);if(preview.active){setTerminalClose({preview,windowId:row.windowId});return;}}if(row.kind === 'execution'){const preview=await window.sshOS.execution.previewAction(row.windowId,'close_window');if(preview.active){setExecutionClose({preview,windowId:row.windowId});return;}}await window.sshOS.desktop.closeWindow(row.windowId);removeWindow(row.windowId);}catch{setNotice('창을 닫지 못했습니다. 실행 상태를 확인한 뒤 다시 시도하세요.');}};
   const launch = async (kind: WindowKind) => {
@@ -115,11 +120,12 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
       <div className="engine-state"><output aria-live="polite" data-testid="engine-state">{error ? '앱 상태를 확인하지 못했습니다.' : snapshot?.engine === 'ready' ? '연결 엔진 준비됨' : snapshot?.engine === 'stopped' ? '연결 엔진이 종료됐습니다.' : '연결 엔진 시작 중'}</output>{snapshot?.engine === 'stopped' && <button disabled={engineBusy} onClick={()=>{setEngineBusy(true);void window.sshOS.lifecycle.restartEngine().catch(()=>setNotice('연결 엔진을 다시 시작하지 못했습니다. 다시 시도하세요.')).finally(()=>setEngineBusy(false));}}>연결 엔진 다시 시작</button>}</div>
       {picker && <dialog ref={pickerDialog} className="server-picker" aria-label="서버 선택" onCancel={() => setPicker(null)}><h2>작업할 서버 선택</h2><select aria-label="대상 서버" value={chosenServer} onChange={event => setChosenServer(event.target.value)}><option value="">선택하세요</option>{sessions.filter(row => row.status === 'connected').map(row => <option key={row.serverId} value={row.serverId}>{row.serverName}</option>)}</select><button disabled={!chosenServer} onClick={() => { const server = sessions.find(row => row.serverId === chosenServer); const kind = picker; setPicker(null); if (server) void openFor(kind, server); }}>열기</button><button onClick={() => setPicker(null)}>취소</button></dialog>}
     </div>
+    {windowList && <WindowList rows={windows} title={row=>`${titles[row.windowId]?.name ?? labels[row.kind]}${row.serverId ? ' · '+(sessions.find(session=>session.serverId===row.serverId)?.serverName ?? titles[row.windowId]?.serverName ?? '연결 끊김'):''}`} dismiss={()=>setWindowList(false)} select={id=>{setWindowList(false);restoreWindow(id);}} closeWindow={row=>{setWindowList(false);void closeWindow(row);}}/>}
     {snapshot?.closing && <div className="shutdown-overlay" role="status">작업 정리 후 종료 중 · 승인 후 최대10초</div>}
     {terminalClose && <TerminalCloseDialog preview={terminalClose.preview} close={()=>setTerminalClose(null)} done={()=>removeWindow(terminalClose.windowId)}/>}
     {executionClose && <ExecutionActionDialog preview={executionClose.preview} close={()=>setExecutionClose(null)} hidden={()=>removeWindow(executionClose.windowId)}/>}
     <TransferShelf openTasks={() => {void launch('tasks');}}/>
-    <footer className="taskbar"><button aria-label="시작" onClick={() => setStartMenu(!startMenu)}>▦</button>{windows.map(row => <button className={row.focused ? 'active' : ''} aria-pressed={row.focused} data-window-id={row.windowId} key={row.windowId} onClick={() => { manager.current!.restore(row.windowId); update(); }}>{icons[row.kind]} {titles[row.windowId]?.name ?? labels[row.kind]}</button>)}<span>연결 {snapshot?.connectedServers ?? 0}</span></footer>
+    <footer className="taskbar"><button aria-label="시작" onClick={() => setStartMenu(!startMenu)}>▦</button>{windows.map(row => <button className={row.focused ? 'active' : ''} aria-pressed={row.focused} data-window-id={row.windowId} key={row.windowId} onClick={() => restoreWindow(row.windowId)}>{icons[row.kind]} {titles[row.windowId]?.name ?? labels[row.kind]}</button>)}<span>연결 {snapshot?.connectedServers ?? 0}</span></footer>
     {startMenu && <nav className="start-menu" aria-label="시작 메뉴">{(['connections','files','terminal','tasks','settings'] as WindowKind[]).map(kind => <button key={kind} onClick={() => launch(kind)}>{icons[kind]} {labels[kind]}</button>)}</nav>}
   </main>;
 }
@@ -143,6 +149,7 @@ function WindowFrame({ model, title, focus, minimize, maximize, close, move, chi
   const pointerMove = (event: PointerEvent<HTMLElement>) => { if (drag.current?.pointer !== event.pointerId) return; latest.current = { x: event.clientX, y: event.clientY }; if (frame.current === null) frame.current = requestAnimationFrame(flush); };
   const end = () => { if (frame.current !== null) { cancelAnimationFrame(frame.current); flush(); } drag.current = null; latest.current = null; };
   useEffect(() => { window.addEventListener('blur', end); return () => { window.removeEventListener('blur', end); if (frame.current !== null) cancelAnimationFrame(frame.current); }; }, []);
+  const tab=(event:KeyboardEvent)=>{if(event.key!=='Tab' || event.altKey || event.ctrlKey || event.metaKey || keyboard || (event.target as HTMLElement).closest('dialog[open],.terminal-host'))return;const controls=[...root.current!.querySelectorAll<HTMLElement>('button,input,select,textarea,a[href],[tabindex]')].filter(node=>node.tabIndex>=0 && !node.matches(':disabled') && node.getClientRects().length>0 && !node.closest('[inert]'));const index=controls.indexOf(document.activeElement as HTMLElement),next=event.shiftKey ? index-1:index+1;event.preventDefault();if(index<0 && !event.shiftKey){controls[0]?.focus();return;}if(next>=0 && next<controls.length){controls[next]!.focus();return;}document.querySelector<HTMLElement>(`.taskbar [data-window-id="${model.windowId}"]`)?.focus();};
   const key = (event: KeyboardEvent) => {
     if (!keyboard) return;
     if (event.key === 'Escape') { event.preventDefault(); move(keyboard.start); setKeyboard(null); return; }
@@ -151,7 +158,7 @@ function WindowFrame({ model, title, focus, minimize, maximize, close, move, chi
     event.preventDefault(); const amount = event.shiftKey ? 1 : 10; const dx = event.key === 'ArrowLeft' ? -amount : event.key === 'ArrowRight' ? amount : 0; const dy = event.key === 'ArrowUp' ? -amount : event.key === 'ArrowDown' ? amount : 0;
     move(keyboard.kind === 'move' ? { ...model.bounds, x: model.bounds.x+dx, y: model.bounds.y+dy } : { ...model.bounds, width: Math.max(1,model.bounds.width+dx), height: Math.max(1,model.bounds.height+dy) });
   };
-  return <section ref={root} data-window-id={model.windowId} className={`internal-window ${model.focused ? 'focused' : ''}`} aria-label={title} role="region" tabIndex={-1} hidden={model.mode === 'minimized'} onKeyDown={key} onFocusCapture={()=>{if(!model.focused)focus();}} onPointerDown={focus} style={{ position: 'fixed', left: model.bounds.x, top: model.bounds.y, width: model.bounds.width, height: model.bounds.height, zIndex: 10+model.lastFocusedSequence }}>
+  return <section ref={root} data-window-id={model.windowId} className={`internal-window ${model.focused ? 'focused' : ''} ${model.mode==='minimized' ? 'is-minimized':''}`} aria-label={title} role="region" tabIndex={-1} aria-hidden={model.mode==='minimized'} inert={model.mode==='minimized'} onKeyDownCapture={tab} onKeyDown={key} onFocusCapture={()=>{if(!model.focused)focus();}} onPointerDown={focus} style={{ position: 'fixed', left: model.bounds.x, top: model.bounds.y, width: model.bounds.width, height: model.bounds.height, zIndex: 10+model.lastFocusedSequence }}>
     <div className="window-title" onPointerDown={event => begin(event,null)} onPointerMove={pointerMove} onPointerUp={end} onPointerCancel={end} onDoubleClick={event => { if (!(event.target as HTMLElement).closest('button')) maximize(); }}><button aria-label={`${title} 창 메뉴`} onClick={() => setMenu(!menu)}>⋮</button><strong>{title}</strong><button aria-label={`${title} 최소화`} onClick={minimize}>−</button><button aria-label={`${title} 최대화 또는 복원`} onClick={maximize}>□</button><button aria-label={`${title} 닫기`} onClick={close}>×</button></div>
     {menu && <menu className="window-menu"><li><button onClick={() => { setKeyboard({ kind:'move', start:{...model.bounds} }); setMenu(false); root.current?.focus(); }}>이동</button></li><li><button onClick={() => { setKeyboard({ kind:'resize', start:{...model.bounds} }); setMenu(false); root.current?.focus(); }}>크기 조절</button></li></menu>}
     <div className="window-body">{children}</div>{model.mode === 'normal' && (['n','s','e','w','ne','nw','se','sw'] as ResizeEdge[]).map(edge => <div key={edge} className={`window-resize edge-${edge}`} aria-hidden="true" onPointerDown={event => begin(event,edge)} onPointerMove={pointerMove} onPointerUp={end} onPointerCancel={end} />)}

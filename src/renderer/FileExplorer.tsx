@@ -1,3 +1,4 @@
+import { reportWindowLimit } from './window-limit';
 import { userMessage } from '../shared/errors';
 import { useEffect, useRef, useState } from 'react';
 import type { DirectoryPage, EntryView } from '../shared/files';
@@ -12,7 +13,7 @@ import { FileOpenChoice } from './FileOpenChoice';
 import { scheduleViewerFrame } from './viewer-stream-scheduler';
 
 const hiddenByServer = new Map<string, boolean>();
-const explain = (error: unknown) => {
+const explain = (error: unknown) => {reportWindowLimit(error);
   return userMessage(error);
 };
 type TreeRow = { path: string; name: string; token: string; parent: string | null };
