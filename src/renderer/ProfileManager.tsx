@@ -1,20 +1,10 @@
+import { userMessage } from '../shared/errors';
 import { useEffect, useState, type FormEvent } from 'react';
 import { profileViewSchema, type ProfileDraft, type ProfileView } from '../shared/models';
 import { hostChallengeSchema, sessionViewSchema, type HostChallenge, type SessionView, type SessionCredentials } from '../shared/session-contracts';
 import { ConnectionPrompt, HostTrustPrompt } from './ConnectionPrompt';
 
-const messages: Record<string, string> = {
-  INPUT_INVALID: '입력 형식을 확인하세요.', PROFILE_LIMIT: '서버는 최대 10개 등록할 수 있습니다.',
-  PROFILE_BUSY: '연결 또는 작업 중인 서버의 접속 설정을 변경할 수 없습니다.',
-  KEY_INVALID: '개인키 형식 또는 암호를 확인하세요.', STORAGE_FAILED: '앱 데이터를 저장하거나 읽지 못했습니다.',
-  HOST_KEY_CHANGED: '저장한 서버 키와 현재 키가 다릅니다. 연결을 중단했습니다.', AUTH_FAILED: '서버가 로그인을 허용하지 않았습니다.',
-  CONNECTION_LOST: 'SSH 연결이 끊겼습니다.', CONNECT_TIMEOUT: '제한 시간 안에 연결하지 못했습니다.',
-  SECRET_UNAVAILABLE: '저장한 인증 정보를 사용할 수 없습니다. 다시 입력하세요.', SESSION_LIMIT: '서버는 동시에 3개까지 연결할 수 있습니다.'
-};
-function message(error: unknown): string {
-  const text = error instanceof Error ? error.message : '';
-  return Object.entries(messages).find(([code]) => text.includes(code))?.[1] ?? '요청을 처리하지 못했습니다.';
-}
+const message=userMessage;
 const empty = (): ProfileDraft => ({ name: '', host: '', port: 22, username: '', authentication: 'password' });
 
 export function ProfileManager({ disabled }: { disabled: boolean }) {

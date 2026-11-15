@@ -1,7 +1,7 @@
 {
   "version": "v6",
   "updated_on": "2026-11-15",
-  "status": "implementation_started_D01_in_progress",
+  "status": "implementation_in_progress_D11",
   "framework": "Electron",
   "methodology": "SDD",
   "workspace_root": "/Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS",
@@ -29,7 +29,7 @@
   "prior_revision": "docs/history/v5-before-desktop-20261115/archive-manifest.json",
   "temporary_artifacts": [],
   "document_hashes": {
-    "README.md": "394503aa1ec530ee6f483aa762d7a9ee34eacc561b58448eba8fbe7062090a24",
+    "README.md": "3b0a92bcd8472d3f6dbcdc28585f202f670faf59fccda258719e08b1e992fcf7",
     "docs/01-product-plan.md": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
     "docs/02-development-plan.md": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
     "docs/03-research-and-positioning.md": "bfd947769381b609bf03b7e2d4440aca5034bb43f751bdeb0434c397bbd5a47f",
@@ -46,7 +46,7 @@
     "design/README.md": "90d6fba01e4ad898c24082d3e7e497ec35117a1f88fc6a95d83d80543da03d72",
     "design/preview-prompt.txt": "3a5b025b3ab6fd88ed3d63be43956c44f2d96d5e04f7490aa5dbe9014d21233e",
     "design/mockups/scene-spec-v6.json": "aeafe614dff09c88e8a058711e5d1afa3c51e81e4d3edf02a000706587fc857a",
-    "docs/spec-v6.json": "319f8f888341cbb08fe0b8a137d0e507e022ee04459e5035231346d69e707ee0"
+    "docs/spec-v6.json": "7a1f60168dbc7082da95177635cd001d05cbcf0dfd97d63dfe67642ce5e8a9c5"
   },
   "next_action": "See docs/implementation-status.json; finish D01 prerequisites before D02."
 }

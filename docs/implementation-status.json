@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D10",
+  "stage": "D11",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -108,14 +108,20 @@
     "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue",
     "Foreground active-server SSH command-completion response metric with literal /bin/true, actual-close cooldown, identity validation, 5s delayed/15s freshness and no reconnect",
     "Pinned ssh2 paused-channel disposal preserves genuine protocol close and frees slots without closing sibling PTYs; transport loss cannot imply observed channel close",
-    "Main1s renderer working-set observer with strict1536MiB two-sample boundary, immediate PTY input revocation/pause, synchronous xterm disposal ACK and2s UI replacement fallback; manual ring-clear recovery only"
+    "Main1s renderer working-set observer with strict1536MiB two-sample boundary, immediate PTY input revocation/pause, synchronous xterm disposal ACK and2s UI replacement fallback; manual ring-clear recovery only",
+    "Sequence-aware session snapshot recovery cannot rewind newer server events; changing paginated execution/PTY snapshots retry up to3 times with bounded pages",
+    "Worker PTY history clears at owning-session end and late output/old display restore are rejected",
+    "Settings list saved endpoint fingerprints and saved credential ownership without blobs/ciphertext; native-confirmed removal quiesces all affected profiles/tasks before atomic JSON change; connect/profile edits/trust approval locked during change",
+    "Strict allowlisted default JSONL log limited to1MiB x3,128 pending entries,100-row diagnostic preview; frozen60s one-use export, native save dialog, no overwrite and stale-renderer rejection",
+    "All specification13 fixed Korean errors mapped and checked; actual xterm long OSC/DCS, combining and oversized numeric fixtures exercised",
+    "Utility process disables automatic network address-family retries; integration/security commands execute actual suites rather than missing-fixture gates"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 265,
-      "evidence": "evidence/d10-memory/verification.json"
+      "tests": 277,
+      "evidence": "evidence/d11-settings-diagnostics/verification.json"
     },
     "build": "pass",
     "electron_smoke": {
@@ -450,6 +456,26 @@
         "new UI does not automatically replay blocked ring or input"
       ],
       "limitation": "Memory values injected via test-main app.getAppMetrics; renderer event loop actually blocked and renderer actually replaced. No OS OOM, physical allocation threshold or target-platform result claimed."
+    },
+    "settings_diagnostics": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "saved endpoint/fingerprint shown with no public blob/ciphertext/secret value",
+        "native cancel preserves trust, sessions and task",
+        "secret removal ends only owning profile and atomically removes ciphertext/reference",
+        "trust removal ends both same-endpoint profiles and existing PTY without authentication replay",
+        "next connection requires renewed trust before sending authentication",
+        "diagnostics preview/export identical allowlisted JSON with no host/user/path/secrets/input/output",
+        "export refuses overwrite and stale renderer tokens"
+      ],
+      "limitation": "Native confirmation/save picker and safeStorage encryption mocked in test main; actual SSH socket/PTY/JSON used. OS vault, native dialog interaction and supported target matrix remain untested."
+    },
+    "integration_suite": {
+      "status": "pass",
+      "suites": 16,
+      "evidence": "evidence/d11-settings-diagnostics/integration/report.json"
     }
   },
   "remaining_D01": [
@@ -466,15 +492,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "D10 sequence/lifetime audit; implement D11 saved-trust/secret settings, redacted diagnostics and remaining functional/security/performance checks, then D12-D13.",
+  "next_action": "D11 remaining desktop accessibility/window-limit UX, measured coverage and performance/security audit; D12 packages/source/licenses/SBOM; D13 user handoff.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-memory",
+  "latest_evidence_directory": "evidence/d11-settings-diagnostics",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D10 integration; PTY backend and xterm/paste/security GUI locally verified",
-    "product_features_available": "Profiles/SSH trust, desktop windows, tree/list files, confirmed file mutations, readonly text/image viewers, asynchronous SFTP shelf, confirmed GUI execution/output and real PTY xterm windows. Full lifecycle/probe/memory integration and distribution remain.",
+    "current_stage": "D11 feature/security verification;16 local integration suites pass",
+    "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings and redacted diagnostics. Final coverage/performance audit and packaging remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {
@@ -484,7 +510,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 sequence/lifetime consistency audit remains.",
-    "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
+    "D11 desktop accessibility/window-limit UX, measured coverage/performance/security audit remain.",
+    "D12 development packages, fuses, third-party notices and SBOM/source correspondence; target signing unavailable."
   ]
 }
