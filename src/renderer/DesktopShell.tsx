@@ -30,6 +30,7 @@ export function DesktopShell({ snapshot, error }: { snapshot: RuntimeSnapshot | 
   const [executionClose,setExecutionClose]=useState<{preview:ExecutionActionPreview;windowId:string}|null>(null);
   const [engineBusy,setEngineBusy]=useState(false);
   const [notice, setNotice] = useState('');
+  useEffect(()=>{if(snapshot && snapshot.powerSequence>0)setNotice('절전 전 연결을 종료했습니다. 서버에 다시 연결하세요.');},[snapshot?.powerSequence]);
   const [startMenu, setStartMenu] = useState(false);
   const [picker, setPicker] = useState<WindowKind | null>(null);
   const [chosenServer, setChosenServer] = useState('');
