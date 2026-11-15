@@ -543,6 +543,33 @@
       "nativeLaunch": "untested",
       "publisherSignature": "unavailable; Windows unsigned/macOS ad-hoc",
       "notarization": "untested"
+    },
+    "local_performance": {
+      "status": "partial",
+      "localMeasurements": "pass",
+      "targetAcceptance": "untested",
+      "sourceRevision": "891962eca195fa5cba6fe8f236d6757fd719e330",
+      "sourceDirty": false,
+      "evidence": "evidence/d13-handoff/performance-partial.json",
+      "registration100P95Ms": 1001.0453749999997,
+      "warmLaunchMs": [
+        768.8879999999999,
+        522.2294579999998,
+        535.4031250000007,
+        534.7026659999992,
+        558.0463340000006
+      ],
+      "uiClickP95Ms": 30.700000286102295,
+      "memory": "One586.28125MiB snapshot; not settled300-sample acceptance."
+    },
+    "pr_metadata": {
+      "status": "updated_and_verified",
+      "evidence": "evidence/d13-handoff/pr-metadata-apply.json"
+    },
+    "ci": {
+      "status": "pass",
+      "sourceRevision": "891962eca195fa5cba6fe8f236d6757fd719e330",
+      "scope": "GitHub planning-docs job: document validator, install, typecheck,534 unit cases and build."
     }
   },
   "remaining_D01": [
@@ -559,14 +586,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Recheck local performance harness, update PR metadata through the guarded human operation, obtain independent current-head review and then use the guarded merge/branch-cleanup workflow. Target/signing/usability gates remain untested.",
+  "next_action": "Obtain explicit authorization for one separate-context read-only reviewer, obtain independent current-head review/App formal approval, then guarded merge and exact head-branch cleanup. Do not mark native/signing/performance/usability gates passed.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d12-final-development",
+  "latest_evidence_directory": "evidence/d13-handoff",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D12 development artifacts generated and statically verified; D13 handoff and independent review pending",
+    "current_stage": "Agent-owned feature implementation/local automated verification/development packaging prepared; independent current-head review and guarded merge remain",
     "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and local license viewer. Per-file coverage passes; final package and traceability audit remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
