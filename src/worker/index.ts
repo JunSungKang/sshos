@@ -56,7 +56,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'transfer:commit') result=transfers!.commit(request.serverId,request.generation,request.reservationToken);
     else if (request.action === 'transfer:release') transfers!.release(request.serverId,request.generation,request.reservationToken);
     else if (request.action === 'transfer:cancel') result=await transfers!.cancel(request.serverId,request.generation,request.taskId);
-    else if (request.action === 'transfer:snapshot') result=transfers!.snapshot(request.serverId,request.generation,request.offset);
+    else if (request.action === 'transfer:snapshot') result={...transfers!.snapshot(request.serverId,request.generation,request.offset),sequence:transferSequence};
     else transfers!.acknowledge(request.serverId,request.generation,request.taskId);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: true, result };
   } catch (error) {

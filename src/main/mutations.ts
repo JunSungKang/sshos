@@ -16,7 +16,7 @@ export class MutationController {
   private readonly running=new Set<string>();
   private readonly current=new Map<string,MutationReceipt & {recordError?:boolean}>();
   private readonly recordActions=new Map<string,{id:string;action:'acknowledge'|'forget';updatedAt:string|null;deadline:number}>();
-  constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean,private readonly otherActive:(id:string)=>boolean=()=>false,private readonly acknowledgeOther:(row:FileReceipt)=>Promise<void>=async ()=>{}) {}
+  constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly gateway:EngineGateway,private readonly storage:() => ReceiptRepository|null,private readonly stateHealthy:() => boolean,private readonly otherActive:(id:string)=>boolean=()=>false,private readonly acknowledgeOther:(row:FileReceipt)=>Promise<void>=async ()=>{},private readonly extraSnapshots:()=> (FileReceipt & {recordError?:boolean})[]=()=>[],private readonly otherState:(id:string)=>{cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean}=()=>({cancelable:false,registering:false,bytesPerSecond:null,cleanupPending:false})) {}
   async settled():Promise<void> { while (this.running.size) await new Promise(resolve => setTimeout(resolve,50)); }
   private repository():ReceiptRepository { const repo=this.storage(); if (!repo || repo.faulted || !this.stateHealthy()) throw new Error('STORAGE_FAILED'); return repo; }
   private validateSession(serverId:string,generation:number,sessionToken:string):void {
@@ -86,7 +86,8 @@ export class MutationController {
       if (!this.current.get(receipt.taskId)?.recordError) this.current.delete(receipt.taskId);
     }
   }
-  snapshots() { const values=new Map(this.storage()?.snapshots().map(row => [row.taskId,row])); for (const [id,row] of this.current) values.set(id,row); return [...values.values()].sort((a,b) => b.createdAt.localeCompare(a.createdAt)); }
+  snapshots() { const values=new Map(this.storage()?.snapshots().map(row => [row.taskId,row])); for (const [id,row] of this.current) values.set(id,row);for (const row of this.extraSnapshots()) values.set(row.taskId,row); return [...values.values()].sort((a,b) => b.createdAt.localeCompare(a.createdAt)); }
+  private display<T extends FileReceipt>(row:T):T {if (row.kind !== 'file_transfer') return row;const name=(path:string) => path.split(/[\\/]/u).at(-1) ?? '';return {...row,source:row.direction === 'upload' ? `로컬 · ${name(row.source)}` : row.source,destination:row.direction === 'download' ? `로컬 · ${name(row.destination)}` : row.destination,localParent:'로컬 선택 폴더',tempPath:row.direction === 'download' ? `로컬 · ${name(row.tempPath)}` : row.tempPath};}
   async handle(action:string,payload:unknown):Promise<unknown> {
     if (action === 'file:previewMutation') return this.preview(payload);
     if (action === 'file:startMutation') return this.start(z.uuid().parse(payload));
@@ -96,12 +97,12 @@ export class MutationController {
       const rows=[];const damagedIds:string[]=[];let count=0;let bytes=0;
       for (const value of values.slice(offset,offset+100)) {
         if ('damagedId' in value) {damagedIds.push(value.damagedId);count++;bytes+=40;continue;}
-        const row=value.row;const summary={taskId:row.taskId,kind:row.kind,operation:row.kind === 'file_mutation' ? row.operation : row.direction,serverName:row.endpointSnapshot.name,phase:row.phase,source:row.source,destination:row.destination,errorCode:row.errorCode,acknowledgedAt:row.acknowledgedAt,updatedAt:row.updatedAt,recordError:'recordError' in row && row.recordError === true,unresolved:receiptUnresolved(row),terminal:receiptTerminal(row),transferredBytes:row.kind === 'file_transfer' ? row.transferredBytes : null,verifiedBytes:row.kind === 'file_transfer' ? row.verifiedBytes : null,totalBytes:row.kind === 'file_transfer' ? row.totalBytes : null,cleanupState:row.kind === 'file_transfer' ? row.cleanupState : null};
+        const row=this.display(value.row);const summary={taskId:row.taskId,kind:row.kind,operation:row.kind === 'file_mutation' ? row.operation : row.direction,serverName:row.endpointSnapshot.name,phase:row.phase,source:row.source,destination:row.destination,errorCode:row.errorCode,acknowledgedAt:row.acknowledgedAt,updatedAt:row.updatedAt,recordError:'recordError' in row && row.recordError === true,unresolved:receiptUnresolved(row),terminal:receiptTerminal(row),transferredBytes:row.kind === 'file_transfer' ? row.transferredBytes : null,verifiedBytes:row.kind === 'file_transfer' ? row.verifiedBytes : null,totalBytes:row.kind === 'file_transfer' ? row.totalBytes : null,cleanupState:row.kind === 'file_transfer' ? row.cleanupState : null,...this.otherState(row.taskId)};
         const size=Buffer.byteLength(JSON.stringify(summary));if (bytes+size>240*1024) break;rows.push(summary);bytes+=size;count++;
       }
       return {rows,damagedIds,nextOffset:offset+count<values.length ? offset+count : null};
     }
-    if (action === 'task:inspect') { const id=z.uuid().parse(payload); const row=this.snapshots().find(row => row.taskId === id); if (!row) throw new Error('INPUT_INVALID'); return row; }
+    if (action === 'task:inspect') { const id=z.uuid().parse(payload); const row=this.snapshots().find(row => row.taskId === id); if (!row) throw new Error('INPUT_INVALID'); return this.display(row); }
     if (action === 'task:previewRecordAction') {
       const input=z.object({id:z.uuid(),action:z.enum(['acknowledge','forget'])}).strict().parse(payload); const row=this.snapshots().find(row => row.taskId === input.id);
       if (this.running.has(input.id) || this.otherActive(input.id) || (!row && !this.storage()?.damagedIds().includes(input.id))) throw new Error('INPUT_INVALID');
@@ -110,7 +111,7 @@ export class MutationController {
       for (const [token,value] of this.recordActions) if (value.deadline<performance.now()) this.recordActions.delete(token);
       if (this.recordActions.size>=20) throw new Error('REQUEST_BUSY'); const token=randomUUID();
       this.recordActions.set(token,{...input,updatedAt:row?.updatedAt ?? null,deadline:performance.now()+60000});
-      return {confirmationToken:token,taskId:input.id,action:input.action,source:row?.source ?? null,destination:row?.destination ?? null,phase:row?.phase ?? 'damaged'} satisfies RecordActionPreview;
+      return {confirmationToken:token,taskId:input.id,action:input.action,source:row ? this.display(row).source : null,destination:row ? this.display(row).destination : null,phase:row?.phase ?? 'damaged'} satisfies RecordActionPreview;
     }
     if (action === 'task:applyRecordAction') {
       const token=z.uuid().parse(payload); const input=this.recordActions.get(token); this.recordActions.delete(token);

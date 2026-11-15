@@ -18,6 +18,7 @@ export async function startSSHFixture(directory, options = {}) {
     return result;
   };
   const status = ssh2.utils.sftp.STATUS_CODE; const host = fixtureKey();
+  const pending=new Set();
   const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], readDirs: 0, openedPaths: [], mutations:[] };
   const server = new ssh2.Server({ hostKeys: [host.private] }, connection => {
     connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});
@@ -40,7 +41,7 @@ export async function startSSHFixture(directory, options = {}) {
           };protocol.channelData=send;
         }
         const fail = (id,error) => stream.status(id,error?.code === 'ENOENT' ? status.NO_SUCH_FILE : error?.code === 'EACCES' ? status.PERMISSION_DENIED : status.FAILURE);
-        const run = (id, action) => { void action().catch(error => fail(id,error)); };
+        const run = (id, action) => {const operation=action().catch(error => {try {if (!stream.destroyed) fail(id,error);}catch {}}).finally(() => pending.delete(operation));pending.add(operation);};
         const addHandle = value => { const handle = randomBytes(8); handles.set(handle.toString('hex'),value); return handle; };
         const getHandle = handle => { const value = handles.get(handle.toString('hex')); if (!value) throw new Error('Missing handle'); return value; };
         const attrs = stat => ({ mode:stat.mode, uid:stat.uid, gid:stat.gid, size:stat.size, atime:Math.floor(stat.atimeMs/1000), mtime:Math.floor(stat.mtimeMs/1000) });
@@ -69,7 +70,7 @@ export async function startSSHFixture(directory, options = {}) {
           const {bytesRead} = await value.file.read(bytes,0,bytes.length,offset); if (bytesRead) stream.data(id,bytes.subarray(0,bytesRead)); else stream.status(id,status.EOF);
         }));
         stream.on('WRITE',(id,handle,offset,bytes) => run(id,async () => {
-          const value=getHandle(handle);if (value.kind !== 'file') throw new Error('Wrong handle');let written=0;
+          const value=getHandle(handle);if (value.kind !== 'file') throw new Error('Wrong handle');await options.beforeWrite?.({path:value.path,offset,length:bytes.length});let written=0;
           while (written<bytes.length) {const result=await value.file.write(bytes,written,bytes.length-written,offset+written);if (!result.bytesWritten) throw new Error('Zero fixture write');written+=result.bytesWritten;}stream.status(id,status.OK);
         }));
         stream.on('EXTENDED',(id,name,bytes) => run(id,async () => {
@@ -86,5 +87,5 @@ export async function startSSHFixture(directory, options = {}) {
     });
   });
   await new Promise((done,reject) => { server.once('error',reject); server.listen(0,'127.0.0.1',done); });
-  return { port:server.address().port, metrics, publicKey:ssh2.utils.parseKey(host.private).getPublicSSH(), async close() { for (const connection of connections) connection.end(); await new Promise(done => server.close(done)); } };
+  return { port:server.address().port, metrics, publicKey:ssh2.utils.parseKey(host.private).getPublicSSH(), async close() { for (const connection of connections) connection.end(); await new Promise(done => server.close(done));while (pending.size) await Promise.allSettled([...pending]); } };
 }
