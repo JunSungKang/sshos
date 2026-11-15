@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "nsis": {
+    "version": "3.12",
+    "toolset": "1.2.1",
+    "toolsetSHA256": "56997fdefe25e7928a1a68b4583d08b240b66cf660234053b20131a74cc082f4",
+    "source": "https://github.com/electron-userland/electron-builder-binaries/releases/tag/nsis%401.2.1"
+  },
+  "stdutils": {
+    "release": "1.14",
+    "fileVersion": "1.1.4.0",
+    "dllSHA256": "b72e9013a6204e9f01076dc38dabbf30870d44dfc66962adbf73619d4331601e",
+    "sourceCommit": "4e1117321001e54dcd2c52f72d3c359d5215e426",
+    "sourceURL": "https://github.com/lordmulder/stdutils/releases/download/1.14/StdUtils.2018-10-27.sources.tbz2",
+    "releaseURL": "https://github.com/lordmulder/stdutils/releases/download/1.14/StdUtils.2018-10-27.zip",
+    "releaseSHA256": "3ffe893dc7477fdb1cac551a86ae017509e1f2d0ebdc7185fd0fbaf20870688c",
+    "correspondingSource": "StdUtils-1.14-sources.tbz2"
+  },
+  "files": {
+    "NSIS-3.12-LICENSE.txt": "6cc665347be5c84b76bf0fd6f85fbb0c33261e89b3408aa3e3e55dbe95e12d89",
+    "StdUtils-1.14-sources.tbz2": "c5e3b1a66219bc9564c2ccc1702691327eecf044ad33404ac268d725d22dca49",
+    "StdUtils-README.txt": "31b67e463c6e5695e9ffaf62dd077d9bd62df34026593c2f29bc9ea87fdac72f",
+    "StdUtils-rhash-COPYING.txt": "842fef4921191943e531c6cc939b0334f1c2658c9204e30dd35d13f51fdf70dd",
+    "StdUtils-blake2-COPYING.txt": "f4e7f373b9b996950337e8d41a4a2939c2d90b7725e9baf3d5084a22717ad328",
+    "StdUtils-LGPL.txt": "1e7e6bae5a5bde32f1ae5a7c37a082d1ab03cf89354f7f936ac40be9e39a6531",
+    "StdUtils-LGPL-clarification.txt": "ae0ab3f49b4473152181c1fe5670435faaca079eda0b261ee31a51a6180bc9e7"
+  },
+  "licensing": "Preserved upstream license/clarification/notices and complete corresponding source. Official Unicode DLL matches both legacy and1.2.1 toolsets byte-for-byte. No binary modifications."
+}
