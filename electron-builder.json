@@ -1,7 +1,65 @@
 {
-  "appId": "io.github.junsungkang.sshos", "productName": "sshOS",
-  "directories": { "output": "release" }, "asar": true,
-  "files": ["dist/**/*", "package.json", "LICENSE"],
-  "win": { "target": [{ "target": "portable", "arch": ["x64"] }], "requestedExecutionLevel": "asInvoker" },
-  "mac": { "target": [{ "target": "zip", "arch": ["arm64", "x64"] }], "minimumSystemVersion": "14.0", "category": "public.app-category.developer-tools" }
+  "appId": "io.github.junsungkang.sshos",
+  "productName": "sshOS",
+  "directories": {
+    "output": "release"
+  },
+  "asar": true,
+  "files": [
+    "dist/**/*",
+    "!dist/renderer/tests/**/*",
+    "package.json",
+    "LICENSE",
+    "!node_modules/{cpu-features,nan,buildcheck}/**/*",
+    "!node_modules/ssh2/lib/protocol/crypto/**/*",
+    "!**/*.node"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker",
+    "signExecutable": false
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "zip",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      }
+    ],
+    "minimumSystemVersion": "14.0",
+    "category": "public.app-category.developer-tools",
+    "identity": "-",
+    "notarize": false
+  },
+  "npmRebuild": false,
+  "electronFuses": {
+    "runAsNode": false,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true,
+    "grantFileProtocolExtraPrivileges": false,
+    "resetAdHocDarwinSignature": true
+  },
+  "extraResources": [
+    {
+      "from": ".local/build-resources/licenses",
+      "to": "licenses"
+    },
+    {
+      "from": ".local/build-resources/build-info.json",
+      "to": "build-info.json"
+    }
+  ],
+  "afterPack": "scripts/package-after-pack.cjs"
 }

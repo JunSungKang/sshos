@@ -3,7 +3,7 @@
   "productName": "sshOS",
   "version": "0.1.0",
   "private": true,
-  "description": "sshOS(\uc2dc\uc624\uc2a4): client-only SSH desktop workspace",
+  "description": "sshOS(시오스): client-only SSH desktop workspace",
   "license": "AGPL-3.0-only",
   "author": "JunSungKang",
   "main": "dist/main/index.js",
@@ -26,7 +26,8 @@
     "pretest:coverage": "tsc -p tsconfig.json",
     "pretest:integration": "npm run build",
     "pretest:security": "npm run build",
-    "pretest:e2e": "npm run build"
+    "pretest:e2e": "npm run build",
+    "prebuild": "node scripts/prepare-licenses.mjs"
   },
   "dependencies": {
     "@xterm/addon-fit": "0.11.0",
