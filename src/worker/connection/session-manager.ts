@@ -1,4 +1,5 @@
 import { Client, type SFTPWrapper } from 'ssh2';
+import { MetadataQueue } from './metadata-queue';
 import { createPrivateKey } from 'node:crypto';
 import { type ConnectInput, type ConnectOutcome, type SessionSnapshot } from '../../shared/session-contracts';
 import { HostKeyVerifier } from './host-verifier';
@@ -11,7 +12,7 @@ import type { ControlAccess } from '../files/browser';
 import { AuxiliarySockets, type AuxiliaryRole, type AuxiliaryLease } from './auxiliary-sockets';
 
 interface RecordEntry {
-  snapshot: SessionSnapshot; client: Client; sftp: SFTPWrapper | null; input: ConnectInput; agent: SingleKeyAgent | null;auxiliary:AuxiliarySockets|null;
+  snapshot: SessionSnapshot; client: Client; sftp: SFTPWrapper | null; input: ConnectInput; agent: SingleKeyAgent | null;auxiliary:AuxiliarySockets|null;metadata:MetadataQueue;
 }
 export class SessionManager {
   private readonly entries = new Map<string, RecordEntry>();
@@ -27,6 +28,7 @@ export class SessionManager {
     check();if (!entry) throw new Error('CONNECTION_LOST');
     entry.auxiliary ??=new AuxiliarySockets(() => ({input:entry.input,agent:entry.agent,check}));return entry.auxiliary.open(role);
   }
+  withMetadata<T>(serverId:string,generation:number,action:()=>Promise<T>):Promise<T> {this.control(serverId,generation).check();const entry=this.entries.get(serverId)!;return entry.metadata.run(action);}
   readClient(serverId:string,generation:number):Client {
     const entry=this.entries.get(serverId);
     if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || entry.snapshot.sftp !== 'available') throw new Error('CONNECTION_LOST');return entry.client;
@@ -56,7 +58,7 @@ export class SessionManager {
     }
     const client = new Client();
     const verifier = new HostKeyVerifier(input.trustedHostKey === null ? null : Buffer.from(input.trustedHostKey, 'base64'));
-    const entry: RecordEntry = { snapshot: { serverId, generation, status: 'connecting', os: 'unknown', osConfirmed: false, sftp: 'unknown', initialPath: null, errorCode: null }, client, sftp: null, input, agent: null,auxiliary:null };
+    const entry: RecordEntry = { snapshot: { serverId, generation, status: 'connecting', os: 'unknown', osConfirmed: false, sftp: 'unknown', initialPath: null, errorCode: null }, client, sftp: null, input, agent: null,auxiliary:null,metadata:new MetadataQueue(()=>{if (this.entries.get(serverId) !== entry || entry.snapshot.status !== 'connected') throw new Error('CONNECTION_LOST');}) };
     this.entries.set(serverId, entry); this.changed(entry, {});
     let method: Parameters<typeof oneShotAuthentication>[0];
     try {
@@ -81,7 +83,7 @@ export class SessionManager {
       client.on('handshake', () => { if (entry.snapshot.status === 'connecting') this.changed(entry, { status: 'authenticating' }); });
       client.on('ready', () => {
         this.changed(entry, { status: 'connected', errorCode: null });
-        void this.inspect(entry).then(() => finish(null, { status: 'connected', snapshot: { ...entry.snapshot } })).catch(() => {
+        void entry.metadata.run(()=>this.inspect(entry)).then(() => finish(null, { status: 'connected', snapshot: { ...entry.snapshot } })).catch(() => {
           this.changed(entry, { status: 'failed', errorCode: 'IO_TIMEOUT' }); client.destroy(); finish('IO_TIMEOUT');
         });
       });

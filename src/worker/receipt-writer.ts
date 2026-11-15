@@ -5,8 +5,9 @@ export class WorkerReceiptWriter {
   private readonly pending=new Map<string,{identity:Omit<ReceiptACK,'action'|'ok'>;resolve:()=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
   private sequence=0;
   private fault=false;
+  private paused=false;
   constructor(readonly epoch:string,private readonly post:(message:unknown)=>void,private readonly onFault:()=>void=()=>{}) {}
-  get faulted():boolean {return this.fault;}
+  get faulted():boolean {return this.fault || this.paused;}
   private fail():void {
     if (!this.fault) {
       this.fault=true;for (const value of this.pending.values()) {clearTimeout(value.timer);value.reject(new Error('STORAGE_FAILED'));}this.pending.clear();
@@ -15,7 +16,7 @@ export class WorkerReceiptWriter {
     }
   }
   persist(input:FileReceipt):Promise<void> {
-    if (this.fault || this.pending.size>=16) return Promise.reject(new Error(this.fault ? 'STORAGE_FAILED' : 'REQUEST_BUSY'));
+    if (this.faulted || this.pending.size>=16) return Promise.reject(new Error(this.faulted ? 'STORAGE_FAILED' : 'REQUEST_BUSY'));
     let receipt:FileReceipt;
     try {receipt=fileReceiptSchema.parse(input);if (receipt.backendEpoch !== this.epoch || Buffer.byteLength(JSON.stringify(receipt))>65536 || !Number.isSafeInteger(this.sequence+1)) throw new Error('INPUT_INVALID');}
     catch {this.fail();return Promise.reject(new Error('STORAGE_FAILED'));}
@@ -34,6 +35,7 @@ export class WorkerReceiptWriter {
     this.pending.delete(ack.requestId);clearTimeout(pending.timer);
     if (ack.ok) pending.resolve();else {this.fail();pending.reject(new Error('STORAGE_FAILED'));}return true;
   }
-  resetAfterStorageVerification():void {if (this.pending.size) throw new Error('REQUEST_BUSY');this.fault=false;}
+  pauseAfterQuiescence():void {if(this.pending.size)throw new Error('REQUEST_BUSY');this.paused=true;}
+  resetAfterStorageVerification():void {if (this.pending.size) throw new Error('REQUEST_BUSY');this.fault=false;this.paused=false;}
   stop():void {this.fail();for (const value of this.pending.values()) {clearTimeout(value.timer);value.reject(new Error('STORAGE_FAILED'));}this.pending.clear();}
 }

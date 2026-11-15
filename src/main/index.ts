@@ -19,6 +19,7 @@ import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
 import { TransferSelections } from './transfer-selections';
 import { TransferPreviews } from './transfer-previews';
+import { MainStorageRecovery } from './storage-recovery';
 import { TransferController } from './transfers';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -79,6 +80,8 @@ async function main(): Promise<void> {
   let profiles: ProfileController | null = null;
   const dialogGate=new NativeDialogGate();
   let connections: ConnectionController | null = null;
+  let storageRecovering=false;
+  let recoveryLocked=false;
   let repositoryOpening: Promise<void> | null = null;
   const openRepository = (): Promise<void> => {
     if (repositoryOpening) return repositoryOpening;
@@ -94,17 +97,18 @@ async function main(): Promise<void> {
   const epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
-  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted),message => worker.postMessage(message));
+  const storageRecovery=new MainStorageRecovery(epoch,worker);
+  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence));
-  connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted));
+  connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted && !storageRecovering && !recoveryLocked));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
   const viewers=new ViewerController(files,connections,desktop,gateway);
   const selections=new TransferSelections(dialogGate,() => win);
-  const transferPreviews=new TransferPreviews(files,connections,gateway,selections,() => {if (!repository || repository.store.faulted || !receipts || receipts.faulted) throw new Error('STORAGE_FAILED');});
-  transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted),() => receiptChannel.settled());
-  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted),id => transfers!.isActive(id),async row => {if (row.kind === 'file_transfer') await transfers!.acknowledge(row);},() => transfers!.overlays(),id => transfers!.taskState(id));
+  const transferPreviews=new TransferPreviews(files,connections,gateway,selections,() => {if (!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked) throw new Error('STORAGE_FAILED');});
+  transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),() => receiptChannel.settled());
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),id => transfers!.isActive(id),async row => {if (row.kind === 'file_transfer') await transfers!.acknowledge(row);},() => transfers!.overlays(),id => transfers!.taskState(id));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
@@ -120,7 +124,7 @@ async function main(): Promise<void> {
     ipcMain.handle(action, async (event, payload: unknown) => {
       validateSender(event);
       try {
-        if (!profiles) throw new Error('STORAGE_FAILED');
+        if (!profiles || action !== 'profile:list' && (!receipts || receipts.faulted || storageRecovering || recoveryLocked)) throw new Error('STORAGE_FAILED');
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
         return await profiles.handle(action, payload);
       }
@@ -185,13 +189,23 @@ async function main(): Promise<void> {
   }
   ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
-    try { await mutations.settled(); await receiptChannel.settled();await receipts?.settled(); await openRepository(); receipts=await ReceiptRepository.open(dataRoot); } catch { throw new Error('STORAGE_FAILED'); }
+    if (storageRecovering) throw new Error('REQUEST_BUSY');
+    const faulted=!repository || repository.store.faulted || !receipts || receipts.faulted || recoveryLocked;
+    if (!faulted && (mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
+    storageRecovering=true;let barrier:string|null=null;
+    try {
+      await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
+      await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();receipts=await ReceiptRepository.open(dataRoot);
+      await storageRecovery.reset(barrier);recoveryLocked=false;
+    } catch (error) {if (barrier || faulted || !(error instanceof Error) || error.message !== 'REQUEST_BUSY') recoveryLocked=true;throw new Error(error instanceof Error && error.message === 'REQUEST_BUSY' ? 'REQUEST_BUSY' : 'STORAGE_FAILED');}
+    finally {storageRecovering=false;}
+
   });
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);
     if (payload !== undefined) throw new Error('INPUT_INVALID');
     return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: connections.views().filter(row => row.status === 'connected').length,
-      storage: { status: !repository || repository.store.faulted || !receipts || receipts.faulted ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
+      storage: { status: !repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
       appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {

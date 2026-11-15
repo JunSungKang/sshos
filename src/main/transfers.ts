@@ -81,6 +81,7 @@ export class TransferController {
       try {await this.repository().save(recovered);this.jobs.delete(id);}catch {job.runtime.recordError=true;}
     }
   }
+  get isRegistering():boolean {return this.registrations.size>0;}
   async settled():Promise<void> {await Promise.allSettled([...this.registrations]);}
   async acknowledge(row:TransferReceipt):Promise<void> {if (this.isActive(row.taskId)) throw new Error('REQUEST_BUSY');await this.gateway.request({action:'transfer:acknowledge',serverId:row.serverId,generation:row.generation,taskId:row.taskId}).catch(error => {if (!(error instanceof Error) || error.message !== 'ENGINE_STOPPED') throw error;});this.jobs.delete(row.taskId);}
   shelf():TransferShelf {
