@@ -30,6 +30,6 @@ Write maintained docs, README files and release notes in English. Keep exact UI 
 
 ## Pull Requests and Licensing
 
-Describe the concrete problem/result, scope, checks and untested limits. Maintainers integrate through repository-owned human author/assignee roles, independent exact-head review, App formal approval and human merge with verified head-branch cleanup. External contribution proposals do not bypass the protected integration policy in `.github/codex-governance.json`; maintainers can prepare a compliant integration PR while retaining attribution. Every push needs current-head review again.
+Describe the concrete problem/result, scope, checks and untested limits. Maintainers integrate through repository-owned human author/assignee roles, independent exact-head review, App formal approval and human merge with verified head-branch cleanup. External contribution proposals do not bypass the maintainers' protected-branch integration policy; maintainers can prepare a compliant integration PR while retaining attribution. Every push needs current-head review again.
 
 Submit contributions compatible with [AGPL-3.0-only](LICENSE). Include provenance and original terms for copied code/assets; do not claim project licensing overrides upstream terms. No new CLA, DCO or ownership transfer is introduced by this guide.
