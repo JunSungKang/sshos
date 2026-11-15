@@ -8,11 +8,15 @@ import { AtomicJSONStore } from './store';
 
 export function normalizeHost(input: string): string {
   if (!input || /[\s/\\@?#\u0000-\u001f\u007f]/u.test(input)) throw new Error('INPUT_INVALID');
-  const host = input.startsWith('[') && input.endsWith(']') ? input.slice(1, -1) : input;
+  const bracketed=input.startsWith('[') && input.endsWith(']');
+  const host = bracketed ? input.slice(1, -1) : input;
   const ip = isIP(host);
+  if(bracketed && ip!==6)throw new Error('INPUT_INVALID');
   if (ip === 4) return host;
   if (ip === 6) { try { return new URL(`http://[${host}]/`).hostname.slice(1, -1); } catch { throw new Error('INPUT_INVALID'); } }
   const ascii = domainToASCII(host.replace(/\.$/, '')).toLowerCase();
+  // URL/IDNA conversion accepts legacy octal/hex/short IPv4 forms; SSH does not.
+  if(isIP(ascii)!==0)throw new Error('INPUT_INVALID');
   if (!ascii || Buffer.byteLength(ascii) > 253 || !ascii.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) throw new Error('INPUT_INVALID');
   return ascii;
 }

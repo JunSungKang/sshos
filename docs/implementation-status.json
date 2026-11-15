@@ -119,14 +119,15 @@
     "Instrumented source key-parser coordinator retains real compiled parser threads; new failure/cancellation/termination, key-file, profile/file capability, redacted-export, metadata/geometry boundary tests",
     "Private-key file IO errors mapped to fixed KEY_INVALID without raw local path; exact MIT coverage-v8 5.1.0 dev dependency and enforced90statement/85branch per-file gate installed",
     "Bounded late file-mutation ACK observations retain original unknown/partial phase, generation/path identity and restrictions without completion promotion or replay; duplicate callbacks ignored",
-    "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty"
+    "Pending observation writes participate in task/close/storage lifetime; explicit storage verification reconciles matching observed metadata into recovered disk receipt while preserving its phase/backup uncertainty",
+    "Strict host syntax rejects legacy octal/hex/short IPv4 and bracketed non-IPv6 instead of accepting URL/IDNA reinterpretation"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 318,
-      "evidence": "evidence/d11-mutation-observations/test-unit.txt"
+      "tests": 344,
+      "evidence": "evidence/d11-coverage-security/verification.json"
     },
     "build": "pass",
     "electron_smoke": {
@@ -484,13 +485,14 @@
     },
     "coverage": {
       "status": "fail",
-      "statements": 83.13,
-      "branches": 73.75,
+      "statements": 85.63,
+      "branches": 76.89,
       "requiredStatements": 90,
       "requiredBranches": 85,
       "perFile": true,
-      "evidence": "evidence/d11-desktop-coverage/coverage-failing-baseline.txt",
-      "scope": "Measured before the latest5 additional schema/geometry tests; do not represent test pass as coverage pass."
+      "failingModules": 38,
+      "evidence": "evidence/d11-coverage-security/coverage-failing.txt",
+      "scope": "Measured before latest2 native gesture cases. Per-file requirements remain unmet."
     },
     "desktop_ui": {
       "status": "pass",
@@ -528,7 +530,7 @@
   "next_action": "Continue mandatory D11 per-file statement/branch coverage and performance/security audit; then D12 development packages/fuses/notices/SBOM and D13 user handoff.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-mutation-observations",
+  "latest_evidence_directory": "evidence/d11-coverage-security",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
