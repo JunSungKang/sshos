@@ -41,6 +41,7 @@ it('rejects mutable transfer identity, credentials and in-memory finalization st
   await expect(repo.save({...row,destination:'/home/different'})).rejects.toThrow('INPUT_INVALID');await expect(repo.save({...row,phase:'finalize_intent_pending'})).rejects.toThrow('INPUT_INVALID');expect(repo.faulted).toBe(false);
   expect(fileReceiptSchema.safeParse({...row,password:'fixture-only'}).success).toBe(false);expect(fileReceiptSchema.safeParse({...row,tempPath:'/another/temp'}).success).toBe(false);
   expect(repo.snapshots()[0]?.destination).toBe(row.destination);
+  await repo.save({...row,phase:'failed',stage:'failed'});await expect(repo.save(row)).rejects.toThrow('INPUT_INVALID');
 });
 it('requires a new acknowledgement for the uncertainty introduced by backup recovery',() => {
   const row={...receipt(),phase:'completed' as const,acknowledgedAt:new Date().toISOString()};expect(recoverMutation(row,true)).toMatchObject({phase:'result_unknown',acknowledgedAt:null});

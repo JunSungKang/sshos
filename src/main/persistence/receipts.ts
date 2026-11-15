@@ -19,6 +19,7 @@ export class ReceiptRepository {
   private tail:Promise<void>=Promise.resolve();
   private constructor(readonly root:string) {}
   get faulted():boolean { return this.fault || [...this.stores.values()].some(store => store.faulted); }
+  markFault():void {this.fault=true;}
   async settled():Promise<void> { await this.tail; await Promise.all([...this.stores.values()].map(store => store.settled())); }
   static async open(dataRoot:string):Promise<ReceiptRepository> {
     const root=resolve(dataRoot,'receipts');
@@ -61,6 +62,7 @@ export class ReceiptRepository {
       if (store) {
         const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt];
         if (JSON.stringify(immutable(previous)) !== JSON.stringify(immutable(parsed))) throw new Error('INPUT_INVALID');
+        if (terminal(previous) && previous.phase !== parsed.phase) throw new Error('INPUT_INVALID');
       }
       try {
         if (!store) { if (this.damaged.has(receipt.taskId)) throw new Error('STORAGE_FAILED'); store=this.newStore(receipt.taskId); await store.initialize(parsed); this.stores.set(receipt.taskId,store); }

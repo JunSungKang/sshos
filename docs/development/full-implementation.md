@@ -75,3 +75,9 @@ control 세대별 transfer/execution socket을 각각 하나로 제한하는 lea
 취소/timeout scope는 해당 transfer lease만 닫고 늦게 끝나는 native 작업은 실제 settlement까지 보존해 획득한 handle도 정리한다. 늦은 성공 ACK는 관측으로 기록하고 task를 completed로 승격하지 않는다. temp 검증 도중 EOF나 metadata 변화는 원본 변경과 구분해 VERIFY_MISMATCH로 처리한다.
 
 138개 단위 검사·타입/build·Electron 파일 작업 회귀 검사가 통과했다. 실제 loopback SSH/SFTP와 현재 로컬 volume에서 정상/빈 파일 양방향·hash·0600·기존 목적지 보존·hardlink 미지원·READ 거절·temp 변조·link 직전 충돌·temp 생성 후 취소와 control 유지가 통과했다. SSH fixture의 server API가 extension을 광고하지 않으므로 시험에 한해 pinned ssh2 1.17.0 VERSION packet에 hardlink 광고를 추가하고 실제 SFTP EXTENDED→fs.link를 처리한다. 제품 adapter는 이 시험용 private protocol 조작을 import하거나 사용하지 않는다. evidence/d07-ports에 실제 출력·환경·source hash를 보존했다. 이는 Ubuntu/OpenSSH·Windows/NTFS·macOS14·5GiB/64GiB 실기 수용 또는 GUI 전송 완료를 뜻하지 않는다. 다음은 worker→main writer protocol과 native 선택/확인·진행 UI다.
+
+## worker→main 영수증 저장 채널 구현
+
+worker의 JSON 직접 쓰기 없이 main writer에64KiB 이하 영수증을 보내고5초 내 식별자가 일치하는 저장 ACK를 받아야 다음 단계로 진행한다. main은 먼저 durably 수락한 resource만 갱신하며 서버·세대·epoch·불변 경로를 확인한다. requestId 중복은 저장을 반복하지 않고 ACK를 재사용하며 sequence 역행을 거절한다. 저장 하나가 실패하면 worker의 모든 대기 허가를 무효화하고 후속 성공 ACK로 풀지 않는다. 수동 저장소 재확인 전에는 신규 저장·변경 진행을 허용하지 않는다. 종결 영수증의 phase를 같은 task ID의 queued/preparing으로 되돌리는 것도 거절한다.
+
+144개 단위 검사·타입/build·Electron startup/isolation와 파일 GUI 회귀가 통과했다. 채널 검사는 메모리 post callback과 실제 AtomicJSONStore 조합으로 저장 전후 권한·중복·시한·다른 세대·64KiB·잘못된 resource를 검사했다. main/utilityProcess의 수신 분기는 연결했으며 실제 전송 command coordinator를 통해 전체 프로세스를 관통하는 검증은 다음 단위다. evidence/d07-receipt-channel에 실제 출력과 source hash를 보존했다. 아직 전송 선택/확인/진행 UI의 완성을 뜻하지 않는다.
