@@ -67,5 +67,11 @@
     }
   ],
   "afterPack": "scripts/package-after-pack.cjs",
-  "asarUnpack": []
+  "asarUnpack": [],
+  "toolsets": {
+    "nsis": "1.2.1"
+  },
+  "portable": {
+    "useZip": true
+  }
 }

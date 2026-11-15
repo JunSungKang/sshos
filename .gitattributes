@@ -5,3 +5,6 @@
 *.js text eol=lf
 *.png binary
 *.gif binary
+
+# Preserve exact reviewed upstream notices and source archive bytes.
+docs/third-party/** -text -whitespace

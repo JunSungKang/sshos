@@ -129,7 +129,9 @@
     "Shared structured fixed-code error model across main desktop apps, actual last-confirmed phase in task summaries, explicit unknown/partial outcome priority, no raw bridge error text",
     "All17 current-host integration suites pass after fixed-message assertion updates;375 unit cases pass; coverage88.02/80.71 with26 failing files remains blocking",
     "Corrected Windows static inspection verifies923 ASAR member hashes and embedded header; no Pageant helper or smart-unpacked SSH code",
-    "Contribution/security/NOTICE documents, native six-combination verification handoff and explicitly unperformed G0/G2/G3 evaluation status"
+    "Contribution/security/NOTICE documents, native six-combination verification handoff and explicitly unperformed G0/G2/G3 evaluation status",
+    "Pinned supported NSIS toolset1.2.1/vendor3.12 bundle; exact archive/build string and official StdUtils DLL/source/notice hashes verified",
+    "Windows afterPack includes unmodified StdUtils LGPL notice/clarification/corresponding source and nested notices; NSIS/StdUtils added to CycloneDX inventory; direct zlib payload removes Nsis7z/nsisunz dependency"
   ],
   "local_verification": {
     "typecheck": "pass",

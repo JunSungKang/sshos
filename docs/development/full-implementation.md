@@ -286,3 +286,10 @@ Latest instrumented coverage is88.02% statements/80.71% branches;26 files still 
 
 
 The corrected security rerun passed49 focused unit cases and the actual Electron/xterm CSP/OSC/REP/clipboard fixture. A missing expect import in the amended smoke script caused one intermediate ReferenceError; the import was added before the passing rerun. Both intermediate failures and the passing report are retained. No product requirement, geometry tolerance or security assertion was removed.
+
+
+## Windows launcher notices and security toolset pin
+
+The launcher review found an old implicit NSIS default outside npm audit's inventory. Pinned toolset1.2.1 (vendor NSIS3.12 bundle) addresses the legacy pre3.11 temporary-plugin-directory issue and the3.12 elevated-temp correction. The exact archive SHA256 and actual Mac compiler build string are checked. portable.useZip selects electron-builder's direct-file/built-in-zlib template branch, eliminating Nsis7z/nsisunz from this launcher.
+
+Official StdUtils1.14 binary/source assets were downloaded for read-only review inside the workspace. The Unicode DLL hash matches both bundled toolsets exactly. Original notices and the full corresponding source archive are committed, added to Windows resources before signing, and included in SBOM component records. Windows package preparation rejects changed source/notice/DLL hashes. Owned review downloads were removed after the reviewed copies were preserved. The complete corrected portable build is the next verification; no native Windows launch or public-release claim is made.
