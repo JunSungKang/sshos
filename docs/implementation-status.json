@@ -101,7 +101,9 @@
     "Generation-aware native key selection invalidation and stale saved-secret rotation guards during engine replacement",
     "Aggregate native app-close/disconnect confirmation with active task counts and frozen server generation, explicit keep choices and bounded shutdown",
     "Shared monotonic shutdown budget, queued cancellation and finalizing protection; actual held-link/late-success restart remains unknown with no replay",
-    "Generation-guarded late trust approval/disconnect callbacks and stable DOM window identity for same-title multi-generation windows"
+    "Generation-guarded late trust approval/disconnect callbacks and stable DOM window identity for same-title multi-generation windows",
+    "Actual control/auxiliary close barriers across generations, cancellation-aware connect reservations and global bounds including closing sockets",
+    "Bounded one-thread key parsing FIFO with three owned requests, cancelled-queue checks and owned credential RPC cleanup"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -387,6 +389,20 @@
         "relaunch performs no authentication/command replay and preserves cancelled queue record"
       ],
       "limitation": "Native message-box choices and file picker are mocked in test main, SSH programs are fixture streams; observed timing includes process-exit overhead on this development host and does not certify target-platform acceptance."
+    },
+    "socket_retirement": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "unitTests": 246,
+      "assertions": [
+        "controlled callbacks prove replacement waits for both old control and auxiliary close",
+        "closing controls and waiting reservations count toward three-server bound",
+        "pending cancellation and closeAll do not create a replacement TCP client",
+        "three real isolated key parses finish FIFO and clear accepted buffers; excess queue refused",
+        "actual SSH session, renderer/engine restart, held-link shutdown and transfer engine regressions pass"
+      ],
+      "limitation": "Delayed-close paths use controlled client fixtures; actual SSH regressions use loopback ssh2. Target OpenSSH/OS, sleep, probe, memory and production-package acceptance remain."
     }
   },
   "remaining_D01": [
@@ -406,7 +422,7 @@
   "next_action": "Implement D10 sleep invalidation, SSH response probe and PTY renderer-memory circuit breaker; audit remaining lifecycle/channel boundaries, then D11-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-shutdown",
+  "latest_evidence_directory": "evidence/d10-socket-retirement",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,

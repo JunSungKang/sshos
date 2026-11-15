@@ -183,3 +183,11 @@ native 확인에는 전송·대기·파일 변경·GUI 실행·PTY·미확인 �
 native 상세는 plain text·제어문자 escape·제한된 길이의 작업 행을 사용하며 생략 행 수를 표시한다. 원격 프로세스 전체 종료를 보장하지 않는 문구를 포함한다. renderer의 종료 중 상태는 저장소 손상 상태와 구별한다. native key/trust 승인 또는 disconnect의 오래된 completion은 새 generation의 상태·secret·연결을 변경하지 못하게 검사한다.
 
 242개 단위 검사·타입/build·실제 app close/disconnect GUI와 Electron/session/file/viewer/renderer-crash/전송 GUI 회귀가 통과했다. 실제 SSH에서 GUI 실행+PTY 유지 선택, 승인 해제의 불명 결과, 전송1+대기1+실행1+PTY1의 종료를 검사했다. 최종 hardlink 응답을 고정 지연하여 deadline 경로를 실행했고 IPC 요청부터 프로세스 close까지 현재 호스트에서9685.775083ms를 관측했다. app 종료 뒤 fixture가 실제 link를 완료해도 재실행한 기록은 result_unknown이며 대기 전송은 cancelled, 신규 인증/명령 재전송은0회다. native 확인 응답·picker는 test main에서 대체했다. 이 관측은 지원 OS 전체10초 수용 판정이 아니다. evidence/d10-shutdown에 실제 출력·화면·source hash를 보존했다. 다음은 절전·probe·PTY 메모리 차단이다.
+
+## 세대 교체의 실제 socket close와 key parser FIFO
+
+worker는 control과 모든 auxiliary의 실제 close를 기다린 뒤 같은 서버의 다음 generation TCP client를 만든다. 닫는 중인 socket과 대기 중 connect reservation도 전역3서버 제한에 포함하며, 닫지 않은 과거 연결을 단순 disconnected 이력으로 prune하지 않는다. 시작 예약은 서버별 하나이며 대기 중 취소/closeAll은 새 client를 만들지 않는다. 이전 generation 재접속은 거절한다. pending 취소는 이전 close 완료 전에 응답할 수 있지만 이전 slot 소유권은 유지한다.
+
+parser는 active1+queued2까지 FIFO로 소유하며 각 thread에5초 기한을 적용한다. terminate 완료 뒤 다음 thread를 시작하고 취소된 queued 요청은 thread를 만들지 않는다. 수락한 private-key Buffer는 완료/실패/취소 때0으로 덮는다. SessionManager가 인증 입력의 clone을 소유하며 들어온 RPC의 password/passphrase/key byte 참조는 outcome 뒤 지운다. 문자열과 OS dump의 물리적 완전 소거 보장은 아니다.
+
+246개 단위 검사·타입/build·실제 session/engine 재생성/held-link 종료/전송 engine 회귀가 통과했다. close 지연·전역 closing3·대기 취소는 제어 가능한 transport fixture, key FIFO는 실제 worker_thread를 사용했다. 실제 서버/지원 OS의 지연 행렬 수용을 대신하지 않는다. evidence/d10-socket-retirement에 출력과 source hash를 보존했다. 다음은 절전·SSH 응답시간·PTY 메모리 차단이다.
