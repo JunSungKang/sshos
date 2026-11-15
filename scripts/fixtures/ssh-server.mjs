@@ -1,3 +1,4 @@
+import { fixtureKey } from './keys.mjs';
 import ssh2 from 'ssh2';
 import * as fs from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
@@ -16,7 +17,7 @@ export async function startSSHFixture(directory, options = {}) {
     if (isAbsolute(part) || part.startsWith(`..${sep}`) || part === '..') throw new Error('Fixture escape');
     return result;
   };
-  const status = ssh2.utils.sftp.STATUS_CODE; const host = ssh2.utils.generateKeyPairSync('ed25519');
+  const status = ssh2.utils.sftp.STATUS_CODE; const host = fixtureKey();
   const connections = new Set(); const metrics = { authenticationRequests: 0, commands: [], readDirs: 0, openedPaths: [], mutations:[] };
   const server = new ssh2.Server({ hostKeys: [host.private] }, connection => {
     connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});

@@ -1,4 +1,4 @@
-import { _electron as electron } from '@playwright/test';
+import { _electron as electron, expect } from '@playwright/test';
 import { strict as assert } from 'node:assert';
 import { randomUUID } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
@@ -27,7 +27,7 @@ try {
   await fs.writeFile(join(fixtureRoot,'home/fixture/bad.txt'),Buffer.from([255,254,1]));
   const large=png(1024,1024,false,true);assert.ok(large.length>3*1024*1024);await fs.writeFile(join(fixtureRoot,'home/fixture/large.png'),large);
   const profileId=await page.evaluate(async port => {const profile=await window.sshOS.profile.create({name:'Viewer 검사',host:'127.0.0.1',port,username:'fixture',authentication:'password'});await window.sshOS.session.connect(profile.id,{password:'test-only',saveSecret:false});return profile.id;},fixture.port);
-  await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();await page.waitForFunction(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.sftp === 'available'));
+  await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();await expect.poll(() => page.evaluate(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.sftp === 'available' && row.sessionToken !== null)),{timeout:15000}).toBe(true);
   await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();
   const explorer=page.getByRole('region',{name:'파일 · Viewer 검사',exact:true});
   await explorer.getByRole('listitem').filter({hasText:'notes.txt'}).dblclick();

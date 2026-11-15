@@ -14,15 +14,19 @@ export class ConnectionController {
   private readonly generations = new Map<string, number>();
   private readonly pending = new Map<string, PendingTrust>();
   private readonly tokens = new Map<string, { serverId: string; generation: number }>();
-  constructor(private readonly state: () => StateRepository | null, private readonly gateway: EngineGateway, private readonly secrets: SecretVault) {}
+  private readonly readyGenerations=new Map<string,number>();
+  private readonly credentialOperations=new Map<string,number>();
+  private readonly closingGenerations=new Map<string,number>();
+  constructor(private readonly state: () => StateRepository | null, private readonly gateway: EngineGateway, private readonly secrets: SecretVault,private readonly writesHealthy:()=>boolean=()=>true) {}
   isBusy = (id: string): boolean => {
-    const session = this.sessions.get(id); return session !== undefined && !['failed', 'disconnected', 'idle'].includes(session.status);
+    const session = this.sessions.get(id); return this.credentialOperations.has(id) || session !== undefined && !['failed', 'disconnected', 'idle'].includes(session.status);
   };
   observe(snapshot: SessionSnapshot): void {
     if (this.generations.get(snapshot.serverId) !== snapshot.generation) return;
+    if (this.closingGenerations.get(snapshot.serverId) === snapshot.generation && ['connecting','authenticating','connected'].includes(snapshot.status)) return;
     this.sessions.set(snapshot.serverId, snapshot);
     for (const [token, value] of this.tokens) if (value.serverId === snapshot.serverId && (value.generation !== snapshot.generation || snapshot.status !== 'connected')) this.tokens.delete(token);
-    if (snapshot.status === 'connected' && ![...this.tokens.values()].some(value => value.serverId === snapshot.serverId && value.generation === snapshot.generation)) this.tokens.set(randomUUID(), { serverId: snapshot.serverId, generation: snapshot.generation });
+    if (snapshot.status === 'connected' && this.readyGenerations.get(snapshot.serverId) === snapshot.generation && ![...this.tokens.values()].some(value => value.serverId === snapshot.serverId && value.generation === snapshot.generation)) this.tokens.set(randomUUID(), { serverId: snapshot.serverId, generation: snapshot.generation });
   }
   sessionCapability(token: string): { serverId: string; generation: number } {
     const value = this.tokens.get(token);
@@ -43,7 +47,7 @@ export class ConnectionController {
   }
   challenges(): HostChallenge[] { return [...this.pending.values()].map(row => ({ ...row.challenge })); }
   private repository(): StateRepository {
-    const repo = this.state(); if (!repo || repo.store.faulted) throw new Error('STORAGE_FAILED'); return repo;
+    const repo = this.state(); if (!repo || repo.store.faulted || !this.writesHealthy()) throw new Error('STORAGE_FAILED'); return repo;
   }
   private nextGeneration(id: string): number {
     const generation = (this.generations.get(id) ?? 0) + 1; this.generations.set(id, generation); return generation;
@@ -54,6 +58,7 @@ export class ConnectionController {
     const repository = this.repository(); const state = repository.snapshot();
     const profile = state.profiles.find(row => row.id === id); if (!profile) throw new Error('PROFILE_NOT_FOUND');
     const generation = this.nextGeneration(id);
+    this.credentialOperations.set(id,generation);this.readyGenerations.delete(id);this.closingGenerations.delete(id);
     const knownIds = new Set(state.profiles.map(profile => profile.id));
     for (const oldId of this.sessions.keys()) if (!knownIds.has(oldId) && !this.isBusy(oldId)) { this.sessions.delete(oldId); this.generations.delete(oldId); }
     this.sessions.set(id, { serverId: id, generation, status: 'connecting', os: 'unknown', osConfirmed: false, sftp: 'unknown', initialPath: null, errorCode: null });
@@ -76,29 +81,33 @@ export class ConnectionController {
         });
         if (profile.authentication === 'password') input.password = value; else input.passphrase = value;
       }
-      if (this.generations.get(id) !== generation || !this.isBusy(id)) throw new Error('CONNECTION_LOST');
+      this.requireLiveOperation(id,generation);
       await this.dispatch(profile, generation, input, credentials.saveSecret);
     } catch (error) {
       this.clearInput(input);
       const previous = this.sessions.get(id);
       if (previous?.generation === generation) this.sessions.set(id, { ...previous, status: 'failed', errorCode: error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'KEY_INVALID' });
       throw error;
-    }
+    } finally {if (this.credentialOperations.get(id) === generation) this.credentialOperations.delete(id);}
+  }
+  private requireLiveOperation(id:string,generation:number):void {
+    const status=this.sessions.get(id)?.status;
+    if (this.generations.get(id) !== generation || this.closingGenerations.get(id) === generation || status === undefined || ['disconnecting','disconnected','failed'].includes(status)) throw new Error('CONNECTION_LOST');
   }
   private async dispatch(profile: Profile, generation: number, input: ConnectInput, saveSecret: boolean): Promise<void> {
     const outcome = connectOutcomeSchema.parse(await this.gateway.request({ action: 'session:connect', serverId: profile.id, generation, payload: input }));
-    if (this.generations.get(profile.id) !== generation) { this.clearInput(input); return; }
+    this.requireLiveOperation(profile.id,generation);
     if (outcome.status === 'connected') {
       if (!input.trustedHostKey) throw new Error('HOST_TRUST_REQUIRED');
       this.identities.set(profile.id,{generation,endpointSnapshot:{name:profile.name,host:profile.host,port:profile.port,username:profile.username,endpoint:endpointFor(profile)},hostKeyFingerprint:'SHA256:'+createHash('sha256').update(Buffer.from(input.trustedHostKey,'base64')).digest('base64').replace(/=+$/u,'')});
-      this.observe(outcome.snapshot);
       if (saveSecret) {
         const value = profile.authentication === 'password' ? input.password : input.passphrase;
           if (value !== undefined) {
-            try { await this.saveSecret(profile, value); }
+            try { await this.saveSecret(profile, value,generation); }
             catch (error) { await this.gateway.request({ action: 'session:disconnect', serverId: profile.id, generation }); throw error; }
           }
       }
+      this.requireLiveOperation(profile.id,generation);this.readyGenerations.set(profile.id,generation);this.observe(outcome.snapshot);
       this.clearInput(input); return;
     }
     const challenge: HostChallenge = hostChallengeSchema.parse({ challengeId: randomUUID(), serverId: profile.id, generation, endpoint: endpointFor(profile), fingerprint: outcome.fingerprint, expiresAt: new Date(Date.now() + 120000).toISOString() });
@@ -106,9 +115,11 @@ export class ConnectionController {
     const timer = setTimeout(() => { this.reject(challenge.challengeId); }, 120000);
     this.pending.set(challenge.challengeId, { challenge, profile, input, publicKey: outcome.publicKey, saveSecret, deadline, timer });
   }
-  private async saveSecret(profile: Profile, value: string): Promise<void> {
+  private async saveSecret(profile: Profile, value: string,generation:number): Promise<void> {
     const ciphertext = await this.secrets.encrypt(value); const repo = this.repository(); const id = profile.secretId ?? randomUUID();
+    this.requireLiveOperation(profile.id,generation);
     await repo.store.update(state => {
+      this.requireLiveOperation(profile.id,generation);
       if (!state) throw new Error('STORAGE_FAILED');
       return { ...state, profiles: state.profiles.map(row => row.id === profile.id ? { ...row, secretId: id } : row), encryptedSecrets: [...state.encryptedSecrets.filter(row => row.profileId !== profile.id), { id, profileId: profile.id, endpoint: endpointFor(profile), username: profile.username, ciphertext }] };
     });
@@ -120,6 +131,7 @@ export class ConnectionController {
     try {
       await this.repository().trust(pending.challenge.endpoint, Buffer.from(pending.publicKey, 'base64'), pending.challenge.fingerprint);
       const generation = this.nextGeneration(pending.profile.id);
+      this.credentialOperations.set(pending.profile.id,generation);this.readyGenerations.delete(pending.profile.id);this.closingGenerations.delete(pending.profile.id);
       pending.input.trustedHostKey = pending.publicKey;
       const old = this.sessions.get(pending.profile.id)!; this.sessions.set(pending.profile.id, { ...old, generation, status: 'connecting' });
       await this.dispatch(pending.profile, generation, pending.input, pending.saveSecret);
@@ -129,7 +141,7 @@ export class ConnectionController {
       if (old) this.sessions.set(old.serverId, { ...old, status: 'failed', errorCode: error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR' });
       if (old) void this.gateway.request({ action: 'session:disconnect', serverId: old.serverId, generation: old.generation }).catch(() => {});
       throw error;
-    }
+    } finally {this.credentialOperations.delete(pending.profile.id);}
   }
   reject(challengeId: string): void {
     const pending = this.pending.get(challengeId); if (!pending) return;
@@ -141,6 +153,9 @@ export class ConnectionController {
   async disconnect(id: string): Promise<void> {
     for (const [challengeId, pending] of this.pending) if (pending.profile.id === id) this.reject(challengeId);
     const old = this.sessions.get(id); if (!old) return;
+    this.closingGenerations.set(id,old.generation);this.readyGenerations.delete(id);
+    for (const [token,value] of this.tokens) if (value.serverId === id) this.tokens.delete(token);
+    this.sessions.set(id,{...old,status:'disconnecting'});
     await this.gateway.request({ action: 'session:disconnect', serverId: id, generation: old.generation });
     this.sessions.set(id, { ...old, status: 'disconnected', errorCode: null });
   }
@@ -157,7 +172,8 @@ export class ConnectionController {
   engineStopped(): void {
     for (const pending of this.pending.values()) { clearTimeout(pending.timer); this.clearInput(pending.input); } this.pending.clear();
     for (const [id, old] of this.sessions) this.sessions.set(id, { ...old, status: 'disconnected', errorCode: 'ENGINE_STOPPED' });
-    this.tokens.clear();
+    for (const [id,old] of this.sessions) this.closingGenerations.set(id,old.generation);
+    this.tokens.clear();this.readyGenerations.clear();
   }
   private clearInput(input: ConnectInput): void { input.keyBytes?.fill(0); delete input.keyBytes; delete input.password; delete input.passphrase; }
 }

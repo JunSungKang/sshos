@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D06",
+  "stage": "D07",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -49,14 +49,18 @@
     "Queued viewer read scheduling, isolated read deadlines/cancellation and generation-bound worker RPC; generic RPC cache excludes file content",
     "Main-owned viewer/probe capabilities with server/generation/epoch binding, window deduplication and explicit interrupted-read recovery",
     "Text virtual scroll and isolated Worker image validation/decode with one transferable bitmap canvas, fit/zoom, EXIF1-8 and cached readonly display",
-    "Actual multi-MiB image streaming with consumer ACK and aggregate data pacing separate from control IPC budget"
+    "Actual multi-MiB image streaming with consumer ACK and aggregate data pacing separate from control IPC budget",
+    "One per-role transfer/execution socket lease per control generation, shared opening promise and per-socket pinned host authentication with isolated close",
+    "Connection resource tokens withheld until inspection and requested credential persistence finish; disconnect invalidates pending secret updates and stale connected events",
+    "Transfer state machine, all-or-nothing queue reservations, two global/one per-server slots and shared remote/local path locks",
+    "32KiB/16-buffer bounded transfer copy and SHA256 readback kernels with short read/write handling and safe offsets through64GiB"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 96,
-      "evidence": "evidence/d06-viewers/test-unit.txt"
+      "tests": 112,
+      "evidence": "evidence/d07-core/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -174,6 +178,11 @@
         "disconnected viewer cache and disabled reread"
       ],
       "limitation": "Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance."
+    },
+    "current_regressions": {
+      "status": "pass",
+      "evidence": "evidence/d07-core",
+      "scope": "Session/file/viewer/Electron local GUI fixtures; asynchronous bridge predicates now poll their resolved values, not Promise truthiness."
     }
   },
   "remaining_D01": [
@@ -190,14 +199,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D07 durable transfer queue, isolated authenticated transfer sockets, bounded I/O and exclusive finalization, then GUI enqueue/progress. D06 lifecycle integration and target tests remain.",
+  "next_action": "Wire transfer receipt persistence, I/O adapters and cancellation/finalization orchestration, then native selections and background GUI progress. Continue D08-D13 and outstanding lifecycle integration.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d06-viewers",
+  "latest_evidence_directory": "evidence/d07-core",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D06 end-user text/image viewer implemented and locally verified; D07 begins, lifecycle integration and target checks remain",
+    "current_stage": "D07 socket/queue/state/bounded byte-engine core locally tested; durable transfer orchestration and GUI enqueue/progress remain",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

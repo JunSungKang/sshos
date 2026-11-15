@@ -1,15 +1,18 @@
-import { _electron as electron } from '@playwright/test';
+import { fixtureKey } from './fixtures/keys.mjs';
+import { randomUUID } from 'node:crypto';
+import { rm } from 'node:fs/promises';
+import { _electron as electron, expect } from '@playwright/test';
 import ssh2 from 'ssh2';
 import { strict as assert } from 'node:assert';
 import { writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { root, localPath, runtimeEnvironment } from './environment.mjs';
 
-const env = runtimeEnvironment('session-smoke'); Object.assign(process.env, env);
+const env = runtimeEnvironment(`session-${randomUUID()}`); Object.assign(process.env, env);
 const { Server, utils } = ssh2;
 const { default: executablePath } = await import('electron');
 // Ephemeral fixture keys never leave process memory or get written to the repo.
-const host = utils.generateKeyPairSync('ed25519');
+const host = fixtureKey();
 const connections = new Set(); let authenticationRequests = 0;
 const server = new Server({ hostKeys: [host.private] }, connection => {
   connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});
@@ -33,7 +36,7 @@ try {
   assert.equal(authenticationRequests, 0);
   await page.getByRole('heading', { name: '서버 지문 확인' }).waitFor();
   await page.getByRole('button', { name: '지문을 확인하고 연결' }).click();
-  await page.waitForFunction(async id => (await window.sshOS.session.list()).sessions.some(row => row.serverId === id && row.status === 'connected'), id);
+  await expect.poll(() => page.evaluate(async id => (await window.sshOS.session.list()).sessions.some(row => row.serverId === id && row.status === 'connected' && row.sessionToken !== null),id),{timeout:15000}).toBe(true);
   assert.equal(authenticationRequests, 1);
   const snapshot = await page.evaluate(() => window.sshOS.lifecycle.getSnapshot()); assert.equal(snapshot.connectedServers, 1);
   const connection = await page.evaluate(async id => (await window.sshOS.session.list()).sessions.find(row => row.serverId === id), id);
@@ -50,4 +53,5 @@ try {
   if (application) await application.close();
   for (const connection of connections) connection.end();
   await new Promise(resolve => server.close(resolve));
+  await rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});
 }

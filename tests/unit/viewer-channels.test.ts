@@ -1,10 +1,11 @@
+import { fixtureKey } from '../../scripts/fixtures/keys.mjs';
 import { describe, expect, it } from 'vitest';
 import { Client, Server, utils, type Connection } from 'ssh2';
 import { openReadChannel } from '../../src/worker/viewers/sftp-channel';
 import { ViewerReadPool } from '../../src/worker/viewers/read-pool';
 
 async function fixture(mode:'normal'|'hold_open'|'hold_subsystem') {
-  const key=utils.generateKeyPairSync('ed25519');const connections=new Set<Connection>();
+  const key=fixtureKey();const connections=new Set<Connection>();
   const parsed=utils.parseKey(key.private);if (parsed instanceof Error || Array.isArray(parsed)) throw new Error('Invalid fixture key');
   let sessions=0,subsystems=0;let releaseOpen:(()=>void)|undefined;
   const server=new Server({hostKeys:[key.private]},connection => {

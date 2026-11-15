@@ -1,3 +1,4 @@
+import { fixtureKey } from '../../scripts/fixtures/keys.mjs';
 import { describe, expect, it } from 'vitest';
 import { createPrivateKey, generateKeyPairSync } from 'node:crypto';
 import { utils } from 'ssh2';
@@ -12,7 +13,7 @@ describe('bounded isolated key parsing', () => {
   it('parses encrypted and unencrypted supported keys in a real worker', async () => {
     const parser = new PrivateKeyParser();
     for (const encrypted of [false, true]) {
-      const key = utils.generateKeyPairSync('ed25519', encrypted ? { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 } : {});
+      const key = fixtureKey( encrypted ? { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 } : {});
       const result = await parser.parse(Buffer.from(key.private), encrypted ? 'fixture-only' : undefined);
       expect(createPrivateKey(result.privatePEM).asymmetricKeyType).toBe('ed25519');
       expect(result.publicSSH).toBe(key.public.split(' ').slice(0, 2).join(' '));
@@ -25,20 +26,20 @@ describe('bounded isolated key parsing', () => {
     await expect(parser.parse(Buffer.from(rsa.privateKey.export({ type: 'pkcs8', format: 'pem' })))).rejects.toThrow('AUTH_UNSUPPORTED');
     const weak = generateKeyPairSync('rsa', { modulusLength: 1024 });
     await expect(parser.parse(Buffer.from(weak.privateKey.export({ type: 'pkcs1', format: 'pem' })))).rejects.toThrow('KEY_INVALID');
-    const encrypted = utils.generateKeyPairSync('ed25519', { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 });
+    const encrypted = fixtureKey( { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 });
     await expect(parser.parse(Buffer.from(encrypted.private), 'wrong-fixture')).rejects.toThrow('KEY_INVALID');
   });
   it('rejects oversize/concurrent requests without allowing unbounded parser threads', async () => {
     const parser = new PrivateKeyParser();
     await expect(parser.parse(Buffer.alloc(512 * 1024 + 1))).rejects.toThrow('KEY_INVALID');
-    const key = utils.generateKeyPairSync('ed25519');
+    const key = fixtureKey();
     const first = parser.parse(Buffer.from(key.private));
     await expect(parser.parse(Buffer.from(key.private))).rejects.toThrow('KEY_INVALID');
     await first;
   });
   it('rejects malformed or excessive bcrypt work before decryption', () => {
     expect(() => inspectPrivateKey(Buffer.from('not a key'))).toThrow();
-    const key = utils.generateKeyPairSync('ed25519', { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 });
+    const key = fixtureKey( { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 });
     const binary = Buffer.from(key.private.split('\n').slice(1, -2).join(''), 'base64');
     let offset = Buffer.byteLength('openssh-key-v1\0');
     for (let i = 0; i < 2; i++) { const size = binary.readUInt32BE(offset); offset += 4 + size; }

@@ -8,15 +8,25 @@ import { algorithms } from './algorithms';
 import { PrivateKeyParser } from './key-parser';
 import { identifyOS } from './os-release';
 import type { ControlAccess } from '../files/browser';
+import { AuxiliarySockets, type AuxiliaryRole, type AuxiliaryLease } from './auxiliary-sockets';
 
 interface RecordEntry {
-  snapshot: SessionSnapshot; client: Client; sftp: SFTPWrapper | null; input: ConnectInput; agent: SingleKeyAgent | null;
+  snapshot: SessionSnapshot; client: Client; sftp: SFTPWrapper | null; input: ConnectInput; agent: SingleKeyAgent | null;auxiliary:AuxiliarySockets|null;
 }
 export class SessionManager {
   private readonly entries = new Map<string, RecordEntry>();
   private readonly parser = new PrivateKeyParser();
   constructor(private readonly emit: (snapshot: SessionSnapshot) => void) {}
   snapshots(): SessionSnapshot[] { return [...this.entries.values()].map(entry => ({ ...entry.snapshot })); }
+  auxiliary(serverId:string,generation:number,role:AuxiliaryRole):AuxiliaryLease {
+    const entry=this.entries.get(serverId);
+    const check=() => {
+      if (!entry || this.entries.get(serverId) !== entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected') throw new Error('CONNECTION_LOST');
+      if (entry.snapshot.os !== 'supported' && !(entry.snapshot.os === 'unknown' && entry.snapshot.osConfirmed)) throw new Error(entry.snapshot.os === 'unknown' ? 'OS_UNKNOWN' : 'OS_UNSUPPORTED');
+    };
+    check();if (!entry) throw new Error('CONNECTION_LOST');
+    entry.auxiliary ??=new AuxiliarySockets(() => ({input:entry.input,agent:entry.agent,check}));return entry.auxiliary.open(role);
+  }
   readClient(serverId:string,generation:number):Client {
     const entry=this.entries.get(serverId);
     if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || entry.snapshot.sftp !== 'available') throw new Error('CONNECTION_LOST');return entry.client;
@@ -46,7 +56,7 @@ export class SessionManager {
     }
     const client = new Client();
     const verifier = new HostKeyVerifier(input.trustedHostKey === null ? null : Buffer.from(input.trustedHostKey, 'base64'));
-    const entry: RecordEntry = { snapshot: { serverId, generation, status: 'connecting', os: 'unknown', osConfirmed: false, sftp: 'unknown', initialPath: null, errorCode: null }, client, sftp: null, input, agent: null };
+    const entry: RecordEntry = { snapshot: { serverId, generation, status: 'connecting', os: 'unknown', osConfirmed: false, sftp: 'unknown', initialPath: null, errorCode: null }, client, sftp: null, input, agent: null,auxiliary:null };
     this.entries.set(serverId, entry); this.changed(entry, {});
     let method: Parameters<typeof oneShotAuthentication>[0];
     try {
@@ -55,6 +65,7 @@ export class SessionManager {
         const parsed = await this.parser.parse(Buffer.from(input.keyBytes), input.passphrase);
         if (this.entries.get(serverId) !== entry || entry.snapshot.status !== 'connecting') throw new Error('CONNECTION_LOST');
         entry.agent = new SingleKeyAgent(createPrivateKey(parsed.privatePEM), parsed.publicSSH);
+        input.keyBytes?.fill(0);delete input.keyBytes;delete input.passphrase;
         method = { type: 'agent', username: input.username, agent: entry.agent };
       } else {
         if (input.password === undefined) throw new Error('INPUT_INVALID');
@@ -133,6 +144,7 @@ export class SessionManager {
     this.changed(entry, { status: 'disconnecting' }); entry.client.destroy(); this.release(entry); this.changed(entry, { status: 'disconnected', errorCode: null });
   }
   private release(entry: RecordEntry): void {
+    entry.auxiliary?.closeAll();
     entry.agent?.dispose(); entry.agent = null; entry.sftp = null;
     if (entry.input.keyBytes) entry.input.keyBytes.fill(0);
     delete entry.input.password; delete entry.input.passphrase; delete entry.input.keyBytes;

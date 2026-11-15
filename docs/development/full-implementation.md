@@ -49,3 +49,13 @@ ssh2 1.17.0의 public sftp callback은 subsystem/INIT 완료를 기다리므로 
 main 소유 viewer/probe token, 창·서버·세대·epoch 바인딩, 동일 자원 창 재사용, renderer 소비 ACK와 격리 decode Worker를 연결했다. 텍스트는 가상 줄 표시·읽기 전용 복사를 제공하고 HTML/ANSI를 실행하지 않는다. 이미지는 헤더 제한 검사 뒤 createImageBitmap 한 번과 bitmaprenderer canvas로 표시하며 화면맞춤·25/50/100/200% 확대를 제공한다. 다시읽기 실패 시 이전 내용을 유지하고 연결 해제 후 캐시를 읽기 전용으로 남긴다. renderer를 잃으면 진행 읽기는 중단하고 명시적 다시읽기만 허용한다. 임의 파일의 선택창에 다운로드 연결은 D07에서 추가한다.
 
 96개 단위 검사·타입·build가 통과했다. 실제 Electron/SSH/SFTP fixture에서 텍스트, 위험 문자열, PNG signature, JPEG EXIF1–8의 치수와 모서리 픽셀, WebP, 잘못된 UTF8 거절과 수정 뒤 다시읽기, 3MiB 초과 PNG 스트리밍·표시를 확인했다. 읽기는 한64KiB 청크 내 서로 다른32KiB 두 구간만 병렬 요청하고 다음 청크는 소비 ACK 뒤 읽는다. evidence/d06-viewers에 실제 출력과 화면·소스 hash를 보존한다. 지원 OS/Ubuntu/OpenSSH/서명 또는 D06 전체 수용 통과 기록이 아니다. 다음 구현은 비동기 전송이다.
+
+## 비동기 전송 기반과 연결 경합 수정
+
+control 세대별 transfer/execution socket을 각각 하나로 제한하는 lease를 추가했다. 같은 role의 opening을 공유하고 closing 중에는 새 socket을 만들지 않으며 실제 close 뒤에만 자리를 비운다. 모든 socket에서 pinned host key와 one-shot 인증을 수행하고 원래 control 종료는 두 role을 닫는다. 보조 연결 종료는 control을 유지한다. 개인키 raw byte·passphrase는 worker 파싱 후 제거하며 현재 세션 signer만 재사용한다.
+
+기능 확인과 요청한 secret 저장 완료 전 resource token을 발급하지 않도록 수정했다. 저장 대기 중 disconnect 뒤 늦은 암호화 응답·connected 이벤트는 capability나 secret 저장을 되살리지 않는다. receipt 저장 fault는 trust 쓰기도 차단한다.
+
+전송 상태 전이, 최종화 intent 대기 전 취소 잠금, 최대100개 batch 예약, 전체2/서버1 슬롯, remote/local 경로 lock을 구현했다. 실제 byte 엔진은32KiB·최대16개 버퍼로 upload write/download read를 처리하고 short I/O·EOF·4GiB 초과 offset·64GiB 경계를 검사한다. source SHA256와 전량 read-back SHA256, 전송/검증 별도 counter 및 최근3초 속도 계산 기반을 추가했다. 이 기록은 아직 GUI로 전송을 시작할 수 있다는 뜻이 아니다. durable orchestration·실제 파일 adapter·선택/확인/진행 UI를 다음 단위에서 연결한다.
+
+112개 단위 검사·타입·build와 실제 Electron session/file/viewer/isolation 회귀 검사를 통과했다. 회귀 검사에서 Playwright1.65.1의 waitForFunction에 async predicate를 전달하면 반환 Promise 자체를 참으로 처리해 조기 종료하는 것을 설치된 소스에서 확인했다. expect.poll이 bridge 결과를 await하도록 수정하고 관련 GUI 검사를 다시 수행했다. ssh2의 test용 Ed25519 생성기가 DER bitstring의 실제 선행0 byte도 제거해 드물게 잘못된 키를 만드는 별도 fixture 문제를 확인했다. test generator 결과의32byte 공개키 길이를 검사해 잘못된 fixture를 사용하지 않도록 했으며 제품의 사용자 키 처리·인증 재시도 정책은 변경하지 않았다. 실제 출력은 evidence/d07-core에 보존했다.
