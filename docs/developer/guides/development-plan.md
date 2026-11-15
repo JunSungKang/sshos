@@ -33,7 +33,7 @@ Resolve task outputs inside the authorized checkout before writing. Developer to
 | Probe | Next request 5 seconds after prior completion, request deadline 5 seconds, freshness 15 seconds, at most 1 pending per server |
 | Progress events | At most 4 Hz per task, terminal event immediately; ordinary UI reflection within 1 second |
 | Directory listing | 10,000 entries and at most 10 MiB serialized data; explicitly mark truncation |
-| Terminal receipts | Retain at startup for at most 30 days and the newest 1,000; preserve unresolved/live/backup-uncertain records |
+| Records in terminal states | Retain at startup for at most 30 days and the newest 1,000; preserve unresolved/live/backup-uncertain records |
 | Unresolved records | 100; block new changing operations beyond the limit and request record review |
 
 KiB = 1024 bytes; MiB = 1024²; GiB = 1024³. Use monotonic clocks for deadlines/rates and UTC wall time only for displayed record timestamps.
@@ -61,6 +61,29 @@ Before signing, apply and re-read six fuses: RunAsNode=false, EnableNodeOptionsE
 Validate live main-frame sender and `app://ui/` origin before payloads. Ordinary renderer requests are at most 64 KiB with strict field/array bounds, 30 requests/second and burst 60 per frame. Native dialogs have one shared per-frame gate. Cancellation/disconnect retain cleanup priority/capacity. Viewer/output/PTY streams use their own budgets. Dragging stays local rather than emitting remote calls per pointer update.
 
 Named API groups cover profiles, trust, sessions, file capabilities, transfers, task records, settings/diagnostics/licenses, desktop metadata, viewers, confirmed GUI execution and PTY. IDs cannot be exchanged between resource kinds. Messages bind serverId/generation/epoch/resource/request/sequence; stale, duplicate or foreign events never retarget current work. Timeout does not prove a dispatched request was never executed. A repeat requires a new explicit request and ID, not implicit replay.
+
+### Permitted Operations and Capability Binding
+
+The v6 operation contract permits only these named groups and roles. Concrete exposed bridge methods and strict schemas are discoverable in [preload](../../../src/preload/index.ts) and shared contracts; they do not grant a generic transport or local OS API.
+
+| Group | Permitted operations |
+| --- | --- |
+| profile | list, create, update, delete; separate strict saveSecret/transient-auth schemas |
+| trust | approveObservedKey(challengeId), rejectObservedKey, removeTrust(endpoint); never directly approve a changed key |
+| session | connect(serverId), disconnect(serverId), confirmUnknownOS(serverId,generation) |
+| file | list(directoryToken), mkdir(directoryToken,name), rename(entryToken,newName), delete(entryToken,confirmationToken) |
+| transfer | pickUploadFiles, pickDownloadDirectory, enqueueUpload(fileTokens,directoryToken), enqueueDownload(entryTokens,directoryToken), cancel(taskId) |
+| task | list, inspectLocation(taskId), acknowledgeUnknown(taskId), discardQueued(taskId), forgetRecord(taskId) |
+| settings | get, allowlisted update, exportRedactedDiagnostics, showLicenses |
+| desktop | registerWindow(kind,resourceToken), updateWindowLayout(windowId,bounds,mode), closeWindow(windowId), getWindowSnapshot; never retarget SSH through a window payload |
+| viewer | open(entryToken,kind), cancel(viewerId), reread(viewerId); at most 4 active with token revalidation |
+| execution | preview(entryToken,cwdToken,mode,argv), start(confirmationToken), requestStop(executionId), closeOutputWindow(executionId), attachOutput(executionId) |
+| terminal | open(sessionToken), input(terminalToken,sequence,bytes), paste(confirmationToken), resize(terminalToken,cols,rows), close(terminalToken,confirmationToken) |
+| lifecycle | getSnapshot, subscribe, requestCloseDecision |
+
+Main issues session/terminal/viewer tokens bound to serverId, sessionGeneration, backendEpoch, resourceId and allowed action. Entry/directory tokens are main-owned UUIDs bound to `{serverId,generation,canonicalParent,rawName,type,listedAt}`. Reconnect invalidates them; fabricated IDs, mixed-window tokens, renderer-provided paths or retargeted server IDs grant no authority. Main and worker recheck lstat/parent before mutation. A preview confirmation binds server/path/kind/action, expires after 60 seconds and is consumed once; it cannot authorize deletion of an existing destination.
+
+Main→worker authentication messages are at most 1 MiB; other requests at most 64 KiB. Responses/events are at most 256 KiB. Listings use batches of at most 256 entries while also satisfying the byte cap; task lists use 100-row pages and never embed complete receipt bodies in generic snapshots. Envelopes include requestId, backendEpoch, serverId, sessionGeneration, action and validatedPayload. Events carry the same identity plus monotonic sequence. Discard wrong epoch/generation, repair sequence gaps from main snapshots, and return the same result or in-progress state for duplicate requestIds without a second side effect. In-memory deduplication never authorizes replay after process restart.
 
 ## 5. Profiles, Trust and Authentication
 
@@ -266,6 +289,8 @@ The user later directed independent implementation to continue while native chec
 Required package scripts are typecheck, test:unit, test:integration, test:e2e, test:security, test:performance, package:win and package:mac, each executing real checks. Isolated loopback fixtures are local verification, not Ubuntu/OpenSSH certification. TypeScript remains strict with noUncheckedIndexedAccess and exactOptionalPropertyTypes. Covered safety/state/path/IPC/trust/finalization/persistence/probe/window/exec/viewer modules require per-file statement≥90% and branch≥85%, plus meaningful fault cases. Do not lower thresholds, exclude failing modules or replace native/manual criteria with mocks.
 
 ## 16. Packaging, Licensing and Repository Workflow
+
+The original planned public-distribution names are `sshOS-0.1.0-win-x64.exe`, `sshOS-0.1.0-mac-arm64.zip` and `sshOS-0.1.0-mac-x64.zip`. Each mac ZIP has one top-level `sshOS.app`. These public-release names remain the Q002 contract; the existing development builder names documented in Packaging and the historical artifact manifest are distinct and do not pass that release criterion. Windows uses portable target with requestExecutionLevel=user. Temporary extraction may leave files after forced termination; this is separate from functional userData.
 
 Portable Windows execution is ordinary-user, no installer/admin requirement. macOS ZIP contains the application bundle. Historical planned release names and current builder development names differ; the actual report/manifest is authoritative for an artifact's exact filename. Public distributions require valid publisher signatures and macOS notarization/stapling; absent credentials mean development-only artifacts. Rosetta does not replace native x64 acceptance. Do not require an extra runtime or promise every OS warning vanishes.
 

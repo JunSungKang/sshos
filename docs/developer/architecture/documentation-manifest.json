@@ -28,13 +28,13 @@
     "docs/developer/architecture/system-architecture.md": "3838d877ff6fbdfee1fb6bd829f20a7e164b8a00272a2ff82727230617dd36a0",
     "docs/developer/guides/dependency-review.md": "75fb1d282f14cb1e01adf31ef469af5655fe1060630455f0c3233c9f6190a95c",
     "docs/developer/guides/development-handoff.md": "271447ff7ef47cf867af7322d308098fa597f418e93461fabdddef4ff572de3e",
-    "docs/developer/guides/development-plan.md": "fcafa046195de356dcc396368ec8c699be70bf111d77a2b9cc5739c8e1fe322d",
+    "docs/developer/guides/development-plan.md": "c9c29cf8e6013ffdc45ad7985a0f1e74a9ce1e0afefbabcc55d7121e3cc3ff5c",
     "docs/developer/guides/documentation-maintenance.md": "bc7cd18db1bfa6bc5f4f532fecb22d008b25ded58c9c8e4b04c7522fca89a8d1",
     "docs/developer/guides/installation.md": "22210608842035b98e41e8b1182119f77a604062d2ba4e76525137c72cccf7ef",
     "docs/developer/guides/native-validation.md": "b07fd3d953c31d16efa1d15ddd0312ee34a63e9ba82d32daa113c9ee5e793622",
     "docs/developer/guides/operation.md": "86d98d3be89e3cc20f5f5a5ae266e5bce912a511a40d87554303bc1898561db4",
     "docs/developer/guides/packaging.md": "9fc1054fa63a54c128e5f82e546c29f8036caea28345f842d94a6c9688c7b980",
-    "docs/developer/guides/product-plan.md": "ff758c80ae7fa6c07398f3502244bbc155f5d124d144e5516c016006f8ca829f",
+    "docs/developer/guides/product-plan.md": "1f749addb9552ae0a069ec0527400e3bc07916f4d9e762d683d9590d3e0bff38",
     "docs/developer/guides/quality-security-checklist.md": "a58e134fefd9a40d56f827b61ad2897187752c19c44f5ea98aeb6d8c3e7c8373",
     "docs/developer/guides/release-readiness.md": "fe25db93ea24ce10fb6507448ec2ec4a29ee8001b947c7521a287d529bd7cc5f",
     "docs/developer/guides/research-and-positioning.md": "0e7656e0737cdb0c6aeecf1698797b63283ce6c77c0d539897b9606069b1e201",
@@ -49,7 +49,7 @@
     "docs/developer/architecture/contract-index.json": "de8a07e1e49e5dda8ff7d0b248ebeef44df9a4222047fc29d40c71246242d61c",
     "docs/developer/architecture/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
     "docs/developer/architecture/history/archive-manifest.json": "9b14b19bb557926eb0015d88dc20252b86e0d0831ecc76cdb647b9db092876dd",
-    "scripts/validate-docs.py": "4e6988b11ee23b4b1031e76e1e73a76c1a2312014e95bfb5dcba8c745074dce8"
+    "scripts/validate-docs.py": "4a0db41dc403435fb315a57ac5e117319f875afc7662ae2c8bac017219d75a2a"
   },
   "migration": {
     "docs/01-product-plan.md": "docs/developer/guides/product-plan.md",

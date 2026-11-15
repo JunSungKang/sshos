@@ -49,7 +49,7 @@ Conflicts allow new name/skip/cancel. Full SHA256 read-back, exclusive final-nam
 
 ## 6 SSH Response and Trust
 
-The top-right metric measures `/bin/true` from actual exec through observed exit 0+close, including server/network work. It is not ping/pure RTT/health scoring and does not restrict user exec/PTY. Display measuring/delayed/unavailable/waiting/paused/disconnected as appropriate. Deadline5 s, next after 5 s, freshness 15 s; pause while app inactive/minimized/suspended. A probe failure alone does not stop files/terminals.
+The top-right metric measures `/bin/true` from actual exec through observed exit 0+close, including server/network work. It is not ping/pure RTT/health scoring and does not restrict user exec/PTY. Display measuring/delayed/unavailable/waiting/paused/disconnected as appropriate. Deadline5 s, next after 5 s, freshness 15 s; pause while app inactive/minimized/suspended. A probe failure alone does not stop files/terminals. Display a measured value below 1 ms as `<1 ms`. Disconnection removes the number rather than retaining a prior sample.
 
 Verify every socket's host blob, block changed keys, require persisted approval before auth. Secret saving defaults off; selected secrets use OS encryption with no plaintext fallback. Local endpoint/path receipts are not anonymous. No automatic privilege elevation. User commands and external writers bypass GUI path locks and may themselves write files or use the network.
 
