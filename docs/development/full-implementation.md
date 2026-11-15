@@ -59,3 +59,11 @@ control 세대별 transfer/execution socket을 각각 하나로 제한하는 lea
 전송 상태 전이, 최종화 intent 대기 전 취소 잠금, 최대100개 batch 예약, 전체2/서버1 슬롯, remote/local 경로 lock을 구현했다. 실제 byte 엔진은32KiB·최대16개 버퍼로 upload write/download read를 처리하고 short I/O·EOF·4GiB 초과 offset·64GiB 경계를 검사한다. source SHA256와 전량 read-back SHA256, 전송/검증 별도 counter 및 최근3초 속도 계산 기반을 추가했다. 이 기록은 아직 GUI로 전송을 시작할 수 있다는 뜻이 아니다. durable orchestration·실제 파일 adapter·선택/확인/진행 UI를 다음 단위에서 연결한다.
 
 112개 단위 검사·타입·build와 실제 Electron session/file/viewer/isolation 회귀 검사를 통과했다. 회귀 검사에서 Playwright1.65.1의 waitForFunction에 async predicate를 전달하면 반환 Promise 자체를 참으로 처리해 조기 종료하는 것을 설치된 소스에서 확인했다. expect.poll이 bridge 결과를 await하도록 수정하고 관련 GUI 검사를 다시 수행했다. ssh2의 test용 Ed25519 생성기가 DER bitstring의 실제 선행0 byte도 제거해 드물게 잘못된 키를 만드는 별도 fixture 문제를 확인했다. test generator 결과의32byte 공개키 길이를 검사해 잘못된 fixture를 사용하지 않도록 했으며 제품의 사용자 키 처리·인증 재시도 정책은 변경하지 않았다. 실제 출력은 evidence/d07-core에 보존했다.
+
+## 전송 확정 절차와 영수증 복구 구현
+
+전송 runner는 temp intent 저장→배타 생성 ACK→created 저장→byte 전송·원본 최종 stat·handle close→temp 전체 read-back→finalize_intent_pending 취소 잠금→durable finalizing/dispatchAllowed 저장 ACK→exclusive link→destination 확인 기록→temp 제거→완료 기록 순서를 따른다. 같은 task를 다시 실행하지 않으며 취소·30초 무진행·기록 오류·변경 ACK 불명·늦은 ACK 관측을 분리한다. 실제 remote/local I/O adapter는 아직 다음 구현 대상이다. runner 검사는 fault-injected port에 대한 검사이며 실제 대용량 전송 검증을 대신하지 않는다.
+
+영수증은 file_mutation/file_transfer strict union과 불변 서버·경로·초기 stat을 사용한다. 잘못된 pending의 복원은 불명으로 분류하되 새 pending을 디스크에 저장하지 않는다. completed+cleanup needed/unknown도 미해결 보관·확인 대상이며 자동 prune과 확인 전 삭제를 막는다. backup 복구로 새 불확실성이 생기면 과거 acknowledgedAt을 새 승인으로 사용하지 않는다. 이미 알려진 result_unknown은 재실행 시 원래 recoveredFromPhase를 보존한다. 작업 화면은 두 종류의 결과·byte·정리 상태를 구분한다.
+
+추가 점검에서 host trust 저장 대기 중 disconnect와 connect가 경합할 수 있는 구간도 발견해 pending operation으로 예약하고 저장 후 세대를 다시 검사했다. 126개 단위 검사·타입/build·실제 Electron 연결/파일 작업 회귀 검사가 통과했다. evidence/d07-orchestration에 출력과 source hash를 저장했다. 지원 OS/실제 Ubuntu/SFTP 전송 수용 검사 완료를 뜻하지 않는다.

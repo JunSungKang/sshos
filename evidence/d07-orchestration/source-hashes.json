@@ -1,0 +1,16 @@
+{
+  "src/main/connections.ts": "170e86b7d43a29f19e44537268b857486444664bb7cc0e316dd10107f22f81e4",
+  "src/main/mutations.ts": "bb160c5e1bf58cf9b3b536c0c988ea9146447d0b6ad2686361e1c204367c43a3",
+  "src/main/persistence/receipts.ts": "1a7d9be997824be5873af532ca16d25f8b14efe525e37c616349bf15b67b8167",
+  "src/renderer/TaskManager.tsx": "7faf77a425ccc69fc5bfbea7bde1fba4888f3eb69d6eff8f106101e4063285bb",
+  "src/shared/contracts.ts": "6a22074805f5342f1445eb8102b84679f4420bda89ebcbe5a7c946dfa9148dd0",
+  "src/shared/mutations.ts": "5b17a9e7b8bf65f59c5e4fc8e175e19853ed7ecea19a0fb8f244c7099479f607",
+  "src/shared/receipts.ts": "466955609cfe628022dbafd5e2f1de1d7f7ab676633290411d0c10d87a9afeb9",
+  "src/shared/transfers.ts": "bcc1cc884b0e86f4b5f5bde9cda165c54445fdf7485d2bd3b4fe0f7526e89297",
+  "src/worker/transfers/claims.ts": "75db238c6f6533b2d93588e69360a34453a1b97424ace4678b397adefdb501c7",
+  "src/worker/transfers/runner.ts": "5cd9af8c5a32ceed3a8e7c41697b9c909930a9c6e5e73ad430012c4b3c116a07",
+  "tests/fixtures/transfers.ts": "f6c4dde6517316c77b6a309dfd8fe7de9e928d035993ff2105bfe1c9bda1530c",
+  "tests/unit/connections.test.ts": "58827ab6056e8194c02bc2e7a3d9c7e12c28ab8ef49ca3349e1180d732927652",
+  "tests/unit/receipts.test.ts": "f5dad912ad94bf9cf0e194cd306363ede5b719ebe0b2060b3ce8f528857aa325",
+  "tests/unit/transfer-runner.test.ts": "f8b234fd811e1c9e178850f2c08d459fb392bfeecbc11cfefeda5793d89c5b33"
+}

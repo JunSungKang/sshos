@@ -1,18 +1,19 @@
 import { mkdir, lstat, opendir, unlink, realpath } from 'node:fs/promises';
 import { resolve, relative, isAbsolute, sep } from 'node:path';
 import { AtomicJSONStore } from './store';
-import { mutationReceiptSchema, type MutationReceipt } from '../../shared/mutations';
+import { type MutationReceipt } from '../../shared/mutations';
+import { fileReceiptSchema,receiptUnresolved as unresolved,receiptTerminal as terminal,type FileReceipt } from '../../shared/receipts';
+import { recoverTransfer } from '../../shared/transfers';
 import { claimsConflict, type PathClaim } from '../../worker/files/path-locks';
+import { transferClaims } from '../../worker/transfers/claims';
 
-const unresolved = (receipt:MutationReceipt) => ['result_unknown','partial'].includes(receipt.phase) && receipt.acknowledgedAt === null;
-const terminal = (receipt:MutationReceipt) => ['completed','failed','partial','result_unknown'].includes(receipt.phase);
 export function recoverMutation(receipt:MutationReceipt,backup:boolean):MutationReceipt {
-  if (backup || ['dispatched'].includes(receipt.phase)) return {...receipt,phase:'result_unknown',errorCode:'RESULT_UNKNOWN',recoveryUncertain:backup,recoveredFromPhase:receipt.phase};
+  if (backup || ['dispatched'].includes(receipt.phase)) return {...receipt,phase:'result_unknown',errorCode:'RESULT_UNKNOWN',recoveryUncertain:backup,recoveredFromPhase:receipt.phase,...(backup ? {acknowledgedAt:null} : {})};
   if (receipt.phase === 'prepared') return {...receipt,phase:'failed',errorCode:'CONNECTION_LOST',recoveredFromPhase:'prepared'};
   return receipt;
 }
 export class ReceiptRepository {
-  private readonly stores=new Map<string,AtomicJSONStore<MutationReceipt>>();
+  private readonly stores=new Map<string,AtomicJSONStore<FileReceipt>>();
   private readonly damaged=new Set<string>();
   private fault=false;
   private tail:Promise<void>=Promise.resolve();
@@ -36,26 +37,31 @@ export class ReceiptRepository {
       let loaded:Awaited<ReturnType<typeof store.load>>;
       try { loaded=await store.load(); if (loaded.value.taskId !== id) throw new Error('STORAGE_FAILED'); }
       catch { repo.damaged.add(id); continue; }
-      const recovered=recoverMutation(loaded.value,loaded.recovered); repo.stores.set(id,store);
+      const recovered=loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : recoverTransfer(loaded.value,loaded.recovered); repo.stores.set(id,store);
       if (recovered !== loaded.value) { try { await store.save(recovered); } catch { repo.fault=true; } }
     }
     await repo.prune(); return repo;
   }
-  private newStore(id:string):AtomicJSONStore<MutationReceipt> {
-    return new AtomicJSONStore(resolve(this.root,`${id}.json`),mutationReceiptSchema,65536);
+  private newStore(id:string):AtomicJSONStore<FileReceipt> {
+    return new AtomicJSONStore(resolve(this.root,`${id}.json`),fileReceiptSchema,65536);
   }
-  snapshots():MutationReceipt[] { return [...this.stores.values()].map(store => store.snapshot()).sort((a,b) => b.createdAt.localeCompare(a.createdAt) || a.taskId.localeCompare(b.taskId)); }
+  snapshots():FileReceipt[] { return [...this.stores.values()].map(store => store.snapshot()).sort((a,b) => b.createdAt.localeCompare(a.createdAt) || a.taskId.localeCompare(b.taskId)); }
   damagedIds():string[] { return [...this.damaged]; }
-  checkNew(serverId:string,claims:PathClaim[]):void {
+  checkNew(serverId:string,claims:PathClaim[],localClaims:PathClaim[]=[]):void {
     if (this.faulted) throw new Error('STORAGE_FAILED');
     const pending=this.snapshots().filter(unresolved);
     if (pending.length>=100) throw new Error('UNRESOLVED_LIMIT');
-    if (pending.some(row => row.serverId === serverId && claimsConflict(claims,[...new Set([row.source,row.destination].filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
+    if (pending.some(row => row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
+    if (localClaims.length && pending.some(row => row.kind === 'file_transfer' && claimsConflict(localClaims,transferClaims(row).local))) throw new Error('RESULT_UNKNOWN');
   }
-  async save(receipt:MutationReceipt):Promise<void> {
+  async save(receipt:FileReceipt):Promise<void> {
     const operation=this.tail.then(async () => {
       if (this.faulted) throw new Error('STORAGE_FAILED');
-      const parsed=mutationReceiptSchema.parse(receipt); let store=this.stores.get(receipt.taskId);
+      const parsed=fileReceiptSchema.parse(receipt);if (parsed.kind === 'file_transfer' && parsed.phase === 'finalize_intent_pending') throw new Error('INPUT_INVALID');let store=this.stores.get(receipt.taskId);
+      if (store) {
+        const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt];
+        if (JSON.stringify(immutable(previous)) !== JSON.stringify(immutable(parsed))) throw new Error('INPUT_INVALID');
+      }
       try {
         if (!store) { if (this.damaged.has(receipt.taskId)) throw new Error('STORAGE_FAILED'); store=this.newStore(receipt.taskId); await store.initialize(parsed); this.stores.set(receipt.taskId,store); }
         else await store.save(parsed);

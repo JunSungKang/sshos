@@ -128,8 +128,10 @@ export class ConnectionController {
     const pending = this.pending.get(challengeId);
     if (!pending || performance.now() > pending.deadline || this.generations.get(pending.profile.id) !== pending.challenge.generation) { this.reject(challengeId); throw new Error('HOST_TRUST_REQUIRED'); }
     this.pending.delete(challengeId); clearTimeout(pending.timer);
+    this.credentialOperations.set(pending.profile.id,pending.challenge.generation);
     try {
       await this.repository().trust(pending.challenge.endpoint, Buffer.from(pending.publicKey, 'base64'), pending.challenge.fingerprint);
+      this.requireLiveOperation(pending.profile.id,pending.challenge.generation);
       const generation = this.nextGeneration(pending.profile.id);
       this.credentialOperations.set(pending.profile.id,generation);this.readyGenerations.delete(pending.profile.id);this.closingGenerations.delete(pending.profile.id);
       pending.input.trustedHostKey = pending.publicKey;

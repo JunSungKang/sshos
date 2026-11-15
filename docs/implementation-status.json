@@ -53,14 +53,18 @@
     "One per-role transfer/execution socket lease per control generation, shared opening promise and per-socket pinned host authentication with isolated close",
     "Connection resource tokens withheld until inspection and requested credential persistence finish; disconnect invalidates pending secret updates and stale connected events",
     "Transfer state machine, all-or-nothing queue reservations, two global/one per-server slots and shared remote/local path locks",
-    "32KiB/16-buffer bounded transfer copy and SHA256 readback kernels with short read/write handling and safe offsets through64GiB"
+    "32KiB/16-buffer bounded transfer copy and SHA256 readback kernels with short read/write handling and safe offsets through64GiB",
+    "Durable transfer orchestrator orders temp intent/created ACK, bounded copy/hash, complete readback, finalization intent ACK, exclusive link, destination confirmation and separate cleanup record",
+    "Cancellation wins before finalization or is rejected throughout pending intent; unknown ACKs and late observations never promote terminal tasks to completed",
+    "Discriminated mutation/transfer receipt schema, immutable task identity, conservative recovery, local/remote unresolved path restrictions and cleanup-aware retention/task detail",
+    "Host trust approval reserves the pending authentication operation across disk writes, preventing authentication after a concurrent disconnect"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 112,
-      "evidence": "evidence/d07-core/test-unit.txt"
+      "tests": 126,
+      "evidence": "evidence/d07-orchestration/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -199,14 +203,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Wire transfer receipt persistence, I/O adapters and cancellation/finalization orchestration, then native selections and background GUI progress. Continue D08-D13 and outstanding lifecycle integration.",
+  "next_action": "Implement actual local/SFTP transfer adapters, reverse worker-to-main durable writer messages and native selection/capability previews, then background transfer GUI. Continue remaining D08-D13 and lifecycle integration.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-core",
+  "latest_evidence_directory": "evidence/d07-orchestration",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 socket/queue/state/bounded byte-engine core locally tested; durable transfer orchestration and GUI enqueue/progress remain",
+    "current_stage": "D07 durable orchestrator and receipt recovery tested with fault-injected ports; actual filesystem/SFTP adapters and enqueue/progress UI remain",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

@@ -3,7 +3,8 @@ import type { ProfileDraft, ProfileView } from './models';
 import type { SessionCredentials, SessionView, HostChallenge } from './session-contracts';
 import type { WindowKind, WindowModel } from './windows';
 import type { DirectoryPage } from './files';
-import type { MutationPreview, MutationReceipt, TaskPage, RecordActionPreview } from './mutations';
+import type { MutationPreview, TaskPage, RecordActionPreview } from './mutations';
+import type { FileReceipt } from './receipts';
 import type { ViewerFrame, ViewerDescriptor } from './viewers/reader';
 
 export const runtimeSnapshotSchema = z.object({
@@ -23,7 +24,7 @@ export const workerEventSchema = z.object({
 export interface DesktopBridge {
   viewer:{probe(entryToken:string):Promise<{probeToken:string;viewerId:string;readGeneration:number}>;next(token:string,readGeneration:number,sequence:number):Promise<ViewerFrame>;releaseProbe(token:string):Promise<void>;open(entryToken:string,kind:'text'|'image'):Promise<WindowModel>;get(windowId:string):Promise<ViewerDescriptor>;reread(viewerToken:string):Promise<ViewerDescriptor>;stopRead(token:string,readGeneration:number):Promise<void>};
   file: { open(windowId: string): Promise<DirectoryPage>; list(directoryToken: string): Promise<DirectoryPage>; enter(entryToken: string): Promise<DirectoryPage>; page(pageToken: string, offset: number): Promise<DirectoryPage>; previewMutation(input:{operation:'mkdir'|'delete'|'rename';targetToken:string;name?:string}):Promise<MutationPreview>; startMutation(confirmationToken:string):Promise<string> };
-  task: {list(offset:number):Promise<TaskPage>;inspect(id:string):Promise<MutationReceipt & {recordError?:boolean}>;previewRecordAction(id:string,action:'acknowledge'|'forget'):Promise<RecordActionPreview>;applyRecordAction(confirmationToken:string):Promise<void>};
+  task: {list(offset:number):Promise<TaskPage>;inspect(id:string):Promise<FileReceipt & {recordError?:boolean}>;previewRecordAction(id:string,action:'acknowledge'|'forget'):Promise<RecordActionPreview>;applyRecordAction(confirmationToken:string):Promise<void>};
   lifecycle: { getSnapshot(): Promise<RuntimeSnapshot> };
   profile: {
     list(): Promise<ProfileView[]>;
