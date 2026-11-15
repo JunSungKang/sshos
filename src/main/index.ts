@@ -17,6 +17,9 @@ import { MainReceiptChannel } from './receipt-channel';
 import { NativeDialogGate } from './native-dialogs';
 import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
+import { TransferSelections } from './transfer-selections';
+import { TransferPreviews } from './transfer-previews';
+import { TransferController } from './transfers';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
@@ -92,17 +95,21 @@ async function main(): Promise<void> {
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
   const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted),message => worker.postMessage(message));
-  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel);
+  let transfers:TransferController|null=null;
+  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
   const viewers=new ViewerController(files,connections,desktop,gateway);
-  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted));
+  const selections=new TransferSelections(dialogGate,() => win);
+  const transferPreviews=new TransferPreviews(files,connections,gateway,selections,() => {if (!repository || repository.store.faulted || !receipts || receipts.faulted) throw new Error('STORAGE_FAILED');});
+  transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted),() => receiptChannel.settled());
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted),id => transfers!.isActive(id),async row => {if (row.kind === 'file_transfer') await transfers!.acknowledge(row);},() => transfers!.overlays(),id => transfers!.taskState(id));
   worker.on('message', (message: unknown) => {
     const parsed = workerEventSchema.safeParse(message);
     if (parsed.success && parsed.data.backendEpoch === epoch) engine = 'ready';
   });
-  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped(); });
+  worker.on('exit', () => { engine = 'stopped'; connections?.engineStopped();void transfers?.engineStopped(); });
   const budget = new RequestBudget();
   const viewerDataBudget=new RequestBudget(undefined,32,128);
   const validateSender = (event: Electron.IpcMainInvokeEvent,requestBudget=budget) => {
@@ -160,6 +167,13 @@ async function main(): Promise<void> {
       } catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }
+  for (const action of ['transfer:pickUploadFiles','transfer:pickDownloadDirectory','transfer:previewUpload','transfer:previewDownload','transfer:getPreview','transfer:updatePreview','transfer:releasePreview','transfer:start','transfer:cancel','transfer:shelf']) {
+    ipcMain.handle(action,async (event,payload:unknown) => {
+      validateSender(event);
+      try {if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>65536) throw new Error('INPUT_INVALID');return await transfers!.handle(action,payload);}
+      catch (error) {throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INPUT_INVALID');}
+    });
+  }
   for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
     ipcMain.handle(action,async (event,payload:unknown) => {
       validateSender(event,action === 'viewer:next' ? viewerDataBudget : budget);
@@ -186,9 +200,9 @@ async function main(): Promise<void> {
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
     let loaded=false;
-    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) viewers.interruptRenderer();});
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {viewers.interruptRenderer();transfers?.invalidateRenderer();}});
     win.webContents.on('did-finish-load',() => {loaded=true;});
-    win.webContents.on('render-process-gone',() => viewers.interruptRenderer());
+    win.webContents.on('render-process-gone',() => {viewers.interruptRenderer();transfers?.invalidateRenderer();});
     win.on('ready-to-show', () => win?.show());
     win.on('closed', () => { win = null; });
     void win.loadURL('app://ui/');

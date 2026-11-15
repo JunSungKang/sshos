@@ -16,6 +16,9 @@ export class ReceiptRepository {
   private readonly stores=new Map<string,AtomicJSONStore<FileReceipt>>();
   private readonly damaged=new Set<string>();
   private fault=false;
+  private version=0;
+  get revision():number {return this.version;}
+  get(id:string):FileReceipt|undefined {return this.stores.get(id)?.snapshot();}
   private tail:Promise<void>=Promise.resolve();
   private constructor(readonly root:string) {}
   get faulted():boolean { return this.fault || [...this.stores.values()].some(store => store.faulted); }
@@ -67,13 +70,14 @@ export class ReceiptRepository {
       try {
         if (!store) { if (this.damaged.has(receipt.taskId)) throw new Error('STORAGE_FAILED'); store=this.newStore(receipt.taskId); await store.initialize(parsed); this.stores.set(receipt.taskId,store); }
         else await store.save(parsed);
+        this.version++;
       } catch { this.fault=true; throw new Error('STORAGE_FAILED'); }
     });
     this.tail=operation.catch(() => {}); return operation;
   }
   private async remove(id:string):Promise<void> {
     for (const suffix of ['.json','.json.bak']) { try { await unlink(resolve(this.root,id+suffix)); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; } }
-    this.stores.delete(id); this.damaged.delete(id);
+    this.stores.delete(id); this.damaged.delete(id);this.version++;
   }
   async acknowledge(id:string):Promise<void> {
     const store=this.stores.get(id); if (!store || !unresolved(store.snapshot())) throw new Error('INPUT_INVALID');

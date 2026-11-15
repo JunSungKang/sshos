@@ -14,7 +14,7 @@ export class MainReceiptChannel {
     try {
       if (!repo || repo.faulted || !this.stateHealthy() || Buffer.byteLength(JSON.stringify(request.receipt))>65536) throw new Error('STORAGE_FAILED');
       // Main must have durably accepted this exact resource before worker writes.
-      const existing=repo.snapshots().find(row => row.taskId === request.receipt.taskId);
+      const existing=repo.get(request.receipt.taskId);
       if (!existing || existing.backendEpoch !== this.epoch || existing.serverId !== request.serverId || existing.generation !== request.generation || request.receipt.backendEpoch !== this.epoch || request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation) throw new Error('INPUT_INVALID');
       await repo.save(request.receipt);if (repo.faulted || !this.stateHealthy()) throw new Error('STORAGE_FAILED');ok=true;
     } catch {repo?.markFault();}

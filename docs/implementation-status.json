@@ -71,14 +71,17 @@
     "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation",
     "Shared per-frame native dialog gate used by profile key selection and the transfer selection service",
     "Main-only native upload/directory capabilities with120s expiry, immutable filesystem identity, explicit unsupported rows, whole101-file rejection and renderer-generation invalidation",
-    "Main-owned readonly transfer previews with bounded pages, explicit conflict/unsupported rows, editable destinations, selection-bound single-use confirmation and native path privacy"
+    "Main-owned readonly transfer previews with bounded pages, explicit conflict/unsupported rows, editable destinations, selection-bound single-use confirmation and native path privacy",
+    "Restricted transfer bridge, whole-batch durable acceptance, file explorer multi-selection and explicit upload/download conflict confirmation",
+    "Persistent2-slot transfer shelf with separate transfer/readback byte progress and speed, task cancellation and redacted native-path task details",
+    "Accepted transfers survive explorer closure and renderer reload; sequence-aware cross-server snapshot resync avoids stale progress and reconciles lost terminal events"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 162,
-      "evidence": "evidence/d07-previews/test-unit.txt"
+      "tests": 169,
+      "evidence": "evidence/d07-transfer-ui/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -226,6 +229,23 @@
         "control SSH survives both transfers"
       ],
       "limitation": "Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested."
+    },
+    "actual_transfer_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "GUI native-selection adapter returns only names and tokens",
+        "readonly conflict preview makes no temp or auxiliary authentication",
+        "explicit destination rename rotates confirmation",
+        "whole-batch upload accepted through restricted preload",
+        "4MiB hash/readback upload continues after explorer close and renderer reload",
+        "always-visible transfer shelf and persisted task detail",
+        "Ctrl/Cmd two-file selection and GUI download",
+        "full byte/hash verification and no-overwrite preservation",
+        "one fresh authenticated transfer socket per task and control survives"
+      ],
+      "limitation": "OS native dialogs replaced in this test process; current-host loopback fixture only, target OS/Ubuntu/OpenSSH and signed production packages remain untested."
     }
   },
   "remaining_D01": [
@@ -242,15 +262,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Connect confirmed transfer batches to main enqueue controller and native selection bridge, then renderer multi-selection/dialog, persistent shelf and task cancel. Storage reset/worker lifecycle integration remains outstanding.",
+  "next_action": "Integrate explicit storage-retry quiescence/writer reset and serialize control metadata operations, then D08 execution and D09 PTY; continue lifecycle/security/performance/packaging work.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-previews",
+  "latest_evidence_directory": "evidence/d07-transfer-ui",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 backend pipeline and native selection service locally verified; main preview/confirmation/enqueue API and renderer upload/download/shelf remain",
-    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
+    "current_stage": "D07 upload/download GUI and durable pipeline locally verified; storage retry/lifecycle integration remains",
+    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, readonly text/image windows and asynchronous SFTP upload/download with persistent shelf. Exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {

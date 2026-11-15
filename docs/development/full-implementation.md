@@ -101,3 +101,11 @@ main 소유 파일/폴더 선택 서비스는 실제 경로·stat·canonical par
 main 소유 preview는 native 선택 권한과 파일 창·서버·세대·epoch를 검증하고 control SFTP의 읽기 전용 stat으로 업로드 충돌과 다운로드 원본을 검사한다. 원격 변경·transfer socket 생성은 확인 단계에서 수행하지 않는다. 미지원·충돌 행도 목록에 남기며 이름 수정과 선택 변경은 기존 확인 token을 폐기한다. 유효하고 선택된 행만 최대60초 일회성 권한으로 확정하며 native 선택120초 시한을 넘기지 않는다. 실제 로컬 경로는 renderer에 전달하지 않는다. 최대100개 목록은60,000byte 이하 page로 나눈다.
 
 162개 단위 검사·타입/build와 실제 utilityProcess의 transfer:inspect 및 양방향 backend 전송 검사가 통과했다. Windows 다운로드 이름 제약은 주입한 정책 검사이며 Windows 실기 통과가 아니다. evidence/d07-previews에 출력을 보존했다. preview를 이용하는 enqueue bridge와 renderer 전송 화면은 다음 구현 대상이다.
+
+## 전송 GUI와 main 수락 절차 연결
+
+탐색기에 최대100개 Ctrl/Cmd/Shift 선택·업로드·다운로드·파일 열기 선택창의 다운로드를 연결했다. 확인창은 모든 유효/충돌/미지원 행과 서버·계정·host 지문을 보여주고 대상 이름 적용 또는 선택 해제를 제공한다. 확인 token만 제출하며 ‘유효한 N개만 전송 · 나머지 M개 제외’를 명시한다. 원격 전체 read-back의 추가 시간·전송량과 기존 파일을 덮지 않는 동작을 확인창에 표시한다.
+
+main은 worker 전체 batch 예약 뒤 모든 queued 영수증을 저장하고 모든 row를 stage한 뒤 한 번만 commit한다. 사전 등록 실패는 commit하지 않고 저장한 대기 기록을 중단 처리한다. 등록 중과 실행 중을 구별하고 등록 중 취소는 요청을 거절한다. 시작된 작업은 파일 창 닫기와 renderer reload에 귀속되지 않는다. 하단60px 선반은 실행최대2개·전송/검증 단계·byte·최근 속도·대기/등록/실패/확인 필요 수·취소·전체 작업을 표시한다. task list/detail에는 runtime 관측과 durable 기록을 합치되 native 전체 경로를 renderer로 반환하지 않는다. event sequence gap은 모든 등록된 서버의 bounded snapshot과 대조하며 더 오래된 snapshot이 진행값을 되돌리지 못한다. 누락된 종결 이벤트는 안정된 worker snapshot과 durable terminal 영수증으로 대조한다.
+
+169개 단위 검사·타입/build·Electron/file/viewer/backend 회귀가 통과했다. 실제 Electron GUI에서 두 파일 업로드와 Ctrl/Cmd 두 파일 다운로드, 충돌 이름 변경, 확인 전 변경·보조 인증 없음,4MiB 업로드 중 창 닫기 및 renderer reload 후 전송 유지, 전체 SHA256·목적지 보존·temp 제거·매 task 신규 socket 인증과 control 유지를 확인했다. native picker는 시험 main process에서만 fixture 응답으로 대체했으며 제품 backdoor는 추가하지 않았다. evidence/d07-transfer-ui에 출력·실제 화면3장·source hash를 저장했다. 지원 OS/Ubuntu/OpenSSH/대용량/서명 수용 검사와 저장소 재확인·앱 수명 통합까지 완료했다는 뜻은 아니다. 다음은 저장소 오류 복구 및 control metadata 직렬화다.

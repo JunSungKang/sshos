@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import type { TransferPreviewPage } from './transfer-preview';
+import type { UploadChoice,DownloadDirectoryChoice } from './transfer-selections';
+import type { TransferShelf } from './transfer-ui';
 import type { ProfileDraft, ProfileView } from './models';
 import type { SessionCredentials, SessionView, HostChallenge } from './session-contracts';
 import type { WindowKind, WindowModel } from './windows';
@@ -22,6 +25,7 @@ export const workerEventSchema = z.object({
 }).strict();
 
 export interface DesktopBridge {
+  transfer:{pickUploadFiles():Promise<UploadChoice[]|null>;pickDownloadDirectory():Promise<DownloadDirectoryChoice|null>;previewUpload(input:{fileTokens:string[];directoryToken:string}):Promise<{previewId:string}>;previewDownload(input:{entryTokens:string[];directoryToken:string}):Promise<{previewId:string}>;getPreview(id:string,offset:number):Promise<TransferPreviewPage>;updatePreview(id:string,index:number,change:{name?:string;selected?:boolean}):Promise<void>;releasePreview(id:string):Promise<void>;start(confirmationToken:string):Promise<string[]>;cancel(taskId:string):Promise<unknown>;shelf():Promise<TransferShelf>};
   viewer:{probe(entryToken:string):Promise<{probeToken:string;viewerId:string;readGeneration:number}>;next(token:string,readGeneration:number,sequence:number):Promise<ViewerFrame>;releaseProbe(token:string):Promise<void>;open(entryToken:string,kind:'text'|'image'):Promise<WindowModel>;get(windowId:string):Promise<ViewerDescriptor>;reread(viewerToken:string):Promise<ViewerDescriptor>;stopRead(token:string,readGeneration:number):Promise<void>};
   file: { open(windowId: string): Promise<DirectoryPage>; list(directoryToken: string): Promise<DirectoryPage>; enter(entryToken: string): Promise<DirectoryPage>; page(pageToken: string, offset: number): Promise<DirectoryPage>; previewMutation(input:{operation:'mkdir'|'delete'|'rename';targetToken:string;name?:string}):Promise<MutationPreview>; startMutation(confirmationToken:string):Promise<string> };
   task: {list(offset:number):Promise<TaskPage>;inspect(id:string):Promise<FileReceipt & {recordError?:boolean}>;previewRecordAction(id:string,action:'acknowledge'|'forget'):Promise<RecordActionPreview>;applyRecordAction(confirmationToken:string):Promise<void>};
