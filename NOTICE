@@ -16,3 +16,9 @@ Development artifacts include a source revision, package-lock hash, SHA256SUMS,
 build-report.json and a corresponding-source archive. Ad-hoc/unsigned build
 verification is not publisher signing or notarization. Public release readiness
 is tracked separately in docs/implementation-status.json.
+
+Windows portable launchers use NSIS3.12 (toolset1.2.1) with built-in zlib
+compression. StdUtils1.14 remains an unmodified LGPL-2.1-or-later plug-in;
+its author clarification, bundled notices and complete corresponding source
+are provided in resources/licenses and resources/third-party-source.
+The reviewed DLL SHA256 is recorded in the component inventory.
