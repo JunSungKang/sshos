@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.0",
+  "sourceRevision": "da5cb45d59f6a6943bbd885cfd7960961b9625c4",
+  "sourceDirty": false,
+  "packageLockSHA256": "f9092e4d22f10ce0afa36022dbb2fd49110221c849335961b0ce42e04aa242c3",
+  "node": "24.22.3",
+  "electron": "45.3.2",
+  "kind": "development",
+  "windowsTools": {
+    "nsis": "3.12",
+    "compilerVersion": "v23-May-2026.cvs",
+    "toolset": "1.2.1",
+    "toolsetSHA256": "56997fdefe25e7928a1a68b4583d08b240b66cf660234053b20131a74cc082f4",
+    "stdutils": "1.14",
+    "stdutilsDllSHA256": "b72e9013a6204e9f01076dc38dabbf30870d44dfc66962adbf73619d4331601e",
+    "sourceArchive": "StdUtils-1.14-sources.tbz2",
+    "sourceArchiveSHA256": "c5e3b1a66219bc9564c2ccc1702691327eecf044ad33404ac268d725d22dca49",
+    "compression": "NSIS built-in zlib with direct app files; no Nsis7z/nsisunz plugin",
+    "scope": "Build input verification, not a Windows native launch claim"
+  },
+  "publisherSigned": false,
+  "notarized": false,
+  "releaseReady": false,
+  "buildHost": {
+    "platform": "darwin",
+    "architecture": "arm64"
+  },
+  "reproductionCommands": [
+    "node scripts/install.mjs",
+    "npm run typecheck",
+    "npm run test:unit",
+    "npm run package:win"
+  ],
+  "executedBuildSteps": [
+    "prepareLicenses",
+    "tsc -p tsconfig.json",
+    "vite build",
+    "electron-builder win development targets"
+  ],
+  "builtAt": "2026-11-15T11:20:14.723Z",
+  "artifacts": [
+    {
+      "name": "sshOS 0.1.0.exe",
+      "bytes": 162143407,
+      "sha256": "2de13d9f529e2c34994122d7e0cf8aed758a8b10f7e7e9de89d576fe69a080e3",
+      "compressedSizeWithin250MiB": true
+    }
+  ],
+  "packageChecks": [
+    {
+      "target": "win",
+      "embeddedAsarSHA256": "322cf3e98b01b3e131ce111137d0f01f1d2b32115bf2b14cdc4e52306b49d3c3",
+      "embeddedIntegrityMatches": true,
+      "verifiedAsarFiles": 925,
+      "unpackedBytes": 400978223,
+      "unpackedSizeWithin750MiB": true,
+      "scope": "Static package inspection only; no native launch/OS trust/notarization claim",
+      "architecture": "x64",
+      "fuses": "pass",
+      "testFixturesAbsent": true,
+      "nativeAcceleratorsAbsent": true,
+      "noticesVerified": 20,
+      "publisherSignature": "unsigned",
+      "nativeLaunch": "untested"
+    }
+  ],
+  "sourceArchive": {
+    "name": "sshOS-0.1.0-da5cb45d59f6-source.tar",
+    "sha256": "a64368e0fdb0b9a9cb0778854858ccdab7cccde45866c6d60dfd6b24919756e5"
+  },
+  "limitations": [
+    "Development artifacts only; no publisher certificate/notarization.",
+    "Cross-built files do not prove target OS launch, OpenSSH matrix, performance or accessibility.",
+    "Production inspector fuse is disabled; Playwright automation build is not distributed."
+  ]
+}

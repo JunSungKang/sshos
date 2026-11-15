@@ -530,6 +530,19 @@
       "unitTests": 61,
       "evidence": "evidence/d11-network-policy/security-report.json",
       "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
+    },
+    "development_packages": {
+      "status": "pass_static_inspection",
+      "sourceRevision": "da5cb45d59f6a6943bbd885cfd7960961b9625c4",
+      "targets": [
+        "win32-x64",
+        "darwin-arm64",
+        "darwin-x64"
+      ],
+      "evidence": "evidence/d12-final-development/artifacts.json",
+      "nativeLaunch": "untested",
+      "publisherSignature": "unavailable; Windows unsigned/macOS ad-hoc",
+      "notarization": "untested"
     }
   },
   "remaining_D01": [
@@ -546,14 +559,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Build final three development artifacts from the committed network-policy source, then complete artifact handoff and independent current-head review. Native/signing/performance/usability acceptance remains untested.",
+  "next_action": "Recheck local performance harness, update PR metadata through the guarded human operation, obtain independent current-head review and then use the guarded merge/branch-cleanup workflow. Target/signing/usability gates remain untested.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-network-policy",
+  "latest_evidence_directory": "evidence/d12-final-development",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D11 automated local verification passed; final D12 development packages and independent review in progress",
+    "current_stage": "D12 development artifacts generated and statically verified; D13 handoff and independent review pending",
     "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and local license viewer. Per-file coverage passes; final package and traceability audit remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
@@ -564,7 +577,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D11 final specification/security traceability audit and independent review. Native target/performance/accessibility evidence remains user-owned.",
-    "D12 final current-source development package rebuild and source/hash handoff; publisher signing/notarization unavailable."
+    "Independent current-head code review/App formal approval and guarded merge/branch cleanup.",
+    "User-owned native/OpenSSH/vault/IME/accessibility/controlled-network performance tests; signing resources and G0/G2/G3 participants unavailable. Public-release license/security gate remains separate."
   ]
 }
