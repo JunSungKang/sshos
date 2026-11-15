@@ -14,6 +14,7 @@ import { DesktopController } from './desktop';
 import { FileController } from './files';
 import { ReceiptRepository } from './persistence/receipts';
 import { MainReceiptChannel } from './receipt-channel';
+import { NativeDialogGate } from './native-dialogs';
 import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
 
@@ -73,13 +74,14 @@ async function main(): Promise<void> {
   const dataRoot = resolve(app.getPath('userData'), 'data');
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
+  const dialogGate=new NativeDialogGate();
   let connections: ConnectionController | null = null;
   let repositoryOpening: Promise<void> | null = null;
   const openRepository = (): Promise<void> => {
     if (repositoryOpening) return repositoryOpening;
     repositoryOpening = (async () => {
       if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot);
-      profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false);
+      profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false,dialogGate);
     })().finally(() => { repositoryOpening = null; });
     return repositoryOpening;
   };
