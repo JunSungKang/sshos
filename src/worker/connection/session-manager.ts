@@ -17,6 +17,10 @@ export class SessionManager {
   private readonly parser = new PrivateKeyParser();
   constructor(private readonly emit: (snapshot: SessionSnapshot) => void) {}
   snapshots(): SessionSnapshot[] { return [...this.entries.values()].map(entry => ({ ...entry.snapshot })); }
+  readClient(serverId:string,generation:number):Client {
+    const entry=this.entries.get(serverId);
+    if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || entry.snapshot.sftp !== 'available') throw new Error('CONNECTION_LOST');return entry.client;
+  }
   control(serverId: string, generation: number, write=false): ControlAccess {
     const entry = this.entries.get(serverId);
     if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || !entry.sftp) throw new Error('SESSION_UNAVAILABLE');
