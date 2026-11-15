@@ -11,7 +11,7 @@ function App() {
   const [error, setError] = useState(false);
   useEffect(() => {
     let active = true;
-    const update = () => { void window.sshOS.lifecycle.getSnapshot().then(value => { if (active) setSnapshot(runtimeSnapshotSchema.parse(value)); }).catch(() => { if (active) setError(true); }); };
+    const update = () => { void window.sshOS.lifecycle.getSnapshot().then(value => { if (active){setSnapshot(runtimeSnapshotSchema.parse(value));setError(false);} }).catch(() => { if (active) setError(true); }); };
     update(); const timer = setInterval(update, 1000);
     return () => { active = false; clearInterval(timer); };
   }, []);

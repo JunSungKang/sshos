@@ -7,6 +7,8 @@ import { StateRepository } from './persistence/state-repository';
 import { NativeDialogGate } from './native-dialogs';
 
 export class ProfileController {
+  private generation=0;
+  invalidate():void {this.generation++;this.selectedKeys.clear();}
   private readonly selectedKeys = new Map<string, { path: string; expires: number }>();
   constructor(private readonly repository: StateRepository, private readonly window: () => BrowserWindow | null, private readonly busy: (id: string) => boolean,private readonly dialogGate=new NativeDialogGate()) {}
   private pruneKeys():void {const now=performance.now();for (const [id,entry] of this.selectedKeys) if (entry.expires<=now) this.selectedKeys.delete(id);}
@@ -38,8 +40,9 @@ export class ProfileController {
       if (payload !== undefined) throw new Error('INPUT_INVALID');
       this.pruneKeys();
       const win = this.window(); if (!win || win.isDestroyed()) throw new Error('INPUT_INVALID');
-      return this.dialogGate.run(win.webContents.id,async () => {
+      const generation=this.generation;return this.dialogGate.run(win.webContents.id,async () => {
         const result = await dialog.showOpenDialog(win, { title: 'SSH 개인키 선택', properties: ['openFile'] });
+        if(generation !== this.generation || this.window() !== win || win.isDestroyed())throw new Error('REQUEST_CANCELLED');
         const path = result.filePaths[0];
         if (result.canceled || !path) return null;
         if (path.endsWith('.pub') || this.selectedKeys.size >= 20) throw new Error('KEY_INVALID');

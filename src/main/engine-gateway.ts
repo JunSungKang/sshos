@@ -13,8 +13,13 @@ export class EngineGateway {
   private lastTransferSequence=0;
   private lastExecutionSequence=0;
   private lastTerminalSequence=0;
-  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void,private readonly terminalChanged?:(snapshot:TerminalRuntime,gap:boolean,sequence:number)=>void) {
+  constructor(private worker: UtilityProcess, private currentEpoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private receiptChannel?:{accept(raw:unknown):boolean},private readonly transferChanged?:(snapshot:TransferRuntime,gap:boolean,sequence:number)=>void,private readonly executionChanged?:(snapshot:ExecutionRuntime,gap:boolean,sequence:number)=>void,private readonly terminalChanged?:(snapshot:TerminalRuntime,gap:boolean,sequence:number)=>void) {this.bind(worker,currentEpoch);}
+  get epoch():string {return this.currentEpoch;}
+  get running():boolean {return !this.stopped;}
+  restart(worker:UtilityProcess,epoch:string,receiptChannel?:{accept(raw:unknown):boolean}):void {if(!this.stopped || epoch===this.currentEpoch)throw new Error('REQUEST_BUSY');this.worker=worker;this.currentEpoch=epoch;this.receiptChannel=receiptChannel;this.stopped=false;this.lastSequence=0;this.lastTransferSequence=0;this.lastExecutionSequence=0;this.lastTerminalSequence=0;this.bind(worker,epoch);}
+  private bind(worker:UtilityProcess,epoch:string):void {
     worker.on('message', (raw: unknown) => {
+      if(this.worker !== worker || this.currentEpoch !== epoch || this.stopped)return;
       if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
@@ -24,9 +29,9 @@ export class EngineGateway {
       if (data.type === 'session') {
         if (data.sequence <= this.lastSequence) return;
         const gap = data.sequence !== this.lastSequence + 1;
-        this.lastSequence = data.sequence; sessionChanged(data.snapshot);
+        this.lastSequence = data.sequence; this.sessionChanged(data.snapshot);
         if (gap) void this.request({ action: 'session:snapshot', serverId: data.snapshot.serverId, generation: data.snapshot.generation }).then(result => {
-          for (const snapshot of sessionSnapshotSchema.array().max(10).parse(result)) sessionChanged(snapshot);
+          for (const snapshot of sessionSnapshotSchema.array().max(10).parse(result)) this.sessionChanged(snapshot);
         }).catch(() => {});
         return;
       }
@@ -36,13 +41,15 @@ export class EngineGateway {
       if (data.ok) pending.resolve(data.result); else pending.reject(new Error(data.errorCode ?? 'INTERNAL_ERROR'));
     });
     worker.on('exit', () => {
+      if(this.worker !== worker || this.currentEpoch !== epoch)return;
       this.stopped = true;
       for (const value of this.pending.values()) { clearTimeout(value.timer); value.reject(new Error('ENGINE_STOPPED')); }
       this.pending.clear();
     });
   }
   request(request: EngineCommand): Promise<unknown> {
-    if (this.stopped || this.pending.size >= 32) return Promise.reject(new Error('ENGINE_STOPPED'));
+    if (this.stopped) return Promise.reject(new Error('ENGINE_STOPPED'));
+    if(this.pending.size>=32)return Promise.reject(new Error('REQUEST_BUSY'));
     const message = engineRequestSchema.parse({ ...request, requestId: randomUUID(), backendEpoch: this.epoch });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.pending.delete(message.requestId); reject(new Error('IO_TIMEOUT')); }, 90000);

@@ -96,7 +96,9 @@
     "Main-owned PTY capability/restore barrier, bounded renderer input queue and actual xterm internal windows with minimize/reload continuity",
     "Native-gesture one-shot asynchronous clipboard read, frozen target and multiline/large paste confirmation with exact bytes and ordered automatic responses",
     "Public xterm OSC/REP security handlers and actual CSP parser fixture, observed exit display and confirmed PTY closure",
-    "Same-live-worker execution receipt continuity during explicit storage verification, with conservative backup uncertainty and ACK-gated metadata reconciliation that preserves established PTY input"
+    "Same-live-worker execution receipt continuity during explicit storage verification, with conservative backup uncertainty and ACK-gated metadata reconciliation that preserves established PTY input",
+    "Explicit stopped-worker epoch replacement with no automatic replay/reconnect; actual renderer-crash and engine-SIGKILL recovery through desktop UI",
+    "Generation-aware native key selection invalidation and stale saved-secret rotation guards during engine replacement"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -354,6 +356,19 @@
         "reconciled receipts persist and recordError clears only after ACK; control and shared socket remain"
       ],
       "limitation": "Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain."
+    },
+    "engine_lifetime": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual renderer crash followed by explicit recovery choice restores existing PTY without new shell or engine",
+        "actual utility process SIGKILL disconnects sessions and stores PTY result_unknown",
+        "user-only engine restart rotates epoch and preserves receipt/profile/window state",
+        "restart performs no authentication or remote replay; old session capabilities remain rejected",
+        "explicit reconnect creates a newer generation and a separately requested new PTY"
+      ],
+      "limitation": "Current-host emulated SSH fixture, native recovery dialog response mocked. OS sleep/close dialogs, target platform and native clipboard/IME remain separate."
     }
   },
   "remaining_D01": [
@@ -370,10 +385,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 restartable worker, app close/disconnect/sleep/crash integration, SSH response probe and memory display circuit breaker; then D11-D13.",
+  "next_action": "Implement D10 aggregate app/disconnect shutdown deadlines, sleep invalidation, SSH response probe and memory display circuit breaker; then D11-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-storage-continuity",
+  "latest_evidence_directory": "evidence/d10-engine-lifetime",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -388,7 +403,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 worker recreation, app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
+    "D10 app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
 }

@@ -163,3 +163,13 @@ public xterm parser로 OSC 제목/링크/클립보드·관련 제어를 소비�
 worker barrier는 transfer quiescence와 실행 기록 tail settlement를 기다리고 기존 PTY 입력·원격 프로그램을 강제 종료하지 않는다. JSON 재검증 후 별도 내부 recovery-ACK 구간에서 오류가 있었던 실행/PTY의 최신 metadata만 다시 저장한다. main은 이 구간에 receipt channel만 열고 사용자 신규 변경은 계속 잠근다. ACK 완료 후에만 복구를 마치며 command·shell·input을 재요청하지 않는다. 늦은 channel acceptance도 이미 불명인 단계를 running으로 되돌리지 않는다.
 
 232개 단위 검사·타입/build·actual main/utilityProcess/SSH 저장 fault·backup corruption 검사가 통과했다. 실제 동일 socket에서 실행7 정상 관측, 저장 fault 전후 PTY 입력, backup 불명 후 입력과 exit0/close의 불명 유지, 새 shell0개와 기록 오류 해제를 확인했다. 기존 terminal GUI/transfer engine 및 fault barrier 회귀도 통과했다. evidence/d10-storage-continuity에 출력과 source hash를 보존했다. 실제 disk-full/Windows 잠금·정전·지원 OS 수용은 미검증이며 D10 전체 완료가 아니다. 다음은 worker 재생성·종료/절전·probe다.
+
+## 연결 엔진 교체·화면 충돌 복구
+
+EngineGateway는 실제 worker exit 뒤에만 새 epoch/port/receipt channel로 교체한다. 이전 pending 요청은 거절하고 재전송하지 않는다. 이전 port·epoch의 event/exit가 새 상태를 바꾸지 못하며 이벤트 sequence를 새 epoch에서 초기화한다. main은 영수증/작업 settlement 후 사용자가 ‘연결 엔진 다시 시작’을 눌렀을 때만 utilityProcess를 생성한다. 초기화10초 내 ready가 없으면 해당 새 process를 종료하고 재시작 실패를 표시한다. 기존 프로필/영수증/창 metadata는 유지하되 재인증과 새 generation을 요구한다. 엔진 종료 후에도 session:list는 연결 해제 상태를 읽을 수 있다.
+
+renderer 충돌은 native ‘화면 다시 열기/나중에’를 제공하고 승인하면 이전 BrowserWindow를 닫고 하나의 새 BrowserWindow를 만든다. 교체 중 window-all-closed가 작업을 종료하지 않도록 보호한다. 최대 동시 BrowserWindow는1개이며 internal 작업 창별 BrowserWindow는 만들지 않는다. main/worker와 기존 shell을 유지하고 main snapshot 및 고정 replay barrier로 화면을 복구한다.
+
+renderer·engine 교체는 private-key picker/paste/execution preview 권한을 무효화한다. 늦은 native key 선택과 이전 BrowserWindow 입력으로 새 권한을 발급하지 않는다. engine loss 뒤 대기 중인 decrypt/re-encrypt가 새 generation의 secret을 덮어쓰거나 이전 인증을 재개하지 못하도록 현재 generation과 ciphertext 일치를 JSON writer 안에서 다시 검사한다.
+
+237개 단위 검사·타입/build·실제 renderer crash와 utilityProcess SIGKILL GUI·기존 PTY GUI/저장 복구 회귀가 통과했다. 화면 교체 때 새 shell0개, 엔진 재시작 때 신규 인증0회, 이전 capability 거절, 명시적 재접속의 새 generation/PTY를 확인했다. native 복구 dialog 선택은 test main에서 대체했으며 OS modal 실기 검증은 아니다. evidence/d10-engine-lifetime에 출력·화면2장·source hash를 보존했다. D10의 앱 종료·연결 해제 확인/기한·절전·probe·메모리 제한과 지원 OS 검증은 남아 있다.
