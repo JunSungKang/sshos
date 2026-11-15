@@ -49,7 +49,7 @@
     "docs/developer/architecture/contract-index.json": "de8a07e1e49e5dda8ff7d0b248ebeef44df9a4222047fc29d40c71246242d61c",
     "docs/developer/architecture/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
     "docs/developer/architecture/history/archive-manifest.json": "9b14b19bb557926eb0015d88dc20252b86e0d0831ecc76cdb647b9db092876dd",
-    "scripts/validate-docs.py": "da4a788200e5d9cabd4d3a9b2aa1778e9d772e1379d3846558ece4b0e27c614b"
+    "scripts/validate-docs.py": "4e6988b11ee23b4b1031e76e1e73a76c1a2312014e95bfb5dcba8c745074dce8"
   },
   "migration": {
     "docs/01-product-plan.md": "docs/developer/guides/product-plan.md",
