@@ -144,7 +144,10 @@ def validate(root):
                 continue
             resolved = (path.parent / unquote(parsed.path)).resolve() if parsed.path else path
             links += 1
-            need(resolved.is_relative_to(root) and resolved.exists(), 'Broken/escaped link: ' + str(path.relative_to(root)) + ' -> ' + target)
+            if not resolved.is_relative_to(root):
+                need(False, 'Escaped link: ' + str(path.relative_to(root)) + ' -> ' + target)
+                continue
+            need(resolved.exists(), 'Broken link: ' + str(path.relative_to(root)) + ' -> ' + target)
             if parsed.fragment and resolved.is_file() and resolved.suffix == '.md':
                 need(unquote(parsed.fragment) in anchors(resolved), 'Broken heading anchor: ' + target)
     active = json.loads(inside('docs/developer/architecture/documentation-manifest.json').read_text())
