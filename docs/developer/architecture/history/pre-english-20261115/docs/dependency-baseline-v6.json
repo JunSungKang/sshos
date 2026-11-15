@@ -1,0 +1,400 @@
+{
+  "version": "v6",
+  "observed_on": "2026-11-15",
+  "development_node": "24.22.3",
+  "node_source": "https://nodejs.org/dist/index.json",
+  "development_node_release_date": "2026-11-10",
+  "development_node_verification": "official_release_index_checked",
+  "policy": "exact direct versions; generate and review lockfile during implementation; do not silently follow latest; metadata license is not complete distribution review; all combination and target tests remain untested",
+  "project_license_plan": "AGPL-3.0-only",
+  "dependency_license_policy": "prefer MIT; consider other open-source licenses only after compatibility and distribution-obligation review",
+  "packages": [
+    {
+      "name": "electron",
+      "version": "45.3.2",
+      "source": "https://registry.npmjs.org/electron/45.3.2",
+      "license_metadata": "MIT",
+      "integrity": "sha512-bPO0MMvJCdKdPfXgd3ES8zupu+ocr6XmSuRGwyZazTiigTz8jE7rwukSkck0iomS6UZeFuCwzu0uanMD/D34uw==",
+      "engine_requirement": {
+        "node": ">= 22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "electron-builder",
+      "version": "26.18.0",
+      "source": "https://registry.npmjs.org/electron-builder/26.18.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-ASgIuQnOq4RuD8jMhS9hI0LS3EMRT1I/M5R6utqifB/BHN80IcCjBdt+DED+NmNPvmBgEtrlExXZitNdA7kXOg==",
+      "engine_requirement": {
+        "node": ">=14.0.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "typescript",
+      "version": "7.0.2",
+      "source": "https://registry.npmjs.org/typescript/7.0.2",
+      "license_metadata": "Apache-2.0",
+      "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA==",
+      "engine_requirement": {
+        "node": ">=16.20.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {
+        "@typescript/typescript-aix-ppc64": "7.0.2",
+        "@typescript/typescript-linux-arm": "7.0.2",
+        "@typescript/typescript-linux-x64": "7.0.2",
+        "@typescript/typescript-sunos-x64": "7.0.2",
+        "@typescript/typescript-win32-x64": "7.0.2",
+        "@typescript/typescript-darwin-x64": "7.0.2",
+        "@typescript/typescript-netbsd-x64": "7.0.2",
+        "@typescript/typescript-freebsd-x64": "7.0.2",
+        "@typescript/typescript-linux-arm64": "7.0.2",
+        "@typescript/typescript-linux-ppc64": "7.0.2",
+        "@typescript/typescript-linux-s390x": "7.0.2",
+        "@typescript/typescript-openbsd-x64": "7.0.2",
+        "@typescript/typescript-win32-arm64": "7.0.2",
+        "@typescript/typescript-darwin-arm64": "7.0.2",
+        "@typescript/typescript-netbsd-arm64": "7.0.2",
+        "@typescript/typescript-freebsd-arm64": "7.0.2",
+        "@typescript/typescript-linux-loong64": "7.0.2",
+        "@typescript/typescript-linux-riscv64": "7.0.2",
+        "@typescript/typescript-openbsd-arm64": "7.0.2",
+        "@typescript/typescript-linux-mips64el": "7.0.2"
+      },
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "react",
+      "version": "19.3.1",
+      "source": "https://registry.npmjs.org/react/19.3.1",
+      "license_metadata": "MIT",
+      "integrity": "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==",
+      "engine_requirement": {
+        "node": ">=0.10.0"
+      },
+      "role": "runtime",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.3.1",
+      "source": "https://registry.npmjs.org/react-dom/19.3.1",
+      "license_metadata": "MIT",
+      "integrity": "sha512-Y0bARz53lhEC1NMCASs0/j+faB/zqt3R8hpvg1e8+61ZVJ4UL0UdC4cBbXfZMcIuhrfgeILTLe+ZeBCavQPtKQ==",
+      "engine_requirement": null,
+      "role": "runtime",
+      "combination_test": "untested",
+      "peer_dependencies": {
+        "react": "^19.3.1"
+      },
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "vite",
+      "version": "8.3.8",
+      "source": "https://registry.npmjs.org/vite/8.3.8",
+      "license_metadata": "MIT",
+      "integrity": "sha512-LzOn3h9rG/0vhLdXrV4yJ4QFA9eEoqCl+Yx+kGJd7aB9w6nfNgVHKSYwLPZUHrz4ZGa+t+kXjV9itvcHDLQouA==",
+      "engine_requirement": {
+        "node": "^20.19.0 || >=22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {
+        "tsx": "^4.8.1",
+        "jiti": ">=1.21.0",
+        "less": "^4.0.0",
+        "sass": "^1.70.0",
+        "yaml": "^2.4.2",
+        "stylus": ">=0.54.8",
+        "terser": "^5.16.0",
+        "esbuild": "^0.27.0 || ^0.28.0",
+        "sugarss": "^5.0.0",
+        "@types/node": "^20.19.0 || >=22.12.0",
+        "sass-embedded": "^1.70.0",
+        "@vitejs/devtools": "^0.7.1 || ^0.8.0"
+      },
+      "optional_dependencies": {
+        "fsevents": "~2.3.3"
+      },
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "vitest",
+      "version": "5.1.0",
+      "source": "https://registry.npmjs.org/vitest/5.1.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-MzmNFnrwa8v8lF1bLxw3UJ4EREwVOVb75VqJZmUDRjJ6EluK/x9th7qTbaeDk41WxE1GxWqmTXcdsfobfH5sOA==",
+      "engine_requirement": {
+        "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {
+        "vite": "^6.4.0 || ^7.0.0 || ^8.0.0",
+        "jsdom": "*",
+        "happy-dom": "*",
+        "@vitest/ui": "5.1.0",
+        "@types/node": "^22.0.0 || >=24.0.0",
+        "@edge-runtime/vm": "*",
+        "@opentelemetry/api": "^1.9.0",
+        "@vitest/coverage-v8": "5.1.0",
+        "@vitest/browser-preview": "5.1.0",
+        "@vitest/coverage-istanbul": "5.1.0",
+        "@vitest/browser-playwright": "5.1.0",
+        "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0"
+      },
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.65.1",
+      "source": "https://registry.npmjs.org/%40playwright%2Ftest/1.65.1",
+      "license_metadata": "Apache-2.0",
+      "integrity": "sha512-y+NCIRm2LvY4slUVWvGh1nujJ8RF/hEisIsq2mtUPgdQC4L701bq5hZGMhrpeXjACvwvO9tj5dJqhvM6TP9lbw==",
+      "engine_requirement": {
+        "node": ">=20"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "ssh2",
+      "version": "1.17.0",
+      "source": "https://registry.npmjs.org/ssh2/1.17.0",
+      "license_metadata": [
+        {
+          "url": "http://github.com/mscdex/ssh2/raw/master/LICENSE",
+          "type": "MIT"
+        }
+      ],
+      "integrity": "sha512-wPldCk3asibAjQ/kziWQQt1Wh3PgDFpC0XpwclzKcdT1vql6KeYxf5LIt4nlFkUeR8WuphYMKqUA56X4rjbfgQ==",
+      "engine_requirement": {
+        "node": ">=10.16.0"
+      },
+      "role": "runtime",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {
+        "nan": "^2.23.0",
+        "cpu-features": "~0.0.10"
+      },
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "zod",
+      "version": "4.6.7",
+      "source": "https://registry.npmjs.org/zod/4.6.7",
+      "license_metadata": "MIT",
+      "integrity": "sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==",
+      "engine_requirement": null,
+      "role": "runtime",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.19.2",
+      "source": "https://registry.npmjs.org/%40types%2Fnode/24.19.2",
+      "license_metadata": "MIT",
+      "integrity": "sha512-93d49wCWJkCyN87MxLpNN6KXPCwFw7bVUg79mGUV1OS40JGWwVCr8n61DXCSqz7CV6/VfPkb7xec7uP2M+QHWQ==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "source": "https://registry.npmjs.org/%40types%2Freact/19.3.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.3.0",
+      "source": "https://registry.npmjs.org/%40types%2Freact-dom/19.3.0",
+      "license_metadata": "MIT",
+      "integrity": "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {
+        "@types/react": "^19.3.0"
+      },
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@types/ssh2",
+      "version": "1.15.6",
+      "source": "https://registry.npmjs.org/%40types%2Fssh2/1.15.6",
+      "license_metadata": "MIT",
+      "integrity": "sha512-oGdxhBqcRTwSTKFm+9EiKzkNVYRLEFkcW44lhguvBalGJbWfGnDt/ezwSUZc+SF9m9bMc3VyklNAtp7zICjS5w==",
+      "engine_requirement": null,
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@electron/fuses",
+      "version": "2.1.3",
+      "source": "https://registry.npmjs.org/%40electron%2Ffuses/2.1.3",
+      "license_metadata": "MIT",
+      "integrity": "sha512-LoKJUXNiJ4JM8IIrUltSHI+8pkogaGj5wmJx81jE/Wk3g2w1/kfMbTEKNoY5kitGE8hiC12h32R/1SlywFtxXg==",
+      "engine_requirement": {
+        "node": ">=22.12.0"
+      },
+      "role": "development_or_packaging",
+      "combination_test": "untested",
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked"
+    },
+    {
+      "name": "@xterm/xterm",
+      "version": "6.0.0",
+      "source": "https://registry.npmjs.org/%40xterm%2Fxterm/6.0.0",
+      "role": "runtime",
+      "combination_test": "untested",
+      "license_metadata": "MIT",
+      "integrity": "sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==",
+      "engine_requirement": null,
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked",
+      "license_file_observation": {
+        "observed_on": "2026-11-15",
+        "source": "exact npm tarball referenced by the version metadata",
+        "path": "package/LICENSE",
+        "result": "MIT permission grant observed; read in memory without extraction to disk",
+        "distribution_review": "untested"
+      }
+    },
+    {
+      "name": "@xterm/addon-fit",
+      "version": "0.11.0",
+      "source": "https://registry.npmjs.org/%40xterm%2Faddon-fit/0.11.0",
+      "role": "runtime",
+      "combination_test": "untested",
+      "license_metadata": "MIT",
+      "integrity": "sha512-jYcgT6xtVYhnhgxh3QgYDnnNMYTcf8ElbxxFzX0IZo+vabQqSPAjC3c1wJrKB5E19VwQei89QCiZZP86DCPF7g==",
+      "engine_requirement": null,
+      "peer_dependencies": {},
+      "optional_dependencies": {},
+      "registry_verified_on": "2026-11-15",
+      "registry_verification": "exact_version_metadata_and_integrity_checked",
+      "license_file_observation": {
+        "observed_on": "2026-11-15",
+        "source": "exact npm tarball referenced by the version metadata",
+        "path": "package/LICENSE",
+        "result": "MIT permission grant observed; read in memory without extraction to disk",
+        "distribution_review": "untested"
+      }
+    }
+  ],
+  "implementation_decisions": [
+    {
+      "component": "internal_desktop_windows",
+      "implementation": "React and browser Pointer Events; no react-rnd dependency",
+      "verification": "untested"
+    },
+    {
+      "component": "remote_terminal",
+      "implementation": "ssh2 remote shell/PTY and @xterm/xterm; @xterm/addon-fit computes terminal geometry; no node-pty and no local terminal requirement",
+      "verification": "untested"
+    }
+  ],
+  "review_notes": [
+    {
+      "id": "DEP01",
+      "package": "ssh2",
+      "detail": "1.17.0 includes optional nan and cpu-features native dependencies. Bundle/install behavior must be decided and verified for each target; do not claim all transitive dependencies are pure JavaScript.",
+      "source": "https://registry.npmjs.org/ssh2/1.17.0",
+      "status": "untested"
+    },
+    {
+      "id": "DEP02",
+      "package": "@types/ssh2",
+      "detail": "1.15.6 declares @types/node ^18.11.18 while this plan pins top-level @types/node 24.19.2. Review resolved lockfile and strict typecheck for duplicate or incompatible declarations; metadata alone does not establish a defect.",
+      "source": "https://registry.npmjs.org/%40types%2Fssh2/1.15.6",
+      "status": "untested"
+    },
+    {
+      "id": "DEP03",
+      "package": "@xterm/xterm + @xterm/addon-fit",
+      "detail": "Pinned metadata and license checked; resize/IME/output backpressure and Electron integration are untested. xterm is a terminal renderer, not an SSH client or shell.",
+      "source": "https://github.com/xtermjs/xterm.js",
+      "status": "untested"
+    },
+    {
+      "id": "DEP04",
+      "package": "electron",
+      "detail": "The npm package license metadata does not replace review of the distributed Electron/Chromium/Node binaries, notices, codecs and all bundled transitive components.",
+      "source": "https://www.electronjs.org/docs/latest/tutorial/security",
+      "status": "untested"
+    }
+  ],
+  "not_selected": [
+    {
+      "name": "react-rnd",
+      "observed_version": "10.5.3",
+      "license_metadata": "MIT",
+      "source": "https://registry.npmjs.org/react-rnd/10.5.3",
+      "reason": "Internal windows will use React and Pointer Events; this alternative was researched but is not a dependency."
+    },
+    {
+      "name": "node-pty",
+      "reason": "Remote PTY is requested from the SSH server through ssh2; no local shell process is required."
+    }
+  ],
+  "implementation_started": false
+}

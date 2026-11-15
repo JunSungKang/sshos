@@ -1,0 +1,4283 @@
+{
+  "schemaVersion": 1,
+  "edition": "v6-english",
+  "productSpecVersion": "v6",
+  "sourceRevision": "9018ee7ab81d014184f759f464128536147992af",
+  "originalSnapshotRoot": "docs/developer/architecture/history/pre-english-20261115",
+  "originalSpec": "docs/developer/architecture/history/pre-english-20261115/docs/spec-v6.json",
+  "originalSpecSHA256": "f71770abd618c4cc5206eb1e33f873b733335273193e26f2e25f3172b8fe3965",
+  "approvedOriginalScopeDigest": "22b572637f890232b8971d14d46ee72414bbbf2276360063f54c71365ce535cb",
+  "authorization": "2026-11-15 actual user request to translate and reorganize repository documentation using the MailBox documentation architecture; this is not a new product-scope or acceptance approval.",
+  "requirements": [
+    {
+      "id": "R01",
+      "priority": "must",
+      "title": "Product identity and exclusions",
+      "statement": "Provide the client desktop, files, viewers, explicit execution and PTY.",
+      "acceptance": "Deliver authentication/desktop/file-open/exec/PTY/transfers without remote GUI, server helper, DB, AI or search.",
+      "checks": [
+        "F001",
+        "S001"
+      ],
+      "originalContractReference": "01 §1–2; 02 §1,3"
+    },
+    {
+      "id": "R02",
+      "priority": "must",
+      "title": "Target OS and portable distribution",
+      "statement": "Distribute for the specified client/server matrix and executable forms.",
+      "acceptance": "Test Windows 11 x64/macOS 14 arm64-x64 against Ubuntu 24.04 amd64-arm64; exe/app needs no installed runtime and requires publisher-signing evidence.",
+      "checks": [
+        "Q001",
+        "Q002",
+        "Q003",
+        "Q029"
+      ],
+      "originalContractReference": "01 §3; 02 §14,16"
+    },
+    {
+      "id": "R03",
+      "priority": "must",
+      "title": "No additional service or database",
+      "statement": "Require neither an application DB nor sshOS-specific server installation.",
+      "acceptance": "Use JSON/OS encryption; no remote agent/DB/Python/HTTP installation or local management listener.",
+      "checks": [
+        "Q002",
+        "S001",
+        "S019",
+        "S021"
+      ],
+      "originalContractReference": "01 §2–3; 02 §1,11–12,19.1"
+    },
+    {
+      "id": "R04",
+      "priority": "must",
+      "title": "Desktop workspace",
+      "statement": "Provide consistent desktop, apps, taskbar and transfer shelf.",
+      "acceptance": "One BrowserWindow with desktop/launchers/taskbar/persistent shelf and combined explorer tree/list; no fixed5-area or separate-tree substitute.",
+      "checks": [
+        "F001",
+        "F015",
+        "F048",
+        "F061",
+        "Q013",
+        "Q014",
+        "Q015"
+      ],
+      "originalContractReference": "01 §4; 09 §1–4"
+    },
+    {
+      "id": "R05",
+      "priority": "must",
+      "title": "Profiles and validation",
+      "statement": "Fix profile identity, validation and edit boundaries.",
+      "acceptance": "At most 10 profiles, UUIDs/normalization/ranges, new ID on endpoint/username change and busy/unresolved edit restrictions.",
+      "checks": [
+        "F002",
+        "F003",
+        "F004"
+      ],
+      "originalContractReference": "02 §5"
+    },
+    {
+      "id": "R06",
+      "priority": "must",
+      "title": "Host-key trust",
+      "statement": "Verify every authenticated SSH connection.",
+      "acceptance": "Verify full blobs/fingerprints for all 3 roles; no credentials before approval; reject changes and renew backup-recovered trust.",
+      "checks": [
+        "F055",
+        "S008",
+        "S009",
+        "S010"
+      ],
+      "originalContractReference": "02 §5,11"
+    },
+    {
+      "id": "R07",
+      "priority": "must",
+      "title": "Authentication and signatures",
+      "statement": "Use selected supported password/key and reject weak signatures.",
+      "acceptance": "One selected method once, supported keys, bounded reads/parser thread/deadline, RSA SHA256-512 only and no SHA1 signatures.",
+      "checks": [
+        "F005",
+        "S011",
+        "S012",
+        "S013",
+        "S025",
+        "S026"
+      ],
+      "originalContractReference": "02 §5"
+    },
+    {
+      "id": "R08",
+      "priority": "must",
+      "title": "Sessions and generations",
+      "statement": "Separate socket/channel lifetimes and identity across files/viewers/exec/PTY/probe.",
+      "acceptance": "3 servers,3 role sockets each/9 global; viewer4/2 per server, exec+PTY6/4; opening reservations, late cleanup, generations and isolated failures.",
+      "checks": [
+        "F006",
+        "F007",
+        "F008",
+        "F041",
+        "F059",
+        "F081",
+        "F085"
+      ],
+      "originalContractReference": "02 §2,6; 09 §3,5"
+    },
+    {
+      "id": "R09",
+      "priority": "must",
+      "title": "Feature-specific capabilities",
+      "statement": "Judge OS/SFTP/probe/exec/PTY/path permission independently.",
+      "acceptance": "Apply section 6 supported/unknown/unsupported policy and actual-request observations; preserve SFTP-only and denied features independently.",
+      "checks": [
+        "F009",
+        "F010",
+        "F011",
+        "F030",
+        "F077",
+        "F083",
+        "Q016",
+        "S021"
+      ],
+      "originalContractReference": "01 §3; 02 §6,18–19"
+    },
+    {
+      "id": "R10",
+      "priority": "must",
+      "title": "Paths and types",
+      "statement": "Separate real/display paths and validate types/targets.",
+      "acceptance": "POSIX/native paths, lengths/characters/tokens/types and actual exclusive collision checks; reject links/special/UNC within documented scope.",
+      "checks": [
+        "F012",
+        "F013",
+        "F016",
+        "F066",
+        "F071",
+        "F072",
+        "Q015",
+        "S005",
+        "S020",
+        "S033"
+      ],
+      "originalContractReference": "02 §4,7,18,19.2"
+    },
+    {
+      "id": "R11",
+      "priority": "must",
+      "title": "Browsing and refresh",
+      "statement": "Keep per-window state and explicit limited refresh.",
+      "acceptance": "Tree/list,10,000 entries/10 MiB, sort/hidden/stale-reply rules/manual refresh/one-parent refresh after own GUI mutation, no external watcher.",
+      "checks": [
+        "F014",
+        "F015",
+        "F067",
+        "F082",
+        "Q009",
+        "S028"
+      ],
+      "originalContractReference": "02 §7; 09 §4"
+    },
+    {
+      "id": "R12",
+      "priority": "must",
+      "title": "Single-folder creation",
+      "statement": "Create one explicitly confirmed folder.",
+      "acceptance": "Durable intent→mkdir 0700→ACK→lstat→receipt, no existing-name overwrite or implicit parents.",
+      "checks": [
+        "F017",
+        "F035"
+      ],
+      "originalContractReference": "02 §7"
+    },
+    {
+      "id": "R13",
+      "priority": "must",
+      "title": "Rename and nonrecursive delete",
+      "statement": "Follow regular-file rename and safe delete contracts.",
+      "acceptance": "Hardlink then separate source unlink with partial/unknown outcomes; preserve destination, links, root and nonempty folders.",
+      "checks": [
+        "F018",
+        "F019",
+        "F020",
+        "F021"
+      ],
+      "originalContractReference": "02 §7"
+    },
+    {
+      "id": "R14",
+      "priority": "must",
+      "title": "Transfer queue and concurrency",
+      "statement": "Keep task queue/slots/path ownership separate from other features.",
+      "acceptance": "2 global/1-server slots,100 waiting, runnable FIFO, immutable identities, mixed preview and source/destination locks.",
+      "checks": [
+        "F007",
+        "F021",
+        "F022",
+        "F023",
+        "F081",
+        "Q010"
+      ],
+      "originalContractReference": "02 §2,6–8"
+    },
+    {
+      "id": "R15",
+      "priority": "must",
+      "title": "Upload",
+      "statement": "Write temp, verify and finalize exclusively.",
+      "acceptance": "Durable wx 0600 creation, bounded writes, full SHA256 read-back, hardlink finalization, separate cleanup, no overwrite.",
+      "checks": [
+        "F024",
+        "F025",
+        "F026",
+        "F027",
+        "F028",
+        "F029",
+        "F030",
+        "F031",
+        "F035"
+      ],
+      "originalContractReference": "02 §8.2"
+    },
+    {
+      "id": "R16",
+      "priority": "must",
+      "title": "Download",
+      "statement": "Verify local temp and create final name exclusively.",
+      "acceptance": "Bounded reads/short writes, sync-close-readback, fs.link, preserved collisions and no metadata cloning.",
+      "checks": [
+        "F016",
+        "F024",
+        "F025",
+        "F031",
+        "F032",
+        "F033",
+        "F034",
+        "F035"
+      ],
+      "originalContractReference": "02 §8.3"
+    },
+    {
+      "id": "R17",
+      "priority": "must",
+      "title": "Integrity and progress",
+      "statement": "Distinguish transfer, verification and execution observations.",
+      "acceptance": "Show actual bytes/verification/finalization separately from stdout-stderr-exit; 100% bytes/exit 0 never implies whole business success.",
+      "checks": [
+        "F026",
+        "F027",
+        "F028",
+        "F033",
+        "F036",
+        "F037",
+        "F074"
+      ],
+      "originalContractReference": "02 §8–9,19.2,19.4"
+    },
+    {
+      "id": "R18",
+      "priority": "must",
+      "title": "Cancel and deadlines",
+      "statement": "Apply operation-specific start/stop/cleanup deadlines.",
+      "acceptance": "5-s file cancel, request/no-progress deadlines, finalization race and viewer cancellation; no file timeout for silent exec/PTY.",
+      "checks": [
+        "F008",
+        "F038",
+        "F039",
+        "F040",
+        "F041",
+        "F059",
+        "F070",
+        "F076",
+        "F085",
+        "Q012",
+        "Q016"
+      ],
+      "originalContractReference": "02 §2,8.4,18,19.1,19.3"
+    },
+    {
+      "id": "R19",
+      "priority": "must",
+      "title": "Partial and unknown recovery",
+      "statement": "Never convert uncertainty into automatic success or retry.",
+      "acceptance": "Preserve partial/result_unknown across lost link-cleanup ACK, crash, backup, storage failure and current-location observations.",
+      "checks": [
+        "F020",
+        "F025",
+        "F029",
+        "F031",
+        "F042",
+        "F043",
+        "F044",
+        "F056",
+        "F059",
+        "F060",
+        "F073",
+        "F076",
+        "F080",
+        "F084",
+        "S006",
+        "S037"
+      ],
+      "originalContractReference": "02 §7–8,11,19.3"
+    },
+    {
+      "id": "R20",
+      "priority": "must",
+      "title": "SSH response metric",
+      "statement": "Restrict only the probe to literal /bin/true.",
+      "acceptance": "Sample only normal exit+close,5-s cadence/deadline,15-s freshness,4-KiB output, identity/late-callback rules and unavailable state.",
+      "checks": [
+        "F045",
+        "F046",
+        "F047",
+        "F048",
+        "F051",
+        "F081",
+        "S021"
+      ],
+      "originalContractReference": "01 §7; 02 §10"
+    },
+    {
+      "id": "R21",
+      "priority": "must",
+      "title": "Application lifetime",
+      "statement": "Separate renderer/worker/app/suspend from remote work.",
+      "acceptance": "Apply internal/main-window close, crash, suspend, transfer continuity, PTY restore barrier and execution uncertainty distinctly.",
+      "checks": [
+        "F049",
+        "F050",
+        "F051",
+        "Q012"
+      ],
+      "originalContractReference": "02 §9; 09 §5,7"
+    },
+    {
+      "id": "R22",
+      "priority": "must",
+      "title": "JSON durability",
+      "statement": "Use one writer and separate in-memory layout lifetime.",
+      "acceptance": "Atomic replace/schema/checksum/backups/kind-specific receipts; main-only layout memory, no automatic replay after app restart.",
+      "checks": [
+        "F052",
+        "F053",
+        "F054",
+        "F055",
+        "F056",
+        "F057",
+        "F060",
+        "F065",
+        "S027",
+        "S037"
+      ],
+      "originalContractReference": "02 §11; 09 §7"
+    },
+    {
+      "id": "R23",
+      "priority": "must",
+      "title": "Secrets and ephemeral content",
+      "statement": "Encrypt only explicitly saved authentication data.",
+      "acceptance": "OS encryption with no plaintext fallback; no automatic file/argv/input/output disk persistence; owning-session memory and transfer boundaries.",
+      "checks": [
+        "F057",
+        "S007",
+        "S012",
+        "S014",
+        "S015",
+        "S016",
+        "S017",
+        "S025",
+        "S027",
+        "S032",
+        "S034",
+        "S037"
+      ],
+      "originalContractReference": "02 §5,12,18–19"
+    },
+    {
+      "id": "R24",
+      "priority": "must",
+      "title": "Electron authority and IPC",
+      "statement": "Preserve sandbox, capabilities, named actions and bounded streams.",
+      "acceptance": "Sender/schema/token/epoch, budgets, CSP/fuses; limited inline CSS only, no inline/eval JS/external HTML/local shell.",
+      "checks": [
+        "F072",
+        "S002",
+        "S003",
+        "S004",
+        "S005",
+        "S006",
+        "S007",
+        "S016",
+        "S020",
+        "S024",
+        "S028",
+        "S029",
+        "S030",
+        "S031",
+        "S032",
+        "S033",
+        "S035",
+        "S036",
+        "S038"
+      ],
+      "originalContractReference": "02 §3–4,18–19"
+    },
+    {
+      "id": "R25",
+      "priority": "must",
+      "title": "Network and logs",
+      "statement": "Avoid unneeded traffic, output storage and external-change surveillance.",
+      "acceptance": "Automatic selected SSH+necessary DNS only, no search/AI/telemetry/update/listener, redacted1-MiB×3 logs.",
+      "checks": [
+        "F082",
+        "S001",
+        "S017",
+        "S018",
+        "S019",
+        "S020",
+        "S031",
+        "S034"
+      ],
+      "originalContractReference": "02 §12; 09 §4"
+    },
+    {
+      "id": "R26",
+      "priority": "must",
+      "title": "Fixed error presentation",
+      "statement": "Show only observed phases and fixed Korean error codes/messages.",
+      "acceptance": "Cover core/view/session/exec/PTY/stop codes and actions, without speculative causes/search/automatic repair.",
+      "checks": [
+        "F058"
+      ],
+      "originalContractReference": "02 §13,19.5"
+    },
+    {
+      "id": "R27",
+      "priority": "must",
+      "title": "Performance and accessibility",
+      "statement": "Meet real resource/interaction budgets.",
+      "acceptance": "Measure sizes/start/CPU/RSS/UI/listing/stability/keyboard/IME/contrast using specified hardware/network/repetitions.",
+      "checks": [
+        "F063",
+        "F069",
+        "F078",
+        "Q004",
+        "Q005",
+        "Q006",
+        "Q007",
+        "Q008",
+        "Q009",
+        "Q010",
+        "Q011",
+        "Q012",
+        "Q013",
+        "Q014",
+        "Q015",
+        "Q025",
+        "Q026",
+        "Q027",
+        "Q028",
+        "Q029",
+        "S030",
+        "S038"
+      ],
+      "originalContractReference": "02 §14,18–19; 09 §1,6"
+    },
+    {
+      "id": "R28",
+      "priority": "must",
+      "title": "Verification evidence",
+      "statement": "Retain actual target, fault, performance and security evidence.",
+      "acceptance": "Six-combination smoke, restricted fixtures, real scripts, coverage and hash/environment/action/actual evidence; never mark unrun pass.",
+      "checks": [
+        "Q001",
+        "Q016",
+        "Q017",
+        "Q018",
+        "Q023",
+        "S024"
+      ],
+      "originalContractReference": "02 §14–15,17"
+    },
+    {
+      "id": "R29",
+      "priority": "must",
+      "title": "Licenses and supply chain",
+      "statement": "Meet project/upstream distribution and security obligations.",
+      "acceptance": "AGPL-3.0-only text, actual/transitive licenses, SBOM, source/lock and applicable high-critical resolution; no blanket unrelated-code disclosure claim.",
+      "checks": [
+        "S022",
+        "S023"
+      ],
+      "originalContractReference": "01 §2; 02 §16"
+    },
+    {
+      "id": "R30",
+      "priority": "must",
+      "title": "User value",
+      "statement": "Evaluate understanding, usability and repeat use separately.",
+      "acceptance": "Report G0/G2/G3 by product criteria or disclose unperformed/insufficient observation; research never substitutes technical/demand proof.",
+      "checks": [
+        "Q019",
+        "Q020",
+        "Q021",
+        "Q023"
+      ],
+      "originalContractReference": "01 §9; 02 §15 D13"
+    },
+    {
+      "id": "R31",
+      "priority": "must",
+      "title": "Git and public release",
+      "statement": "Operate within real authority and technical gates.",
+      "acceptance": "Actual remote/guards/current-head approval/cleanup, signatures, all technical checks and blocking defects; research remains separate.",
+      "checks": [
+        "Q003",
+        "Q022",
+        "Q023",
+        "S023"
+      ],
+      "originalContractReference": "02 §16; 01 §9"
+    },
+    {
+      "id": "R32",
+      "priority": "must",
+      "title": "Implementation and versioning",
+      "statement": "Follow exact dependencies, D01–D13, verification and handoff.",
+      "acceptance": "Bind actual implementation instruction to v6 digest, record lock/impact/regressions and document-versus-product checks.",
+      "checks": [
+        "Q017",
+        "Q024"
+      ],
+      "originalContractReference": "02 §15,17; 07"
+    },
+    {
+      "id": "R33",
+      "priority": "must",
+      "title": "Internal windows",
+      "statement": "Implement geometry, min/max/restore, focus/taskbar and layout lifetime.",
+      "acceptance": "12 total/6 file/4 viewer; bounds/restoreBounds/modes, clamp/focus/keyboard/IME/main-memory snapshot per desktop contract.",
+      "checks": [
+        "F001",
+        "F015",
+        "F048",
+        "F049",
+        "F050",
+        "F061",
+        "F062",
+        "F063",
+        "F064",
+        "F065",
+        "F079",
+        "Q001",
+        "Q004",
+        "Q006",
+        "Q008",
+        "Q013",
+        "Q014",
+        "Q017",
+        "Q020",
+        "Q025",
+        "Q028",
+        "Q029",
+        "S002",
+        "S035"
+      ],
+      "originalContractReference": "09 §1–7"
+    },
+    {
+      "id": "R34",
+      "priority": "must",
+      "title": "UTF-8 text viewer",
+      "statement": "Read bounded supported text as read-only plain content.",
+      "acceptance": "Strict UTF8/BOM/NUL,2 MiB,100000-scalar lines, deadlines/cancel/change detection/manual reread and stream limits.",
+      "checks": [
+        "F001",
+        "F007",
+        "F041",
+        "F058",
+        "F066",
+        "F067",
+        "F070",
+        "F081",
+        "F082",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q014",
+        "Q015",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q026",
+        "Q029",
+        "S003",
+        "S016",
+        "S020",
+        "S028",
+        "S029",
+        "S030"
+      ],
+      "originalContractReference": "02 §18; 09 §4–5"
+    },
+    {
+      "id": "R35",
+      "priority": "must",
+      "title": "Image viewer",
+      "statement": "Bound static PNG/JPEG/WebP decoding and fit/zoom.",
+      "acceptance": "20 MiB/40 MP/16384 edge, predecode headers, animation refusal, validated EXIF dimensions, one Worker bitmap, deadline/release; PNG-WebP EXIF unsupported, missing JPEG orientation 1.",
+      "checks": [
+        "F001",
+        "F007",
+        "F041",
+        "F058",
+        "F067",
+        "F068",
+        "F069",
+        "F070",
+        "F081",
+        "F082",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q014",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q026",
+        "Q029",
+        "S003",
+        "S016",
+        "S028",
+        "S029",
+        "S030"
+      ],
+      "originalContractReference": "02 §18; 09 §4–5"
+    },
+    {
+      "id": "R36",
+      "priority": "must",
+      "title": "Explicit GUI execution",
+      "statement": "Confirm selected file, args/cwd and show output/exit.",
+      "acceptance": "One-use preview, POSIX quoting, direct-sh-bash, open stdin, separate streams, observed exit, TERM/unconfirmed, never execute on double-click.",
+      "checks": [
+        "F001",
+        "F007",
+        "F011",
+        "F021",
+        "F041",
+        "F056",
+        "F058",
+        "F071",
+        "F072",
+        "F073",
+        "F074",
+        "F075",
+        "F076",
+        "F081",
+        "F082",
+        "F083",
+        "F084",
+        "F085",
+        "Q001",
+        "Q006",
+        "Q012",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q027",
+        "S004",
+        "S009",
+        "S012",
+        "S016",
+        "S017",
+        "S019",
+        "S020",
+        "S021",
+        "S028",
+        "S033",
+        "S034",
+        "S035",
+        "S036",
+        "S037"
+      ],
+      "originalContractReference": "02 §19.1–19.3,19.5; 09 §5"
+    },
+    {
+      "id": "R37",
+      "priority": "must",
+      "title": "SSH PTY terminal",
+      "statement": "Provide remote PTY input/display/resize/session.",
+      "acceptance": "ssh2+xterm, resize/IME/sequenced input/frozen paste target, OSC-title-URI limits, backpressure, restore-send barrier, REP/memory protection.",
+      "checks": [
+        "F001",
+        "F007",
+        "F011",
+        "F021",
+        "F041",
+        "F056",
+        "F058",
+        "F075",
+        "F077",
+        "F078",
+        "F079",
+        "F080",
+        "F081",
+        "F082",
+        "F083",
+        "F084",
+        "F085",
+        "Q001",
+        "Q006",
+        "Q008",
+        "Q012",
+        "Q014",
+        "Q015",
+        "Q016",
+        "Q017",
+        "Q020",
+        "Q027",
+        "Q029",
+        "S002",
+        "S004",
+        "S009",
+        "S012",
+        "S016",
+        "S017",
+        "S019",
+        "S020",
+        "S021",
+        "S028",
+        "S031",
+        "S032",
+        "S034",
+        "S035",
+        "S036",
+        "S037",
+        "S038"
+      ],
+      "originalContractReference": "02 §19.1,19.3–19.5; 09 §5–6"
+    },
+    {
+      "id": "R38",
+      "priority": "must",
+      "title": "Execution/window/connection lifetime",
+      "statement": "Distinguish hide, stop, disconnect, exit and uncertainty.",
+      "acceptance": "Keep hidden GUI execution, confirm PTY close, retain opening/late ownership, exit-close-loss distinction, unknown stop/no replay, typed receipts/restart.",
+      "checks": [
+        "F008",
+        "F049",
+        "F050",
+        "F051",
+        "F056",
+        "F059",
+        "F064",
+        "F065",
+        "F070",
+        "F073",
+        "F076",
+        "F080",
+        "F084",
+        "F085",
+        "Q012",
+        "Q017",
+        "Q028",
+        "S037",
+        "S038"
+      ],
+      "originalContractReference": "02 §6,9,11,19.3–19.4; 09 §5,7"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "D01",
+      "title": "Foundation",
+      "depends_on": [],
+      "requirements": [
+        "R02",
+        "R03",
+        "R07",
+        "R23",
+        "R29",
+        "R32"
+      ],
+      "artifacts": [
+        "P01"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D01"
+    },
+    {
+      "id": "D02",
+      "title": "Storage and trust",
+      "depends_on": [
+        "D01"
+      ],
+      "requirements": [
+        "R05",
+        "R06",
+        "R22",
+        "R23",
+        "R24"
+      ],
+      "artifacts": [
+        "P02"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D02"
+    },
+    {
+      "id": "D03",
+      "title": "Connections and capabilities",
+      "depends_on": [
+        "D02"
+      ],
+      "requirements": [
+        "R07",
+        "R08",
+        "R09"
+      ],
+      "artifacts": [
+        "P03"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D03"
+    },
+    {
+      "id": "D04",
+      "title": "Desktop",
+      "depends_on": [
+        "D03"
+      ],
+      "requirements": [
+        "R01",
+        "R04",
+        "R26",
+        "R33"
+      ],
+      "artifacts": [
+        "P04"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D04"
+    },
+    {
+      "id": "D05",
+      "title": "Browsing and file mutations",
+      "depends_on": [
+        "D04"
+      ],
+      "requirements": [
+        "R10",
+        "R11",
+        "R12",
+        "R13",
+        "R19"
+      ],
+      "artifacts": [
+        "P05"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D05"
+    },
+    {
+      "id": "D06",
+      "title": "Viewers",
+      "depends_on": [
+        "D05"
+      ],
+      "requirements": [
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P06"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D06"
+    },
+    {
+      "id": "D07",
+      "title": "Asynchronous transfers",
+      "depends_on": [
+        "D05"
+      ],
+      "requirements": [
+        "R14",
+        "R15",
+        "R16",
+        "R17",
+        "R18",
+        "R19"
+      ],
+      "artifacts": [
+        "P07"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D07"
+    },
+    {
+      "id": "D08",
+      "title": "GUI execution",
+      "depends_on": [
+        "D03",
+        "D04",
+        "D05"
+      ],
+      "requirements": [
+        "R17",
+        "R36"
+      ],
+      "artifacts": [
+        "P08"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D08"
+    },
+    {
+      "id": "D09",
+      "title": "PTY terminal",
+      "depends_on": [
+        "D03",
+        "D04"
+      ],
+      "requirements": [
+        "R37"
+      ],
+      "artifacts": [
+        "P09"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D09"
+    },
+    {
+      "id": "D10",
+      "title": "Integrated lifetime and response",
+      "depends_on": [
+        "D06",
+        "D07",
+        "D08",
+        "D09"
+      ],
+      "requirements": [
+        "R08",
+        "R18",
+        "R19",
+        "R20",
+        "R21",
+        "R22",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P10"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D10"
+    },
+    {
+      "id": "D11",
+      "title": "Security, functional and performance verification",
+      "depends_on": [
+        "D10"
+      ],
+      "requirements": [
+        "R01",
+        "R03",
+        "R10",
+        "R23",
+        "R24",
+        "R25",
+        "R26",
+        "R27",
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D11"
+    },
+    {
+      "id": "D12",
+      "title": "Packaging and contribution guidance",
+      "depends_on": [
+        "D11"
+      ],
+      "requirements": [
+        "R02",
+        "R28",
+        "R29",
+        "R31",
+        "R32"
+      ],
+      "artifacts": [
+        "P12"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D12"
+    },
+    {
+      "id": "D13",
+      "title": "Usability evaluation",
+      "depends_on": [
+        "D12"
+      ],
+      "requirements": [
+        "R30",
+        "R31"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "completion_contract": "docs/developer/guides/development-plan.md §15 D13"
+    }
+  ],
+  "checks": [
+    {
+      "id": "F001",
+      "requirements": [
+        "R01",
+        "R04",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Starting with no profiles, connect, verify trust, browse, view text/images, explicitly run a file, open PTY, transfer and switch internal windows.",
+      "expected": "All desktop workflows follow the specification without free-form command input for browsing/viewing/GUI execution. PTY is an explicit terminal; no remote desktop/X11 or server-specific app is required.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "6b69d7f1d7a898192fb09b90329fc74b78caef1f56294474a7de2810f694ae47"
+    },
+    {
+      "id": "F002",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Submit10 profiles and section 5 minimum/maximum/overflow/forbidden name/host/port/username inputs.",
+      "expected": "Reject profile 11 and out-of-range values; default port 22, name 1–64 scalars, host≤253 bytes, integer port 1–65535, username 1–256 UTF-8 bytes.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "8d3e9a929949ca69350286259a327997531e9859d31e808b895232a85bbae66f"
+    },
+    {
+      "id": "F003",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Register mixed-case DNS, IDN, trailing dots, IPv4, bracketed IPv6, schemes, paths and whitespace.",
+      "expected": "Apply domainToASCII/lowercase/remove one trailing dot; strip valid IPv6 brackets in storage. Reject invalid IP/scheme/path/userinfo/whitespace; serverId is UUIDv4.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "28843324520860bedca72951b91b747d042896c97cb11ad78e7c59c9e0e46b62"
+    },
+    {
+      "id": "F004",
+      "requirements": [
+        "R05"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Edit name/endpoint/username/authentication and delete connected, unresolved-work and disconnected profiles.",
+      "expected": "Endpoint/username changes clone a new ID and retain the old profile. Block specified edits/deletion while busy/unresolved; name changes preserve existing task snapshots.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b24e850e470b7bdc9ea91fa0187511f83eec80747a1b8c8b6bb0d7ac151e355b"
+    },
+    {
+      "id": "F005",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Authenticate on real targets with passwords and encrypted/unencrypted OpenSSHv1 Ed25519/RSA≥2048 and PKCS#1 RSA PEM; try incorrect passwords.",
+      "expected": "Supported keys/passphrases authenticate. Each failure exhausts the selected method once, without password/key fallback or automatic repeat.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fa42f1691326c1a3a616b0891554a42cc99969415de58a2d937ee0ee2ee24502"
+    },
+    {
+      "id": "F006",
+      "requirements": [
+        "R08"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Feed successful/cancelled/failed connect, unknown-host approval, rekey and manual reconnect events into the reducer.",
+      "expected": "Only section 6 transitions occur; attempts create new generations, rekey retains generation, awaiting_host_trust owns no open socket.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cd9a833d517fb650b4e6146c8130d5d0f76d197059a976d5f9ee4f5b107d552c"
+    },
+    {
+      "id": "F007",
+      "requirements": [
+        "R08",
+        "R14",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Open3 servers and all control/transfer/execution metadata/viewer/probe/exec/PTY resources to limits, exceed them and inspect idle execution retirement.",
+      "expected": "At most 1 control+1 transfer+1 execution per server and 9 sockets total; control has 1 metadata/2 viewer/1 probe. Viewer reads 4 global, exec+PTY4/server and 6 global with no hidden execution queue. Viewer excess waits FIFO; transfer slots 2 global/1 server. Never evict unrelated resources for capacity.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "04b843daa3418c9816c7c6f2e6a6d8651d8354e1c642ae14d0aa758b022382f3"
+    },
+    {
+      "id": "F008",
+      "requirements": [
+        "R08",
+        "R18",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Reject/close transfer and execution sockets separately, then control, while same/other servers have viewers/exec/PTY/transfers.",
+      "expected": "Auxiliary-only loss preserves sibling roles. Control loss closes that server's auxiliaries, interrupts queued transfers and records execution/PTY uncertainty. Other servers survive; no reconnect or replay.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a1ccfb6cfc03e8b13d94b584c1393836e5c4c8361502fdc3cf83a180db9cc397"
+    },
+    {
+      "id": "F009",
+      "requirements": [
+        "R09"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Authenticate to SSH without an SFTP subsystem.",
+      "expected": "Keep connection information and disable file apps with SFTP_UNAVAILABLE; no shell/SCP/helper fallback.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b2d097da3b6f3026674c2759da851f7639ef9d8d9c3d8eb6e24168bcf35b1a9b"
+    },
+    {
+      "id": "F010",
+      "requirements": [
+        "R09"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Provide realpath/os-release fixtures for Ubuntu 24.04, other OS, read errors, duplicate/malformed keys and>16 KiB.",
+      "expected": "Canonical realpath('.') is initial folder; read≤16 KiB and parse ID/VERSION_ID only. Read/format failures are unknown; never execute content.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "899dffde5336b16dd732e5bdd2e7cc885b5eea93e8cbe1ad89531c836a853fc0"
+    },
+    {
+      "id": "F011",
+      "requirements": [
+        "R09",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Request files/viewers/GUI exec/PTY/probe with supported/unsupported/unknown OS and SFTP-only/chroot/exec-denied/PTY-denied fixtures.",
+      "expected": "Apply independent v6 capabilities and session-only unknown-OS approval. No approval inheritance on reconnect, SFTP-wide failure from exec/probe rejection or program authority inferred from probe success.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "bb634143cb1deaa40a5eefd6a8e36db12109a5cf435ac5c23548aa8b36696714"
+    },
+    {
+      "id": "F012",
+      "requirements": [
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Exercise POSIX absolute paths,255-byte names,4096-byte paths, overflow, forbidden characters, NFC/NFD and case.",
+      "expected": "Reject out-of-range/lossy actions; separate raw/display names and never alter actual remote paths through escaping, normalization or Windows path.join.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9b4560e1100b8ef8af0009993f118676b5cfa4c95adbeab8dfe78af9ddfda649"
+    },
+    {
+      "id": "F013",
+      "requirements": [
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test remote symlink/FIFO/socket/device/unknown type, detectable local symlink/junction/UNC and post-selection type changes.",
+      "expected": "Reject unsupported actions/UNC; recheck fstat and pre-mutation lstat/parent realpath. Explain ordinary local files/directories only; do not claim detection of every reparse/cloud/volume type.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "0b6faba0df2cc165bbe6def53bcfc3380e3f41e54835f64922551fddcf0cf526"
+    },
+    {
+      "id": "F014",
+      "requirements": [
+        "R11"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Enumerate dot/hidden/folder/name variants and 10,000-entry/10-MiB boundaries; filter/toggle/refresh.",
+      "expected": "Exclude dot entries, sort folders first then code points, show hidden by default. Close on limits and mark partial listings; filter loaded names only, no recursive scan.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a8e66e32db6fcc3e292df1acd714157e188299a580dcc0da09021889c76a12f5"
+    },
+    {
+      "id": "F015",
+      "requirements": [
+        "R04",
+        "R11",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Switch multiple A/B explorers, delay old listings and exceed 6 file/12 total windows.",
+      "expected": "Keep each window's server/path/selection, reject excess without closing existing windows, discard foreign late replies, never retarget tasks or invent file tabs.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9b34b8f1dd4069ae2280f86a2de86abebddc73dc3af1e45c3fa710e63a343144"
+    },
+    {
+      "id": "F016",
+      "requirements": [
+        "R10",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Download to Windows forbidden/reserved/trailing names, macOS forbidden names and case/Unicode aliases.",
+      "expected": "Require an explicit new name, no substitution. Actual exclusive link decides collisions and preserves existing names/bytes.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d978bdb36734594ba178da99edc9f8f72a305f593ecc3b3137b359d875111fa6"
+    },
+    {
+      "id": "F017",
+      "requirements": [
+        "R12"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Confirm single-folder creation for absent/existing names and missing intermediate parents.",
+      "expected": "Persist intent→mkdir 0700→ACK→lstat directory→receipt. Existing names conflict; do not create parents; target matches approved preview.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9845df7e7c662b0cd693739dd014390b1beed449d9f30459313941fa84a99319"
+    },
+    {
+      "id": "F018",
+      "requirements": [
+        "R13"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Delete regular files, empty folders, folders populated just before delete, root and active paths.",
+      "expected": "Use unlink/rmdir only, protect root/active/nonempty folders, honor final rmdir result; no recursion or shell fallback.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "265518538d0577e0af7962b238858b55dcb726adb9ffe395b4c7bbfeae3e1350"
+    },
+    {
+      "id": "F019",
+      "requirements": [
+        "R13"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Rename a regular file within its folder to absent/existing names; try folder/link/move cases.",
+      "expected": "Only intent→hardlink→persist ACK→unlink source→persist ACK is allowed. Preserve existing destination; reject folder/link/move.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fdd055dd3d582a998e11f4e3e3bbd71da29575d3044fcfea27c2e0cc7791dd4f"
+    },
+    {
+      "id": "F020",
+      "requirements": [
+        "R13",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "After successful rename hardlink, inject source-unlink failure or lost ACK.",
+      "expected": "Confirmed failure is partial with both paths; lost ACK is stage-specific unknown. No repeated source deletion or new-name rollback.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "eba90cb1938a8890c11384f16e83522302723c9137ff3e6024be40be7d817350"
+    },
+    {
+      "id": "F021",
+      "requirements": [
+        "R13",
+        "R14",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Race same/ancestor mutations, transfer-source edits, sibling creation/reads and explicit exec/PTY writes.",
+      "expected": "Apply SFTP path locks/parent preservation only to participating operations. Do not claim control of commands/external writers or snapshots/transactions; stop on observed source change.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "2cf594ff4c61f14e29c43cc67857576df7c94cbb00d11cf801a35a671d8a4607"
+    },
+    {
+      "id": "F022",
+      "requirements": [
+        "R14"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Queue many A jobs before B/C and race cancellation/enqueue.",
+      "expected": "Hold2 global/1-server slots through final record. Choose oldest runnable(enqueuedSequence, taskId); A waits do not block B/C.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "318449cf0e58fffb6ef74b7b4b83b73290341b47bc10128c0262e5679f95e911"
+    },
+    {
+      "id": "F023",
+      "requirements": [
+        "R14"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Submit100/101 selections, queue overflow and mixed valid/conflicting/unsupported items.",
+      "expected": "Reject whole over-limit requests. Preview every mixed item and obtain valid-subset or cancel; no silent omission or automatic suffixes.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "07ea239fd7a6b0646998fa5a55ce12d564f98eedf7720c366d064e643a23ed00"
+    },
+    {
+      "id": "F024",
+      "requirements": [
+        "R15",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test0-byte/5-GiB/64-GiB/overflow sources and size/mtime changes after preview/during transfer.",
+      "expected": "Support0–64 GiB with safe offsets, hold one source handle, reject observed first/final stat changes as SOURCE_CHANGED, no snapshot promise.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "472ca778dd1f264bc8efe30c4aa25bac4b3735d732a14b03f28d20bdf93b4c29"
+    },
+    {
+      "id": "F025",
+      "requirements": [
+        "R15",
+        "R16",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject existing temp, lost create ACK and failed created-record storage in both directions.",
+      "expected": "Durable intent→exclusive wx 0600→durable created before bytes. Preserve colliding temps; lost ACK is unknown; failed created record closes without transfer. Names alone do not prove ownership.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c6880d3c48094d8084b65191c2aad35ccd0a41577dc28523b6d221cf7eb64613"
+    },
+    {
+      "id": "F026",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Delay/reorder upload write ACKs and slow source; observe requests/memory/progress.",
+      "expected": "32-KiB chunks, ≤16 pending writes, backpressure and ACK-only byte progress; no whole-file buffer or invented same-offset resend.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b50940c1d033e3d5383d331869271a207917ab7accd34c862b9728c6e3d25be2"
+    },
+    {
+      "id": "F027",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Upload0-byte/ordinary/actual 5-GiB files and collect source hash/EOF/write ACK/remote close/temp stat/read-back.",
+      "expected": "After all writes/close/size, read back entire temp on the same transfer SFTP and compare SHA256/count; empty-file hash/close/size remain required.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "849dcf9762b2d3a97d7e4a9ff4225df4cd1c7dec4922d3a93304399454d8b478"
+    },
+    {
+      "id": "F028",
+      "requirements": [
+        "R15",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Deny READ or corrupt uploaded temp bytes during verification.",
+      "expected": "VERIFY_READ_DENIED or VERIFY_MISMATCH respectively; send no final link and do not skip verification or run checksum commands.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "53fd0741635d0e3ae2f31e4509fc7b786e9ac102007ac8fee186b10604a28b61"
+    },
+    {
+      "id": "F029",
+      "requirements": [
+        "R15",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Create destination between pending intent/durable ACK/hardlink, and run normal finalization.",
+      "expected": "Dispatch link only after durable finalization. Preserve collision; normal order ACK→destination regular/size→creation record→temp cleanup→completion record→completed.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "8dd08818d8e237a2bfc8fafcd3ae9a32388a4a2addf5cbd1416d7747be9c8705"
+    },
+    {
+      "id": "F030",
+      "requirements": [
+        "R09",
+        "R15"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Return unsupported hardlink/EXDEV/permission errors for requested upload/rename and observe login traffic.",
+      "expected": "Fail/restrict only that feature; no rename/posix-rename/copy/unlink/helper fallback or arbitrary login probe files.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "8e7fe9e44963b25556f7586e86327e4ae6f19134c0a2fa20711cb65850f49f40"
+    },
+    {
+      "id": "F031",
+      "requirements": [
+        "R15",
+        "R16",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "After confirmed destination, fail cleanup, lose cleanup ACK and fail final receipt storage separately.",
+      "expected": "Cleanup failure is completed+needed, lost ACK completed+unknown; never roll back destination. Storage failure shows observed creation and locks new mutations; persisted finalizing recovers unknown.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3d7cc6021251e28be8d90b97ef8aaea3400da0761c44f410dd173816004a65a8"
+    },
+    {
+      "id": "F032",
+      "requirements": [
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Download>5-GiB sources with short reads/short local writes/delayed reads.",
+      "expected": "32-KiB chunks, ≤16 pending reads, process actual lengths/remainders in order on one source handle; no 32-bit offset truncation.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d53e70278c3f61e241e74f304b48c07fba7d906bd6c0b9dadeba1eeb023800d3"
+    },
+    {
+      "id": "F033",
+      "requirements": [
+        "R16",
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Download actual 5-GiB files on APFS/NTFS and inject sync/close/read-back errors.",
+      "expected": "Observe final source stat/remote close/local sync-close/reopen hash-size before pending→durable intent→finalizing→fs.link. Failed verification never finalizes.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "30232915031422d64008ff0bf06f9d3aea9d35097fcab14a0ce7677584c86adc"
+    },
+    {
+      "id": "F034",
+      "requirements": [
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Create destination immediately before download link; fail fs.link and select UNC/unsupported-hardlink targets.",
+      "expected": "Fail collisions/aliases/UNC/unsupported operations; preserve destination with no rename/COPYFILE/deletion fallback or universal-volume-detection claim.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b70c5e4065331ec6a6fe80ef1f91b7eeefbfdeaf19a633f824d43d169ce83fd9"
+    },
+    {
+      "id": "F035",
+      "requirements": [
+        "R12",
+        "R15",
+        "R16"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Transfer files with mode/mtime/owner/ACL/xattr and inspect requested creation modes/descriptions.",
+      "expected": "Request0600 files/0700 folders; do not clone or claim preservation of metadata, including remote executable bits on download.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "1b6f57f3436c83d94e29b591719ed6753ca95904c16646a7e0308201c1070917"
+    },
+    {
+      "id": "F036",
+      "requirements": [
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Feed empty/normal-file ACK/write and verification progress at transfer boundaries.",
+      "expected": "Monotonic bytes≤total; empty 0% until byte phase ends then 100%; separate verifiedBytes and verifying state, never 200% or premature completion.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "5f722149449cc456a1b5b621cfafa230a6f9cdda66a96251085f23a590422351"
+    },
+    {
+      "id": "F037",
+      "requirements": [
+        "R17"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Replay3-second monotonic windows, first sample,3-second stall, terminal and high-rate events.",
+      "expected": "Use actual bytes/elapsed over 3 seconds; no rate before sample/after stall/terminal. Separate verification speed; ≤4 Hz, immediate terminal, UI≤1 s, no ETA.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "56424b86e5e3290c3db03ba01749ba8176fa6fe38a9e11af835579f561f2e228"
+    },
+    {
+      "id": "F038",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Cancel a queued transfer before it obtains a slot.",
+      "expected": "Cancelled without socket/temp; preserve other tasks' state/order.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d2f7de52911b507262fd5e9f0587019af023694221ff16f56476f92a43ac1225"
+    },
+    {
+      "id": "F039",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Cancel preparing/transferring/verifying with owned temp, changed parent and uncertain socket.",
+      "expected": "Immediately block new I/O, close only owned stream/socket≤5 s; at most one cleanup with confirmed session/ownership; never auto-delete unknown paths.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "024f027503ec8130637fa15cd935aca5aa87a74ea6acbf5da8e07c76047dfb2a"
+    },
+    {
+      "id": "F040",
+      "requirements": [
+        "R18"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Race cancellation and pending finalization both ways; delay/fail durable intent.",
+      "expected": "Cancel-first sends no link. Pending-first rejects cancellation even during storage. Persist finalizing+dispatchAllowed=true, not pending; successful storage ACK alone permits link. Failure is STORAGE_FAILED with no link and correct UI.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "ca48ad8a82bb3d863943da05d0057e94b0470bf6ce758838afcdb9b184415a55"
+    },
+    {
+      "id": "F041",
+      "requirements": [
+        "R08",
+        "R18",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Delay SSH/SFTP/viewer/decode/exec-PTY-open/probe to boundaries while keeping silent jobs/idle PTY alive.",
+      "expected": "Auth20 s, request 15 s/list 60 s, viewer read 30 s after dispatch/decode 5 s, exec-open 10 s, probe 5 s. Queue wait excluded; transfer 30-s no-progress/cancel 5-s rules never time out an established silent exec/PTY.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "5f3739d32dc8c92b6b01e484c7cd0c0883a310ac616a93b52aca99f70a19c8bf"
+    },
+    {
+      "id": "F042",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Lose mutation/temp/final-link ACKs and deliver late callbacks after timeout/termination.",
+      "expected": "Preserve stage-specific unknown whenever change may have occurred. Distinguish rejection from loss; late success is observation only, never terminal completion promotion.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "1ed27706a22e6021faf580225a6913fb9fe64d82686315680da880c1cdad2ccb"
+    },
+    {
+      "id": "F043",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Restart with valid-current queued/created/uncertain-create/finalizing/invalid-pending/dispatched/completed receipts.",
+      "expected": "Apply section 8.4 interrupted/cleanup/unknown/completed recovery; invalid pending is unknown. No automatic execution/resume/reconnect/temp scan/delete; backup behavior follows F060.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d97778420a6a9f2cd73a6ccf48677d34eabbbfe6533f66cfb5c7b59e873d93dc"
+    },
+    {
+      "id": "F044",
+      "requirements": [
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Read a location for an unknown task, observe a matching current size/hash, then acknowledge the record.",
+      "expected": "Read only; matching current state does not prove past success. Add acknowledgedAt while preserving result_unknown.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b3f0b428894bfd29a836a66daf35bc0a3a87dfbf221b6a57f9d1f65462c16a13"
+    },
+    {
+      "id": "F045",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run normal /bin/true over authenticated control and record dispatch/exit/close/local-wait times.",
+      "expected": "Only the fixed command; sample from actual exec call through exit 0/no signal-error/close≤5 s. Exclude local queue, keepalive and transfer rates.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "4c93b3cea23afa9c621db4d5c5fd97828dcbdd50c6b09372a0ab801ff5606a2c"
+    },
+    {
+      "id": "F046",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Return rejected exec, nonzero/signal/missing exit/error or>4-KiB combined output.",
+      "expected": "Mark session probe unavailable and stop repeats; consume≤4 KiB without retention and preserve file features.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "bb52fed75fc823ac0dd3cff47d442ebc8df56e531dd8fac9c08c13d8dba36847"
+    },
+    {
+      "id": "F047",
+      "requirements": [
+        "R20"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Delay exec callback beyond 5 s or never return it.",
+      "expected": "Show delayed without sample, retain pending ownership without accumulation, close/discard late channel; do not force control disconnect for measurement.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b1447a402cd4a8d5992dd8615ce09684ed92f2a6c5a0d25d110da8c1fe548630"
+    },
+    {
+      "id": "F048",
+      "requirements": [
+        "R20",
+        "R04",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Replay cross-server window focus/minimize/restore, app blur/minimize/return, stale samples and channel wait.",
+      "expected": "Follow active-server/foreground rules, immediately clear foreign values, distinguish internal from app minimize, enforce freshness/epochs and fixed delayed/unavailable states.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fd388d427c7ad7a19152d7884b94241200345416508755d1ae0487bd3c0efa9f"
+    },
+    {
+      "id": "F049",
+      "requirements": [
+        "R21",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "With transfer/viewer-read/exec/PTY active, minimize/close internal windows, disconnect and exit.",
+      "expected": "Minimize preserves work. Apply kind-specific confirmations/lifetimes; output-window close is not remote stop. Preserve uncertainty beyond shutdown deadline.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "876f0d073e2a16c9b9b8783216220f30681c798882b2c963c41f4b84865175a6"
+    },
+    {
+      "id": "F050",
+      "requirements": [
+        "R21",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Crash renderer and worker during transfer/viewer/exec/PTY; request UI recovery or explicit engine restart.",
+      "expected": "Renderer preserves main/worker and restores main metadata+worker observations. Worker death conservatively ends resources; no auto restart/remote/input replay. PTY ring is display-only with truncation disclosure.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a35ea11b47ac016806b9295be026a8a85abe9f12f737a63b8637d5eac33aab5d"
+    },
+    {
+      "id": "F051",
+      "requirements": [
+        "R21",
+        "R20",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Suspend normally and without notification, resume, change wall clock and observe exec/PTY/transfers.",
+      "expected": "Invalidate generations/probes and preserve kind-specific disconnect outcomes without inferring remote stop. No reconnect/resume/command-key replay; monotonic deadlines/rates.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f6d5e3e0007b1e02e7195b9b7871f79a1613c48349ceee3c662c821cb5a7fbec"
+    },
+    {
+      "id": "F052",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run two apps with one userData and concurrent storage requests.",
+      "expected": "Only lock-owning main writes; second activates existing window/exits. Separate functional/runtime data; do not overwrite app/key/system SSH files.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "aec38aedf313e1c34ddfcb99983624d930c84c0ccdd5834becd65c06ddfcc5bf"
+    },
+    {
+      "id": "F053",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Read/write reordered keys/arrays, corrupted checksums, unsafe revisions, prohibited values and 1-MiB state/64-KiB receipt boundaries.",
+      "expected": "Hash recursively code-point-sorted keys while preserving arrays. Bound before parse; enforce strict schema/checksum/safe integers and reject undefined/NaN/Infinity/bigint.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a9916b77e35b4d7be341383e77ca83dc931e4b65ff5d7b37351b8c542ef5e9ba"
+    },
+    {
+      "id": "F054",
+      "requirements": [
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Interrupt temp write/sync/backup/current replacement and inject Windows replacement locks.",
+      "expected": "Same-parent wx 0600→sync-close→verified backup copy/sync/replace→current replace, no pre-unlink. Retry100/200/400 ms at most 3 times within 5 s; never overlap writers.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "e03dd233ea937f4fbd18012128a60ae89d80cf6cee90e8cf316a839cc361c851"
+    },
+    {
+      "id": "F055",
+      "requirements": [
+        "R22",
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Start with valid current, only valid backup, both corrupted and future schema.",
+      "expected": "Prefer valid current. Disclose backup recovery and require renewed trust before auth. Both invalid lock connections/changes without empty reset/overwrite/downgrade.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "18bca53935ca729463e9ea71ea7141d962ab50b8e667543b645bfddf4e7b5ce9"
+    },
+    {
+      "id": "F056",
+      "requirements": [
+        "R22",
+        "R19",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject disk-full/permission/read-only/lock failures before and after mutation/exec/PTY intent; explicitly recheck storage.",
+      "expected": "Failed intent forbids dispatch; post-ACK storage failure is not remote failure. Block new changes/enqueue/exec/PTY/trust while allowing reads/existing PTY input/stop/disconnect; unlock only after settled writer/file verification.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "aaa63f89c24b99101e186f8c78fb902acaeff12f674947bed9fe57f1ef5bfbe4"
+    },
+    {
+      "id": "F057",
+      "requirements": [
+        "R22",
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Load terminal 30-day/1000-record boundaries, >100 unresolved, corrupt receipt and orphan secret; delete records/profiles.",
+      "expected": "Prune terminal records once at startup only; preserve unresolved and block new changes past limit. Isolate corrupt records, never substitute secrets or delete remote files/accounts.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "5ad84b7623ee8013746774febd8cd91cdc59fc0687a0b924b2dbf3b7feca0813"
+    },
+    {
+      "id": "F058",
+      "requirements": [
+        "R26",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Present all section 13/19.5 fixed codes, unknown native/SFTP failures, unknown outcomes and format rejection.",
+      "expected": "Match structured code/message/confirmed phase/target/actions/details. Prioritize uncertainty without stack/credential disclosure, stderr speculation, search/AI or automatic sudo/chmod advice.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "0fbb883bfa2573aba327d8ebd9c1d210f912dbced4332474753203bffee219d8"
+    },
+    {
+      "id": "F059",
+      "requirements": [
+        "R08",
+        "R18",
+        "R19",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Delay control metadata>15 s with same-server transfer/exec and other-server jobs; observe late callbacks.",
+      "expected": "Quarantine/close control and retire same-server auxiliaries per section 6. Reads time out, potentially dispatched changes stay unknown; unresolved paths remain blocked, old callbacks discarded. Probe/viewer cleanup remains scoped, other servers survive.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fd2f4549e2d9e03ad6b8fd28b76489949905ee8c33d0715337b76724069d7633"
+    },
+    {
+      "id": "F060",
+      "requirements": [
+        "R19",
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Corrupt current receipt and restore valid queued/verifying/terminal backups.",
+      "expected": "All restore with recoveryUncertain=true/result_unknown; terminal observations are historical with uncertain freshness. No replay/cleanup or inferred completed restoration.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f2a256ed78f6f1e9449f6646ba86ab054ef047d17c738ff191529e296b602bc4"
+    },
+    {
+      "id": "F061",
+      "requirements": [
+        "R04",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use mouse/Enter on desktop launchers, Start Tasks and taskbar; reopen existing apps.",
+      "expected": "Single click selects, double click/Enter launches. Connections/Tasks/Settings singleton; Files restores last window, new explorer is explicit. Same server/generation/path/kind viewer restores; taskbar never arbitrarily minimizes active window.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "2a8fda651dd63a03273aa01c8960c8821b66712b7c0d2533a5b3fd7defd5b174"
+    },
+    {
+      "id": "F062",
+      "requirements": [
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Exercise pointer title/buttons/body, drag/cancel/blur/resize/min/max/restore and shrinking viewport with 12 windows.",
+      "expected": "Preserve minimums, bounds/restoreBounds/mode/restoreMode including maximized→minimized→restore. Workspace x0, y44, width=viewport, height=viewportHeight−160; keep 40-px title/header/footer accessible.≤1 geometry update/animation frame; maximize is not OS fullscreen.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "62347b6d2612973ee1718517f239a9d440b2aea55f2e87df5378726652006761"
+    },
+    {
+      "id": "F063",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Switch overlapping windows by mouse/keyboard and repeat minimize/close/modal cycles.",
+      "expected": "Consistent focus/z-order/active/next window; covered windows do not receive input and modal close restores valid prior focus.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "325692b905c142746feac05ce9c13e7144ba4c557e22a453bdafefa2e7ff04c3"
+    },
+    {
+      "id": "F064",
+      "requirements": [
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Interleave window close/minimize with connection/transfer/exec/PTY events.",
+      "expected": "Separate window/resource lifetimes. Minimize preserves work; kind-specific close never automatically means transfer cancellation or remote termination.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cc73003610c5ad2e04cdf2e4cf9afb35f76ca10f41cee67f75dcb412ae19b810"
+    },
+    {
+      "id": "F065",
+      "requirements": [
+        "R22",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Recover renderer around 250-ms main-layout debounce, then separately restart app/shrink viewport.",
+      "expected": "Restore clamped last in-memory snapshot without promising last 250 ms. Do not persist geometry/open files/terminal content/input. App restart opens desktop+connections with no SSH/PTY/exec/transfer replay.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "0538a3ec49cd08633ee9c1968c00800043d3e2315d5756f90348310065e5b6af"
+    },
+    {
+      "id": "F066",
+      "requirements": [
+        "R10",
+        "R34"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Open UTF-8 Korean/emoji/BOM/CRLF/LF/empty/invalid/NUL and 2-MiB/100,000-scalar-line boundaries.",
+      "expected": "Strict BOM-stripped UTF-8; invalid/NUL unsupported, byte/line overflow VIEW_LIMIT. Plain virtualized text only, no HTML/Markdown/ANSI formatting/execution/search/edit/save/conversion.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "8376232e05f687ba5c50dabb0bb6fbca06fd1f461c49bd30df6009715ba90d50"
+    },
+    {
+      "id": "F067",
+      "requirements": [
+        "R11",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Change size/mtime during read, compare same-metadata edits, then edit externally and explicitly reread.",
+      "expected": "Display only after EOF/first-final stat validation. Observed change retains old content with SOURCE_CHANGED; no full detection promise for unchanged metadata. Show read time, reread new request only; no watcher/polling.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "65e084c6ba1cebbbdd575a84b4438d89706073d9f8d06f710fdfc49b675ecaf9"
+    },
+    {
+      "id": "F068",
+      "requirements": [
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test PNG/JPEG/WebP, fake signatures, animation/GIF/SVG/PDF, corrupt lengths, JPEG EXIF1–8/missing/bad, PNG eXIf/WebP EXIF and size/pixel boundaries.",
+      "expected": "4-KiB signature/header validation before static decode; 20 MiB/16384 edge/40 MP. Missing JPEG orientation 1, malformed rejected; PNG/WebP EXIF unsupported. Swap expected dimensions for 5–8, transfer one bitmap to canvas, no img/blob redecode; release refs on replace/close.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "27cf9a7ed6b8bdb9fd781763e3155166a4cfd28dd32ce53c33fce2a3b384a935"
+    },
+    {
+      "id": "F069",
+      "requirements": [
+        "R27",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Open landscape/portrait/transparent images; fit,25/50/100/200%, scroll and resize.",
+      "expected": "Start fit with only specified zoom levels, correct path/format/dimensions/bytes/read time/aspect/scale. Reflect viewport; never present mockup pixels as fetched content.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c017a69b167306fbff21b3c2060ae0a24a0f3ff15fe72b03db74deaf87a8ef37"
+    },
+    {
+      "id": "F070",
+      "requirements": [
+        "R18",
+        "R34",
+        "R35",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "During viewer read/decode close/reread/switch file-server/reconnect and inject late replies/timeouts.",
+      "expected": "Accept only matching viewer/request/generation. Dispose scoped handle/channel/buffers/untransferred bitmap/canvas; preserve metadata/transfer sockets. Decode Worker deadline 5 s, no SSH-loop blocking.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a6ed3eacc6fa99a6679d202ad408a2d4221b12193f99a230219c4000f85e91a0"
+    },
+    {
+      "id": "F071",
+      "requirements": [
+        "R10",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test direct/sh/bash defaults, changed cwd, POSIX confirmation, cancel and 60-s expiry.",
+      "expected": "Default direct/canonical parent/empty argv; show fixed target/account/path/cwd/mode/args. Dispatch only after POSIX and valid one-use confirmation. Missing direct execute bit is EXEC_PERMISSION; no chmod/sudo/runtime install/extension-selected mode.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "71aea79e9bb74ba14263f0e7bee19196787127b4468bce0d8307e57fbc8a296e"
+    },
+    {
+      "id": "F072",
+      "requirements": [
+        "R10",
+        "R24",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Execute empty/space/quote/dollar/backtick/semicolon/Unicode arguments and 64/4096-byte/16-KiB boundaries plus prohibited controls.",
+      "expected": "Separate argv rows, POSIX-quote cwd/path/every arg with no extra command. Reject invalid input before dispatch. Recheck source/parent but do not claim atomic TOCTOU prevention.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f89084c3ee47e859cec2d21804f564cb3220818aee64d7b8891ed3dbf30ed15a"
+    },
+    {
+      "id": "F073",
+      "requirements": [
+        "R19",
+        "R36",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject pre-dispatch cancel, explicit rejection, lost start ACK, normal/nonzero/signal/missing exit/missing close, disconnect and late exit.",
+      "expected": "cancelled_not_sent before dispatch, rejected on explicit denial, running only on acceptance. Exited requires observed exit/signal and same-channel close; otherwise unknown with observations. Exit0 is not business success; no replay.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "967b61222ca6513485c6ec11cdc9c2c102dd7055220917c6e80efe25df4152f3"
+    },
+    {
+      "id": "F074",
+      "requirements": [
+        "R17",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Interleave stdout/stderr, split UTF-8, silent/flood output and>16-MiB logs across 6 executions; hide/lose/reopen UI.",
+      "expected": "Show stream/arrival order, not guaranteed remote order; ANSI literal.≤32-KiB chunks/256-KiB unacknowledged/1 MiB-s output/4-MiB per task/16-MiB total. Drain bounded rings without UI; evict terminal buffers then globally oldest chunks with omission per task.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "47543be8ad61bddbcec7cb1ab45e3175cfffed144c7a80491d96e402fc8af904"
+    },
+    {
+      "id": "F075",
+      "requirements": [
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run GUI stdin-wait/TERM fixtures with pinned ssh2 and an interactive PTY separately.",
+      "expected": "GUI exec has no PTY/user stdin but holds stdin open so signals still send. No premature EOF; indefinite silence may be legitimate, no invented timeout/success. Interactive input belongs to PTY.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "6b6615fd23e5fc0a12ccf4859be910e40bf82aefb0edc6bf8835cb76d0255a0c"
+    },
+    {
+      "id": "F076",
+      "requirements": [
+        "R18",
+        "R19",
+        "R36",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Reject/lose/ignore TERM, delay exit and retain children; separately confirm channel close.",
+      "expected": "TERM once to confirmed channel; after 5 s without exit show stop_unconfirmed and keep output. No automatic KILL/search/replay; local close does not prove parent/descendant termination and insufficient evidence stays unknown.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d7c61aa18a754f1a053060134cc614a4252559197a9c6846333ed22cc8102bc7"
+    },
+    {
+      "id": "F077",
+      "requirements": [
+        "R09",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Open terminals against normal/rejected PTY/shell, SFTP-only and ForceCommand servers.",
+      "expected": "Use observed PTY/shell outcome without assuming requested program execution; preserve available SFTP/viewers after terminal failure.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "e90c4f53550f0e6ed78e0a8d6ba15f7ca43741102862eb33f435ab76e5cc54e4"
+    },
+    {
+      "id": "F078",
+      "requirements": [
+        "R27",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use actual vi/shell with Korean IME/emoji/Ctrl+C/copy/paste and 4/64-KiB/newline boundaries/input flood.",
+      "expected": "≤120 events-s,64 KiB-s/in-flight,64 KiB per paste. Confirm fixed target/content for CR/LF or>4 KiB; no extra newline/duplicate composition/paste. Display backpressure rather than silently drop.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "338643ce29b03f588cbea4da726d8afa8cbdd1ffff80c3dadcada15171e87c97"
+    },
+    {
+      "id": "F079",
+      "requirements": [
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe terminal grid and SSH window-change during open/resize/max/restore/minimize.",
+      "expected": "Initial xterm-256color80×24, pixel 0; fit clamps cols 2–500/rows 1–200. Debounce100 ms, keep prior grid at hidden zero-size, validate generation/target and discard stale resize.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a0c51c0639892c15a4448789c7d85f2dc2054fa01884a61459adf65e79735889"
+    },
+    {
+      "id": "F080",
+      "requirements": [
+        "R19",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Minimize/close/crash/restart while PTY CSI/DA/output/input run; inspect remote received bytes.",
+      "expected": "Minimize preserves; confirmed close only channel. Replay frozen sequence-S ring 1 MiB/channel,6 MiB total with input/automatic replies blocked through final write ACK. Resume only>S; failed/incomplete restore is disclosed/locked, never infer remote termination.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "da86c513f86d26c3b5812d75476276ba0b274cb52e1e2b831f6fbb82977914f9"
+    },
+    {
+      "id": "F081",
+      "requirements": [
+        "R08",
+        "R14",
+        "R20",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run3 servers,2 transfers,4 viewer reads,6 exec/PTY,12 windows and probe; mix MaxSessions denial/output flood/input/stop.",
+      "expected": "Enforce all limits/FIFO/no execution queue/priorities/backpressure. User control precedes probe, rejection preserves others and input/stop/disconnect cannot starve behind output.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cb1c3bdbd264eea767c9ba5f06d88024ff85400f38b4f5793b2a6d30b5be608f"
+    },
+    {
+      "id": "F082",
+      "requirements": [
+        "R11",
+        "R25",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe network while another client changes files; explicitly refresh, perform own SFTP action and exit a program.",
+      "expected": "No external-change watcher/poll scan/helper. Preserve specified limited refresh and own live streams; do not claim detection of every program's filesystem effects.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "1bbe209ac8d2f11d78e647e99b3a83065f09d97eab29016472a83255861bd568"
+    },
+    {
+      "id": "F083",
+      "requirements": [
+        "R09",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use executable/nonexecutable/missing programs, cwd permission/interpreter failures and channel-policy differences.",
+      "expected": "Report actual request outcomes, never infer permission from SSH or probe success, require no automatic runtime install or permission repair.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d872262c9adf5b2af853f957f53bca5df0dde8fa7c6ccae3d0f31a43b63c5528"
+    },
+    {
+      "id": "F084",
+      "requirements": [
+        "R19",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Interleave duplicate starts/stops, stale epoch/generation ACK/output/exit, confirmation reuse and worker restart.",
+      "expected": "No duplicate approved dispatch; validate exact resource/server/epoch/generation. Never replay unknown execution or deliver old bytes into new sessions; new run requires explicit new action.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "eb8965fcc38dabd66f32737dc53ae12ce18590d1a3031b6b23c4c7bebf75a7ab"
+    },
+    {
+      "id": "F085",
+      "requirements": [
+        "R08",
+        "R18",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Race same-server exec/PTY opens at 4/6 limits, delayed/absent 10-s callbacks, late channels and socket close.",
+      "expected": "Share socket-open promise and count opening slots. Retain unresolved timeout slots; close late channel without proving remote stop. Missing callback owns slot until socket retirement; do not evict other resources.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c5721a0b3be468d0b9f60ae86f5c06f5d0cf254b0ef31448102555b9e9738cfa"
+    },
+    {
+      "id": "Q001",
+      "requirements": [
+        "R02",
+        "R28",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run authentication/windows/viewers/GUI exec/PTY/SFTP/trust/disconnect smoke on 3 clients×Ubuntu 24.04 amd64/arm64.",
+      "expected": "Record actual 6-combination OS/CPU/OpenSSH outcomes; Rosetta does not replace native x64, new macOS majors need both CPUs. Mocks do not pass target acceptance.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "900d58fd3a6b26aefdc873468ec6ab70ee9a1658d7c203b6a3599f90be97b37b"
+    },
+    {
+      "id": "Q002",
+      "requirements": [
+        "R02",
+        "R03"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run each 0.1.0 distribution on authorized clean PCs without developer runtime/database.",
+      "expected": "Match distribution contract names; mac ZIP top level one sshOS.app. Windows portable ordinary-user, no installer/admin UAC/extra runtime installation.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a4842eed51dbc73a8caa6ccc5ffeab26892b67209acc8bb990f50a79695d3f60"
+    },
+    {
+      "id": "Q003",
+      "requirements": [
+        "R02",
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Verify Windows/macOS publisher signatures and mac notarization/stapling using platform tools.",
+      "expected": "Valid publisher/native trust evidence required; absent credentials means development package only, never public-release completion or all-PC warning-free promise.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3b535130198ced8241d15177a7f2da977c12510c7f762894730a42f1a3a9c9ca"
+    },
+    {
+      "id": "Q004",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "On qualifying hardware measure 5 cold/5 warm launches through usable controls, including Windows extraction.",
+      "expected": "Every cold≤10 s and warm≤3 s. Not merely painted desktop; record hardware/OS/power/load and each run.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "db5a8b2dc2efec6e9b4a5c03febed5304d500ccd65eebe48c260f4185f6027a0"
+    },
+    {
+      "id": "Q005",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Measure compressed/unpacked size of each signed target distribution.",
+      "expected": "Compressed≤250 MiB, unpacked≤750 MiB; record separately.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "df7f30cfc06ebdd3fcfd70ae62988f90b69582b081a9f7dc671490d1d032f30c"
+    },
+    {
+      "id": "Q006",
+      "requirements": [
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "After60-s settle collect 300 one-second whole-app memory samples in disconnected/3-server/2-transfer/combined-load states.",
+      "expected": "Working-set/RSS p95≤500/650/800/1800 MiB respectively. Combined2 transfers+4×40-MP viewers+6 channels+12 windows; include 160-MB RGBA/image and all process roles, note shared pages.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "d0783029df3134ffe25f428e72dc4a0900c8b3f3023a4ef91319810f51d5fd97"
+    },
+    {
+      "id": "Q007",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Measure5-minute idle with 3 connections,1 active probe and no user input.",
+      "expected": "All-app mean≤3% of one logical CPU.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b74203ab69526fd6a14814677cde95f4521103e902907bbd4cc913fc7a92bda5"
+    },
+    {
+      "id": "Q008",
+      "requirements": [
+        "R27",
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Under combined load repeat buttons/taskbar/cancel/drag/resize/PTY input and separately measure visual feedback/remote echo.",
+      "expected": "Local feedback p95≤100 ms/max≤300 ms, combined-load drag p95≤100 ms. Remote echo/exit separate; invent no remote RTT/frame-rate target.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c4acf4c2f246ca38a22352786b394a84ac5e3a6eec1172778753130e397065bb"
+    },
+    {
+      "id": "Q009",
+      "requirements": [
+        "R11",
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "At100 Mbps/RTT40 ms/loss 0 open 10,000-entry folder and scroll virtual listing.",
+      "expected": "First complete display≤10 s; no later scrolling UI long task>100 ms.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "0b099595c3fb5e83d4f0ffdb52d2f7f3b47e4b5b5e48c99e995efdf94db47a0d"
+    },
+    {
+      "id": "Q010",
+      "requirements": [
+        "R14",
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Transfer two 1-GiB files to distinct servers while opening 1000-entry folder at baseline network.",
+      "expected": "Listing≤5 s, preserve transfer targets/progress.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "dafa70eedcc0ec52b261e38d8ada84ae8fbde934d2bf59bf5ebd06d7e2ee274b"
+    },
+    {
+      "id": "Q011",
+      "requirements": [
+        "R27"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run100 connect/transfer/cancel/viewer/PTY cycles using 10-MiB files and collect whole-app memory.",
+      "expected": "Last10-cycle p95 increase<50 MiB over first stabilized 10; record all processes/cycle conditions.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9e55637edd9011e4565b0e2102b9fb52a2e9314b9e78ce38285dccab432bf74b"
+    },
+    {
+      "id": "Q012",
+      "requirements": [
+        "R18",
+        "R21",
+        "R27",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Repeatedly create/end transfers/viewers/exec/PTY/windows and inspect handles/sockets/channels/timers/listeners/bitmaps/canvas/memory.",
+      "expected": "Return to settled baseline without repeated growth; distinguish retained active buffers from leaks and never hide unreturned I/O as cleanup completion.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c43260e32fa21426b2c1f2790a9f2393c5f3488d5fcd6427fc02c6f596444766"
+    },
+    {
+      "id": "Q013",
+      "requirements": [
+        "R04",
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "visual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inspect minimum/reference viewport, OS scales and shrink with desktop/icons/overlap/taskbar/shelf/dialogs.",
+      "expected": "Follow geometry/minimums; intended overlap allowed but active title/restore/essential confirmation accessible. Minimized taskbar entries and transfer target/progress remain visible.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "7eca4bd742db7ba73b11b4e46821f4bef9dfa60348934df364eeed58e0dc71ce"
+    },
+    {
+      "id": "Q014",
+      "requirements": [
+        "R04",
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use keyboard for launch/window focus/minimize/restore/viewers/PTY/dialogs and inspect screen reader/contrast.",
+      "expected": "Follow focus/labels/aria-live/contrast/trap-restore contracts. Ordinary windows are not globally modal; no terminal input to another window.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "20421e69fa2c056d5707821fa44c992699a7b577214e128fe46a5d8e1cac7116"
+    },
+    {
+      "id": "Q015",
+      "requirements": [
+        "R04",
+        "R10",
+        "R27",
+        "R34",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test Windows/macOS Korean IME composition/commit/cancel and Korean/emoji paths in file/viewer/PTY.",
+      "expected": "Composition Enter cannot run/transfer/delete; terminal commits once and Unicode chunk boundaries do not corrupt text.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "6beb4f0cb44a27a4fa88ee46fde9631230dabb22a6f603aca074f707e0c9e049"
+    },
+    {
+      "id": "Q016",
+      "requirements": [
+        "R09",
+        "R18",
+        "R28",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Run SFTP-only/chroot/exec-PTY denial/no-SFTP/READ/hardlink/MaxSessions/quota-full and latency/loss/disconnect fixtures.",
+      "expected": "Preserve available features, record actual isolated config/faults; do not modify user servers or auto-install missing programs/interpreters.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c8c8d585aa0a8ffb59c6f1bcdeba2d621c52c680d5373616bafdd3761e1f2ffe"
+    },
+    {
+      "id": "Q017",
+      "requirements": [
+        "R28",
+        "R32",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inspect real package scripts/strict TS/core coverage/reports and run integration without TEST_HOST.",
+      "expected": "Apply v6 scripts/coverage/compiler requirements including new modules. Environment absence is not pass/accepted skip and copied UI constants do not replace behavior tests.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a379d32d5a4a3a4adcf98ebb1a1104086e3f2e21061d3695e4f66a6b96500620"
+    },
+    {
+      "id": "Q018",
+      "requirements": [
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Compare each executed row's result and raw attachments with the evidence schema.",
+      "expected": "Include binary hash/revision/environment/fixture/procedure/actual-expected/evidence/defectId. Screenshots cannot prove bytes/trust/egress; unexecuted remains untested.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "268d9854873299c92212d9bbcaaff1cb63246bab80ad63710ddc48a4bf7117be"
+    },
+    {
+      "id": "Q019",
+      "requirements": [
+        "R30"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "Perform G0 recruitment/interviews on real file/viewer/exec/terminal context switching and pain.",
+      "expected": "Use product-plan sample/analysis/retention criteria. File-only evidence cannot establish whole-desktop demand; low/unperformed research is neither technical failure nor demand validation.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "32e3495c5d43f7f6e8901aa1f95249b8ed56f0f8ccb2d5a237e16e752d65fc01"
+    },
+    {
+      "id": "Q020",
+      "requirements": [
+        "R30",
+        "R33",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "Compare existing tools and sshOS using G2 sample/order/tasks including windows/viewers/exec/PTY/transfers/disconnect.",
+      "expected": "Preserve product completion/wrong-server/certainty criteria, unrestricted baseline and separate unsupported tasks. No unverified differentiation/universal preference claim.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "69deec4d3f91cabaa374728f657a9d9a642cfa8749b77a1a5045cc99d97072e9"
+    },
+    {
+      "id": "Q021",
+      "requirements": [
+        "R30"
+      ],
+      "artifacts": [
+        "P13"
+      ],
+      "method": "manual",
+      "required": false,
+      "status": "untested",
+      "procedure": "Record G3 duration/participants/eligible opportunities/voluntary use.",
+      "expected": "Apply product repeat-use criteria and separate insufficient opportunity from rejection. Technical pass without research is not demand proof.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "17e6279e75b877e70f43c2aca4c979a2fab84db2531d3c2607f9692484975459"
+    },
+    {
+      "id": "Q022",
+      "requirements": [
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Review actual remote/permissions/guard/PR/review/merge/branch-cleanup evidence.",
+      "expected": "No invented push success without remote or unauthorized worktree/remote. Follow user governance, current-head APPROVED and remote/local cleanup without bypassing prerequisites.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "0cb3d31b9e9455a1820d3163bfd2ad230e8db35b3299abc2332aaa71c18377c2"
+    },
+    {
+      "id": "Q023",
+      "requirements": [
+        "R31",
+        "R28",
+        "R30"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Compare release candidate required technical checks, defects, signatures and separate research against v6 gates.",
+      "expected": "Unresolved P0/P1 and criterion-violating P2 block technical release. Separate technical/publication authority from demand research; unperformed research is not pass and neither gate substitutes another.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "6b1a714c3ecde4914a89a97bb2d9cf3085271399f57806102f15095d5332d1f4"
+    },
+    {
+      "id": "Q024",
+      "requirements": [
+        "R32"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inspect actual implementation instruction, v6 digest, D01 dependency verification and D01–D13 handoff.",
+      "expected": "Record exact baseline and embedded Node/Chromium. No latest/caret/tilde or framework substitution; version changes retain impact. Document/GIF permission is not implementation authorization.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "229890ac0b5c24a7afe9abbcf15549cd3fbfcfb2a80cf1ed65fd467a5c25b87e"
+    },
+    {
+      "id": "Q025",
+      "requirements": [
+        "R27",
+        "R33"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Drag/resize/reorder/minimize/restore 12 windows under combined load and measure feedback/animation.",
+      "expected": "Drag p95≤100 ms and local UI budget; default minimize/restore 150 ms, none with reduced motion. GIF timing is not product performance evidence.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "ac9c420ff5c1e42106a6044ea9866dc4167d732bad053710728d657a5e4f299a"
+    },
+    {
+      "id": "Q026",
+      "requirements": [
+        "R27",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Repeatedly open/reread/close concurrent near-limit text/images.",
+      "expected": "Meet viewer deadline/error/memory budgets with decode bounds/cleanup and no long UI/SSH-loop stalls.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cab2396bf075e06480ebcf5fa94d290942a648e35a3c7f450871499fb4d891ac"
+    },
+    {
+      "id": "Q027",
+      "requirements": [
+        "R27",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Produce>1 MiB-s/channel with Korean input/resize/2 transfers; minimize/close and lose renderer consumption ACK.",
+      "expected": "≤32-KiB chunks/256-KiB unacknowledged; GUI4 MiB/task/16 total; PTY1 MiB/channel/6 total ring,2000 lines/500 columns. GUI bounded-drains without view, minimized PTY consumes, absent renderer pauses. Backpressure is not a stop signal/exit.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cc70ed0c975f4509873176ae0054990b6c9426b47d480b810c7d88e9c0dced89"
+    },
+    {
+      "id": "Q028",
+      "requirements": [
+        "R27",
+        "R33",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Repeat100 window/viewer/exec/PTY cycles with reconnect/renderer recovery and inspect resources.",
+      "expected": "Last10-cycle p95 growth<50 MiB over first stabilized 10 and resource baseline return. Separate legitimate live retention from leaks; UI recovery never starts new remote work.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "cca9c000cd902f7e6116c5b6a9c07330054140a32cbc4cf90c1752b46e89c226"
+    },
+    {
+      "id": "Q029",
+      "requirements": [
+        "R02",
+        "R27",
+        "R33",
+        "R34",
+        "R35",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inspect each native target at 1120×760/1600×1000,100/150/200% scales, shrinking viewport, IME and accessibility.",
+      "expected": "Keep geometry/grid/focus/reading order. Title-menu move/resize uses arrows 10 px/Shift1 px, Enter commit/Esc revert; no OS Alt/Cmd+Tab interception. Other targets/PNGs do not prove pass.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "dd34af2765de6ac5656acac29552b6a2fae2741aeafc5f893202819e156a1996"
+    },
+    {
+      "id": "S001",
+      "requirements": [
+        "R01",
+        "R03",
+        "R25"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Compare production source/dependencies/IPC/menus/settings/flags with exclusions.",
+      "expected": "No search/AI/remote GUI/server app/DB/external-change watcher/automatic remote recovery; desktop/viewers/explicit exec/PTY remain included.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3b64bbaef0fb2328b4739912c83b5d9b5d688f279d36f23ac44382f6273bed28"
+    },
+    {
+      "id": "S002",
+      "requirements": [
+        "R24",
+        "R33",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inspect production window/CSP/preload/xterm styles/navigation/permissions/debug and inject scripts/CSS/resources.",
+      "expected": "Node off, isolation/sandbox/webSecurity on; section 4 CSP including self scripts/workers/images. Only bounded pinned-style exception, no inline JS/eval/remote CSS-HTML-URLs/navigation/webview/permission/debug.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "dd723183c0c3a5ecd2d29d53700d78e50d67188691365c0f9c05fb80affc83ca"
+    },
+    {
+      "id": "S003",
+      "requirements": [
+        "R24",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Supply protocol traversal/outside symlinks/unknown MIME/external HTML and viewer bytes.",
+      "expected": "Validate packaged UI paths. Viewers use ephemeral validated bytes and isolated bitmap/canvas, not generic OS/file/external URL or remote script execution.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "79a1a6f24af6e790c6a62ef76679dd193c23bc9a74da44c32aca1db524e8d714"
+    },
+    {
+      "id": "S004",
+      "requirements": [
+        "R24",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Forge origin/frame/schema and exceed IPC size/rate plus PTY/resize/paste/viewer/output bounds.",
+      "expected": "Separate control/stream schemas and backpressure. No generic local invoke/exec/readFile; only scoped remote actions. Cleanup/stop cannot starve behind output flood.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "5bd0a95bb5337bc96350579f9d91aa2617e887bda6be16e0d613f831fa5cd548"
+    },
+    {
+      "id": "S005",
+      "requirements": [
+        "R24",
+        "R10"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Alter token server/generation/parent/rawName/type and reuse expired 60-s/consumed confirmations.",
+      "expected": "Reject mismatch/reconnect/expiry/reuse against main capabilities; cannot reuse deletion approval for another path/task or overwrite destination.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9d0191ea413cb90343067e222d37f390b6937f4c7b99dd929820976426fa2a10"
+    },
+    {
+      "id": "S006",
+      "requirements": [
+        "R24",
+        "R19"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject stale epoch/generation, duplicate requestId, sequence gap and server-switch events.",
+      "expected": "Discard stale identity; repair gaps from main snapshot. Duplicate is same response/in-progress with one side effect; UI selection never retargets task serverId.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "1a84572a6a236e6771a44a31192b5c4d825e929f7c41d3dfae4edfb9b939b476"
+    },
+    {
+      "id": "S007",
+      "requirements": [
+        "R23",
+        "R24"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Request upload/key reads from arbitrary paths or unselected tokens and induce worker state writes.",
+      "expected": "Only native-dialog main capabilities grant access. No renderer/worker direct state writer or renderer fs/net/decryption authority.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "b2f2d28a5828a4050fd68291151d7706f0d77709746b7e6eb4a1babe5f3ad928"
+    },
+    {
+      "id": "S008",
+      "requirements": [
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe authentication during unknown-host approve/cancel/120-s expiry/trust-save failure.",
+      "expected": "First verifier=false socket closes after observation without credentials. Only persisted approval permits a fresh verified connection; expired/cancelled/save-failed never authenticates.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "22c21e5884d5aa0d079f42a5a9507929fea00b55b7f87571bfe9dbb136ee18b4"
+    },
+    {
+      "id": "S009",
+      "requirements": [
+        "R06",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Change saved key, switch between approval/reconnect and give different transfer/execution keys.",
+      "expected": "Every role byte-compares public key via hostVerifier; changed key blocks authentication with HOST_KEY_CHANGED. No ignore/replace/weak comparison.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "9ecdae386bb31eb43d84df09caa4b266bc29f66aecfdb1f55b13f2cb0d256478"
+    },
+    {
+      "id": "S010",
+      "requirements": [
+        "R06"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Remove trust for an endpoint shared by profiles/queued work and observe system SSH files.",
+      "expected": "Quiesce affected connections/tasks first without secret retransmission; next connect needs new approval. No automatic SSH config/known_hosts read/write.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f4cff4c648cf05b3993aeda07a1084bce5d1be898584a2df1fb75e89ab0b59ea"
+    },
+    {
+      "id": "S011",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Provide>512-KiB/.pub/PPK/PKCS#8/DSA/ECDSA/certificate/FIDO/agent/MFA/weak RSA and>1024-byte passwords/passphrases.",
+      "expected": "Reject unsupported size/type/method without conversion/fallback/RSA<2048/SHA1 weakening. Internal PKCS#8/signing adapter is not external format/agent support.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a34de9ecc5d1e222a91a3cadaa191b9071a950cb92f8ba1d58847b5f630e2ee5"
+    },
+    {
+      "id": "S012",
+      "requirements": [
+        "R07",
+        "R23",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe form/control/auxiliary credentials then disconnect, kill worker and exit.",
+      "expected": "Clear submitted forms; retain secrets only in owning session memory. Release refs/overwrite buffers where possible; no renderer saved-secret API or physical-erasure guarantee.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "62e38cf506f2654a860009121389ef417baba51dfdd07d1ffd9ad368b435c7b1"
+    },
+    {
+      "id": "S013",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Negotiate pinned allowlist/signatures against weak/no-server-sig-algs/SHA1-only fixtures.",
+      "expected": "Use exact KEX/host-key/cipher/MAC/none compression; unsupported configured names fail build, not silent reduction. Never send signed SHA1 auth even on negotiation exceptions.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f55aac5fdddb3f92ae41b2c114e809ea288dcce8e912d6887837ec331fdc6123"
+    },
+    {
+      "id": "S014",
+      "requirements": [
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test default/explicit secret saving, unavailable encryption, OS lock and encrypt/decrypt errors.",
+      "expected": "Default false; specified async safeStorage after ready, failure SECRET_UNAVAILABLE. Persist only ciphertext/ownership references, no plaintext/fixed-key/alternate fallback.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "a73cf96907f5c5ffe020787ead8868a4c2e0c8c6d4942daf9aa1b7f7e0436cda"
+    },
+    {
+      "id": "S015",
+      "requirements": [
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test signed mac app updates and Windows same/other-account/other-PC decryption.",
+      "expected": "Verify signing identity/Keychain continuity; failure requests re-entry with SECRET_UNAVAILABLE, no universal ciphertext portability promise.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "60450a65f8bbf358279178c9dc443c161df5c17489be14698fb6a0709e7db82b"
+    },
+    {
+      "id": "S016",
+      "requirements": [
+        "R23",
+        "R24",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use sentinel credentials/keys/file/terminal bodies and inspect snapshots/receipts/logs/diagnostics/disk.",
+      "expected": "No secret/content bodies in persistent generic state. Check dedicated ephemeral streams without forbidding display. Unsaved secrets stay off disk; no claim to detect every output secret.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "2b1833f27ed7105128a066ba0eb031fce1b51f4d7f28cab13f41f6c49bc8265c"
+    },
+    {
+      "id": "S017",
+      "requirements": [
+        "R23",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Generate host/user/path/secret/program/terminal-bearing errors; inspect rotation/export.",
+      "expected": "Default diagnostics meet allowlist/redaction/size rules, distinct from displayed user program output; no automatic raw exec/PTY persistence/export.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "addacfb5a05cdf32caca5ef9ef7bd21343f87f272153bd18c70e0d2065522f71"
+    },
+    {
+      "id": "S018",
+      "requirements": [
+        "R25"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Capture packaged first-run/connect/auth-failure/transfer/errors/settings network traffic.",
+      "expected": "App automatic traffic only selected SSH and necessary DNS; no search/AI/analytics/crash/update/fonts/CDN/HTTP fetch, renderer web requests blocked. Separate OS security traffic.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fa0bd5bdda070e8812a831a586b2020df5b4fec51e78a510ce58abb6c81b9a15"
+    },
+    {
+      "id": "S019",
+      "requirements": [
+        "R03",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Use clean client/server for app/viewers/explicit exec/PTY and compare installed files/listeners.",
+      "expected": "No sshOS remote helper/agent/DB/runtime/HTTP install or local management listener. Distinguish explicit existing remote program behavior from sshOS automatic installation/prohibitions.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "f41ae628b6be95f460f5e4b3ae0a22137d48aa76bafb727344ac5d2ee1abcb90"
+    },
+    {
+      "id": "S020",
+      "requirements": [
+        "R10",
+        "R24",
+        "R25",
+        "R34",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject HTML/ANSI/controls/URLs/shell metacharacters into names/banner/errors/text/program/PTY output.",
+      "expected": "Ordinary UI renders text, only PTY allowed parser sequences interpreted; block clipboard/external URL/HTML/OS side effects. Never execute output as a new shell command.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3d6fa9538b4b5fc4acc5bc95efd646c4cd0824b5bea356c9f9d8c0a266af939a"
+    },
+    {
+      "id": "S021",
+      "requirements": [
+        "R03",
+        "R09",
+        "R20",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe OS detection/probe/GUI exec/PTY channel requests and metacharacters.",
+      "expected": "os-release is SFTP data, probe fixed /bin/true, explicit exec/PTY follows own contracts. Probe allowlist is not global command prohibition; no X11/agent/helper.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "67c8e105fa293dae0c0c62f74366100111ce40af991191ededb8e9c2f2e82206"
+    },
+    {
+      "id": "S022",
+      "requirements": [
+        "R29"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Compare release LICENSE/copyright/notices/CycloneDX/transitive dependencies/source/lock/build commands.",
+      "expected": "Fulfil actual AGPL-3.0-only and upstream obligations; unknown/incompatible license blocks. Exact source revision/hash/version corresponds to binary.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "540b7e0b238490fd1f0392199be0e9c718adb749f228249ef3e4004a119f4377"
+    },
+    {
+      "id": "S023",
+      "requirements": [
+        "R29",
+        "R31"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "manual",
+      "required": true,
+      "status": "untested",
+      "procedure": "Review pinned scanner findings, high/critical exclusions and release decision.",
+      "expected": "Unresolved applicable high/critical blocks release. Exclusion records version/reachability/evidence/reviewer, no arbitrary severity reduction.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "bf5f25585d6a83c31e75e0cce74f41717d22b75e15b463f27b2e6add6503ecd2"
+    },
+    {
+      "id": "S024",
+      "requirements": [
+        "R24",
+        "R28"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Read signed production fuses and attempt Node env/inspect/alternate app load.",
+      "expected": "Four dangerous fuses false, EmbeddedAsarIntegrityValidation/OnlyLoadAppFromAsar true; valid ASAR metadata, automation inspector build never distributed.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "1a57e377b210788a75d8e3282229a74da0bffb77be1fbeee2129d72e7c8b0556"
+    },
+    {
+      "id": "S025",
+      "requirements": [
+        "R07",
+        "R23"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject oversized/slow/concurrent key parsing, bcrypt 0/1/100/101 and>5 s while existing SSH runs.",
+      "expected": "Main fstat then≤512 KiB+1 bounded read; one separate parser thread, terminate only it after 5 s; rounds 1–100. No main/SSH loop blockage; internal PKCS#8, no class over MessagePort.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "ea0725e3e2d946479021a3f47893c5176841882ed0bdf5a748ca25fd58938836"
+    },
+    {
+      "id": "S026",
+      "requirements": [
+        "R07"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Send mismatched key and RSA sha256/sha512/sha1/undefined/other plus Ed25519 signing requests.",
+      "expected": "One selected key only; mismatch/disallowed RSA errors without signature. Allowed RSA raw Buffer/PKCS1 padding, Ed25519 crypto.sign(null), once callback and exhausted authHandler=false.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "97a43cd8ed3f816aba19b676de73a58433133b0332e09d646ccb52fe77dffbfd"
+    },
+    {
+      "id": "S027",
+      "requirements": [
+        "R23",
+        "R22"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Inject decrypt result/shouldReEncrypt true-false/rejection and re-encryption persistence failure.",
+      "expected": "Use result only; reencrypt same secret through single writer before auth when requested. Failure preserves ciphertext, STORAGE_FAILED and no new auth from it; rejection SECRET_UNAVAILABLE, no loop.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "c2430e3b742c92519c624853767e511edd0f12aea280be407302f9299771f4d4"
+    },
+    {
+      "id": "S028",
+      "requirements": [
+        "R24",
+        "R11",
+        "R34",
+        "R35",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Exercise frame/batch/aggregate boundaries for control/auth/listing/viewer/GUI/PTY input-output.",
+      "expected": "Use type-specific limits/chunking/backpressure, never one full content snapshot or silently truncated successful paste/image.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "47bc9a85b5a90d4858ed22c203faf9e62b4c3a97546b4df5c4e325c8cda3b80f"
+    },
+    {
+      "id": "S029",
+      "requirements": [
+        "R24",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "View text/image bytes with HTML/JS/URLs/SVG disguises/bad signatures.",
+      "expected": "Literal text or approved image decoder only; no external request/script/HTML/local-file read/OS app launch.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "02ff1f727fa42227837bf74082d3b4c0b5a0081228f66b9482a9650db6d1593c"
+    },
+    {
+      "id": "S030",
+      "requirements": [
+        "R24",
+        "R27",
+        "R34",
+        "R35"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Test2-MiB/20-MiB/16384/40-MP limits, malformed/overflow headers, >5-s decode and viewer concurrency.",
+      "expected": "Bound actual bytes; validate dimensions/structure before bitmap. Terminate only renderer decode Worker on timeout, retain bounded stream and other SSH functions.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "7ed432a6ca8c30de6cda1f018ef2a57e20a811dc348856489491c74d9b37412f"
+    },
+    {
+      "id": "S031",
+      "requirements": [
+        "R24",
+        "R25",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Send normal/split/malformed OSC52/OSC8/title/icon/URI/file-transfer/bell and allowed ANSI.",
+      "expected": "Consume prohibited sequences including builtin effects; no remote-output clipboard/URL/file/OS authority. No WebLinks/Clipboard addons or plain-URL navigation; preserve allowed parser behavior.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "e241020922de1b66d6c853e715d405fdf3bdb622b67c20f00effad0bd1392db0"
+    },
+    {
+      "id": "S032",
+      "requirements": [
+        "R23",
+        "R24",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Race keys/paste/resize with focus/generation/close; forge/repeat sequence/tokens.",
+      "expected": "Input only to frozen terminal/server/generation. Focus cannot retarget approved paste; disconnect/generation cancels. No duplicate replay/foreign terminal/local shell delivery.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "fdca478a3dade3a582418e156a7c32ae997141480a0564c7da0ad7bf9ff7750c"
+    },
+    {
+      "id": "S033",
+      "requirements": [
+        "R10",
+        "R24",
+        "R36"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Forge exec file/server/cwd/argv/confirmation/requestId and change selected source.",
+      "expected": "Validate schema/approval/generation/actual target, never derive target from stdout/names. Disclose path TOCTOU, no local exec workaround.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "92fed2e3c93c020749dda6eea62aa9bb82d96fe97ad2b1923dd43d375368a73d"
+    },
+    {
+      "id": "S034",
+      "requirements": [
+        "R23",
+        "R25",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Output credential-like text/controls, type secrets in PTY, then exit/export/restart.",
+      "expected": "Honor ephemeral bodies, no automatic persistence/export. Authentication-save choice does not authorize saving arbitrary terminal content.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "63d14623ea43c63f4184f97efc4d6bb8cf5ef5f34ef36112b50f0db7103e124c"
+    },
+    {
+      "id": "S035",
+      "requirements": [
+        "R24",
+        "R33",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "automatic",
+      "required": true,
+      "status": "untested",
+      "procedure": "Send arbitrary channel/OS command/local path/foreign-frame payload to window/exec/PTY bridge.",
+      "expected": "Only internal WindowManager and scoped remote actions; no renderer Node/fs/net/local shell authority, retain sandbox/origin checks.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3308d62acfecd7c63771589cbb01cbd5721ecec9a724c5aa4e36501baceef3b0"
+    },
+    {
+      "id": "S036",
+      "requirements": [
+        "R24",
+        "R36",
+        "R37"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Observe network/remote installs/forwarding/watchers in signed package with exec/PTY/viewers.",
+      "expected": "Stay within allowed automatic traffic/install boundaries; no X11/agent/watchers/search/AI. Distinguish explicit user commands from app behavior.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "5886fb927a9f0422a742a1349fe92a94b341f0a50303e233fdeaadb79b1f42fe"
+    },
+    {
+      "id": "S037",
+      "requirements": [
+        "R19",
+        "R22",
+        "R23",
+        "R36",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Exercise all 4 receipt kinds across intent/stop/disconnect/storage failure/current-backup recovery.",
+      "expected": "Discriminate resource/kind and state models; no argv/stdin/output/hash. Failed start intent forbids dispatch; backup freshness uncertain. No replay/remote cleanup or per-command PTY audit-journal claim.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "6fa849af4a3420a633b8c831004fb2def48a4f582d330c0f7b800f13d72666a1"
+    },
+    {
+      "id": "S038",
+      "requirements": [
+        "R24",
+        "R27",
+        "R37",
+        "R38"
+      ],
+      "artifacts": [
+        "P11"
+      ],
+      "method": "target",
+      "required": true,
+      "status": "untested",
+      "procedure": "Produce long OSC/DCS/combining/REP500-501-huge, memory 1536-MiB boundaries/consecutive samples/unresponsive UI.",
+      "expected": "Consume REP>500 through public handler with limit notice. Main samples each 1 s; two consecutive>1536 MiB pauses all PTY/locks input/disposes xterm. UI recreation is not remote replay; explicit new display clears bad ring. No absolute scrollback-byte/OOM-preemption guarantee.",
+      "evidence": "",
+      "reason": "Product implementation and runtime checks have not started.",
+      "artifact_hashes": {},
+      "originalTextSHA256": "3dab613dbf13bc59259c7cd4b35726d4f932f58382f17a78734b9e541472d3d6"
+    }
+  ],
+  "originalArtifactDefinitions": [
+    {
+      "id": "A01",
+      "path": "README.md",
+      "version": "v6",
+      "sha256": "989f50bc343e084f4d493fb49e8c615fa7417b09056375fb4b72064c164dc74e",
+      "kind": "planning"
+    },
+    {
+      "id": "A02",
+      "path": "docs/01-product-plan.md",
+      "version": "v6",
+      "sha256": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
+      "kind": "planning"
+    },
+    {
+      "id": "A03",
+      "path": "docs/02-development-plan.md",
+      "version": "v6",
+      "sha256": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
+      "kind": "planning"
+    },
+    {
+      "id": "A04",
+      "path": "docs/03-research-and-positioning.md",
+      "version": "v6",
+      "sha256": "bfd947769381b609bf03b7e2d4440aca5034bb43f751bdeb0434c397bbd5a47f",
+      "kind": "planning"
+    },
+    {
+      "id": "A05",
+      "path": "docs/04-system-architecture.md",
+      "version": "v6",
+      "sha256": "e544a9b048b929bd60d92b25e3031f16caadb8869ca5d63e356cce3575f1cea1",
+      "kind": "planning"
+    },
+    {
+      "id": "A06",
+      "path": "docs/05-framework-comparison.md",
+      "version": "v6",
+      "sha256": "3f18edb802e5134636231410bea74a71b30793ad06ac3394b59678c6db7d5e6a",
+      "kind": "planning"
+    },
+    {
+      "id": "A07",
+      "path": "docs/06-quality-security-checklist.md",
+      "version": "v6",
+      "sha256": "9285e3a52938ad904153d6dbae038e41d61bd74356f3d2eadd19573029897541",
+      "kind": "planning"
+    },
+    {
+      "id": "A08",
+      "path": "docs/07-implementation-handoff.md",
+      "version": "v6",
+      "sha256": "4ff4a19da385c6eb05b09763ed1e06b4a288b3ee08b711e27cb5f4796af3afff",
+      "kind": "planning"
+    },
+    {
+      "id": "A09",
+      "path": "docs/08-requirement-traceability.md",
+      "version": "v6",
+      "sha256": "1c3f6c2536e349f1ef7ddf66d5e0e5c88e2da1da6a365a2b51494cad552f7bdc",
+      "kind": "planning"
+    },
+    {
+      "id": "A10",
+      "path": "docs/09-desktop-interaction-spec.md",
+      "version": "v6",
+      "sha256": "de84d2cb0dd741b2c5aabdc76d144abb17cba329be316facf330c4f7888cf003",
+      "kind": "planning"
+    },
+    {
+      "id": "A11",
+      "path": "docs/10-session-decisions.md",
+      "version": "v6",
+      "sha256": "a9bef4a9cc91acf3dc330a5159b4bf9a25dd9795c6b6d18cf32417fc452f5b3d",
+      "kind": "planning"
+    },
+    {
+      "id": "A12",
+      "path": "docs/11-document-audit.md",
+      "version": "v6",
+      "sha256": "1b0c441ef5c951f9b5c21c1a054f0c40a1522dbf2745b5f7fddc5db20241c5d6",
+      "kind": "planning"
+    },
+    {
+      "id": "A13",
+      "path": "docs/dependency-baseline-v6.json",
+      "version": "v6",
+      "sha256": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d",
+      "kind": "planning"
+    },
+    {
+      "id": "A14",
+      "path": "docs/validate-plan.py",
+      "version": "v6",
+      "sha256": "a168c7fae9370ea97dc9edf8d88d18c973acfc8b311423188fdf48b2ecf47c5b",
+      "kind": "planning"
+    },
+    {
+      "id": "A15",
+      "path": "design/README.md",
+      "version": "v6",
+      "sha256": "90d6fba01e4ad898c24082d3e7e497ec35117a1f88fc6a95d83d80543da03d72",
+      "kind": "planning"
+    },
+    {
+      "id": "A16",
+      "path": "design/preview-prompt.txt",
+      "version": "v6",
+      "sha256": "3a5b025b3ab6fd88ed3d63be43956c44f2d96d5e04f7490aa5dbe9014d21233e",
+      "kind": "planning"
+    },
+    {
+      "id": "A17",
+      "path": "design/mockups/scene-spec-v6.json",
+      "version": "v6",
+      "sha256": "aeafe614dff09c88e8a058711e5d1afa3c51e81e4d3edf02a000706587fc857a",
+      "kind": "planning"
+    },
+    {
+      "id": "P01",
+      "path": "package.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P02",
+      "path": "src/main/persistence/store.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P03",
+      "path": "src/worker/connection/session-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P04",
+      "path": "src/renderer/desktop/window-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P05",
+      "path": "src/worker/files/mutations.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P06",
+      "path": "src/renderer/viewers/index.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P07",
+      "path": "src/worker/transfers/engine.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P08",
+      "path": "src/worker/execution/exec-manager.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P09",
+      "path": "src/renderer/terminal/terminal-controller.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P10",
+      "path": "src/worker/lifecycle.ts",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P11",
+      "path": "evidence/checklist-results.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P12",
+      "path": "release/release-manifest.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    },
+    {
+      "id": "P13",
+      "path": "evidence/usability-report.json",
+      "version": "0.1.0",
+      "sha256": "",
+      "kind": "planned_product_or_evidence"
+    }
+  ],
+  "domain": {
+    "framework": "Electron",
+    "internal_desktop": "included",
+    "text_image_viewers": "included",
+    "user_remote_exec": "included",
+    "ssh_pty": "included",
+    "online_error_search": "excluded",
+    "ai_summary": "excluded",
+    "remote_gui": "excluded",
+    "server_agent": "excluded",
+    "application_database": "excluded",
+    "external_change_auto_sync": "excluded",
+    "probe_command": "/bin/true",
+    "probe_only_allowlist": true,
+    "implementation_started": false,
+    "product_version": "0.1.0",
+    "current_task": "document_revision_only",
+    "document_revision_authorization": {
+      "source": "user_message",
+      "original_quote": "문서 전수 점검하고 지금까지 대화한 세션을 토대로 계획서 및 개발 계획서등 모든 문서를 전면 수정해"
+    },
+    "implementation_prerequisites": [
+      "Actual implementation instruction",
+      "Authorized target and fixture environments",
+      "Signing/notarization resources for public binaries",
+      "Actual remote for push"
+    ],
+    "release_gate": "All required technical checks before external delivery; Q019-Q021 research is nonblocking and must not be represented as passed when untested.",
+    "document_rule": "Latest user instruction, current product scope, detailed development and desktop contracts; resolve conflicts before dependent implementation.",
+    "planned_artifact_note": "P-prefixed artifacts do not exist yet.",
+    "constraints_origin": "User directions versus v6 design choices are separated in docs/10-session-decisions.md.",
+    "normative_contract_hashes": {
+      "docs/01-product-plan.md": "51f114919c7db713dd8cf0e374b76b9cbe542d42ab93b22ea3d0c16310763389",
+      "docs/02-development-plan.md": "37801c1a36093bcdd3bcd462ca2a5d7c4088f7771f0a058df793e41890334a07",
+      "docs/09-desktop-interaction-spec.md": "de84d2cb0dd741b2c5aabdc76d144abb17cba329be316facf330c4f7888cf003",
+      "docs/06-quality-security-checklist.md": "9285e3a52938ad904153d6dbae038e41d61bd74356f3d2eadd19573029897541",
+      "docs/dependency-baseline-v6.json": "d0a6e39e074445833669199d2678cdbb491b6b9533897dffb7a4034122b6c24d"
+    }
+  },
+  "excluded": [
+    "X11/Wayland/VNC/RDP remote GUI",
+    "server agent/helper installation",
+    "application database",
+    "local OS terminal",
+    "online error search/hidden browser/AI/model SDK",
+    "external filesystem auto-sync",
+    "GUI editing/overwrite/recursive folder operations",
+    "auto reconnect/resume/re-execution/update",
+    "telemetry/crash upload"
+  ],
+  "assumptions": [
+    "Existing SSH account and feature-specific permissions; SFTP, exec and PTY may be independently restricted.",
+    "First supported Linux server Ubuntu24.04; GUI exec uses a POSIX-compatible login shell.",
+    "User commands and external writers do not participate in GUI path locks.",
+    "Upload/finalize requires read-back and same-directory hardlink; not a requirement of SSH itself."
+  ],
+  "editionLimit": "English reading layer with invariant mapping to the byte-preserved approved original. Translation does not authenticate approval, change scope or pass acceptance."
+}

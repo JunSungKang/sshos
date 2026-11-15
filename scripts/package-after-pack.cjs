@@ -10,7 +10,7 @@ module.exports=async function(context){
  }
  const additional=[];
  if(context.electronPlatformName==='win32'){
-  const vendor=join(root,'docs/third-party'),review=JSON.parse(await readFile(join(vendor,'windows-launcher-manifest.json'),'utf8'));
+  const vendor=join(root,'docs/developer/architecture/third-party'),review=JSON.parse(await readFile(join(vendor,'windows-launcher-manifest.json'),'utf8'));
   const notices=[['nsis','NSIS3.12','Zlib','NSIS-3.12-LICENSE.txt'],['stdutils','StdUtils1.14','LGPL-2.1-or-later','StdUtils-LGPL.txt'],['stdutils-clarification','StdUtils author clarification','LGPL-2.1-or-later','StdUtils-LGPL-clarification.txt'],['stdutils-readme','StdUtils copyright and source','LGPL-2.1-or-later','StdUtils-README.txt'],['stdutils-blake2','StdUtils bundled BLAKE2 notice','CC0-1.0','StdUtils-blake2-COPYING.txt'],['stdutils-rhash','StdUtils bundled RHash notice','MIT','StdUtils-rhash-COPYING.txt']];
   for(const [id,title,license,name]of notices){const bytes=await readFile(join(vendor,name)),sha256=createHash('sha256').update(bytes).digest('hex');if(sha256!==review.files[name])throw new Error('Windows notice mismatch');const file=id+'.txt';await writeFile(join(licenses,file),bytes);manifest.entries.push({id,title,license,file,bytes:bytes.length,sha256});}
   const sourceDirectory=join(resources,'third-party-source');await mkdir(sourceDirectory,{recursive:true});await copyFile(join(vendor,review.stdutils.correspondingSource),join(sourceDirectory,review.stdutils.correspondingSource));

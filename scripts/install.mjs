@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { root, runtimeEnvironment, localPath } from './environment.mjs';
-const baseline = JSON.parse(readFileSync(join(root, 'docs/dependency-baseline-v6.json'), 'utf8'));
+const baseline = JSON.parse(readFileSync(join(root, 'docs/developer/architecture/dependency-baseline-v6.json'), 'utf8'));
 if (process.versions.node !== baseline.development_node) {
   console.error(`Development requires Node ${baseline.development_node}; current ${process.versions.node}.`);
   process.exit(2);
