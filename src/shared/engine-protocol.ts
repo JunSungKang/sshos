@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { terminalRuntimeSchema,terminalInputSchema,terminalSizeSchema } from './terminals';
 import { executionReceiptSchema,executionSpecSchema } from './executions';
 import { executionRuntimeSchema } from './execution-protocol';
 import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
@@ -8,6 +9,16 @@ import { viewerReadKindSchema } from './viewers/reader';
 import { stagedTransferSchema,transferRuntimeSchema } from './transfer-protocol';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
+  z.object({...identity,action:z.literal('pty:start'),receipt:executionReceiptSchema}).strict(),
+  z.object({...identity,action:z.literal('pty:freeze'),terminalId:z.uuid(),restoreToken:z.uuid(),clear:z.boolean()}).strict(),
+  z.object({...identity,action:z.literal('pty:restoreAck'),terminalId:z.uuid(),restoreToken:z.uuid(),offset:z.int().nonnegative()}).strict(),
+  z.object({...identity,action:z.literal('pty:read'),terminalId:z.uuid(),cursor:z.int().nonnegative()}).strict(),
+  z.object({...identity,action:z.literal('pty:pause'),terminalId:z.uuid()}).strict(),
+  z.object({...identity,action:z.literal('pty:input'),terminalId:z.uuid(),sequence:z.int().positive(),bytes:terminalInputSchema,source:z.enum(['key','paste'])}).strict(),
+  z.object({...identity,action:z.literal('pty:resize'),terminalId:z.uuid(),size:terminalSizeSchema}).strict(),
+  z.object({...identity,action:z.literal('pty:close'),terminalId:z.uuid()}).strict(),
+  z.object({...identity,action:z.literal('pty:forget'),terminalId:z.uuid()}).strict(),
+  z.object({...identity,action:z.literal('pty:snapshot'),offset:z.int().min(0).max(1000)}).strict(),
   z.object({...identity,action:z.literal('execution:inspect'),spec:executionSpecSchema}).strict(),
   z.object({...identity,action:z.literal('execution:start'),receipt:executionReceiptSchema,spec:executionSpecSchema,expected:initialStatSchema}).strict(),
   z.object({...identity,action:z.literal('execution:snapshot'),offset:z.int().min(0).max(1000)}).strict(),
@@ -41,6 +52,7 @@ export const engineRequestSchema = z.discriminatedUnion('action', [
 export type EngineRequest = z.infer<typeof engineRequestSchema>;
 export type EngineCommand = EngineRequest extends infer T ? T extends EngineRequest ? Omit<T, 'requestId' | 'backendEpoch'> : never : never;
 export const engineEventSchema = z.discriminatedUnion('type', [
+  z.object({type:z.literal('pty'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:terminalRuntimeSchema}).strict(),
   z.object({type:z.literal('execution'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:executionRuntimeSchema}).strict(),
   z.object({ type: z.literal('session'), backendEpoch: z.uuid(), sequence: z.int().positive(), snapshot: sessionSnapshotSchema }).strict(),
   z.object({type:z.literal('transfer'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:transferRuntimeSchema}).strict(),

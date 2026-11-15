@@ -137,3 +137,11 @@ execution/PTY 공유 채널 슬롯은 전체6·서버4이며 opening과 close �
 실행 출력 창 닫기는 창 유지/창만 닫고 계속 실행/중지 요청을 구분한다. main은 실행 중 창의 일반 close 우회를 거절하고 확인 token을 요구한다. 숨긴 창은 전체 작업에서 같은 실행의 메모리 출력에 다시 연결하며 renderer reload도 실행을 재요청하지 않는다. 과거 영수증은 관측 metadata만 열고 자동 실행하지 않는다. TERM과 채널 닫기도 서버·경로가 고정된 별도 일회성 확인을 사용한다. 실제 종료 정보와 기록 저장 오류·대기·정리 미확정을 구분한다.
 
 206개 단위 검사·타입/build·actual Electron 실행 GUI와 기존 Electron/file/viewer/transfer GUI 회귀가 통과했다. 실행 확인 전 exec/auth 없음, 빈 인수·특수문자·cwd, plain 로그, 창 닫기 main guard, 숨기기/재열기/reload 동안 실행1회 유지, 활성 실행 중 정상 저장소 재확인 거절, TERM 무시5초 뒤 불명, 나중의 exit0와 close, non-executable direct 거절 후 sh와 exit3 보존을 확인했다. evidence/d08-gui에 출력·실제 화면3장·source hash를 보존했다. 실제 Ubuntu 프로그램/noexec/CPU/지원 OS 수용은 사용자 시험 대상이다. 저장 오류와 활성 실행이 겹치는 writer 재확인·worker 재생성·종료/절전/renderer 장애 통합은 D10에서 완료해야 하며 현재 완료 또는 release-ready로 표시하지 않는다. 다음 구현은 D09 PTY다.
+
+## PTY backend와 복구·입력 경계
+
+PTY는 GUI 실행과 같은6/4 채널 풀을 사용하고 intent 저장 ACK 후 xterm-256color·80×24·pixel0으로 shell을 요청한다. env/X11/agent 옵션을 추가하지 않는다. worker 출력 history는 채널1MiB·전체6MiB이며 live 미소비256KiB에서 두 출력 stream을 pause한다. 복구는 출력을 멈추고 마지막 byte offset S를 고정한다. 순서대로 snapshot을 읽고 정확한 restore token/S를 ACK하기 전 uiReady=false로 입력을 거절한다. 표시 초기화는 history를 비우고 새 snapshot을 만들며 shell을 재요청하지 않는다.
+
+입력은 단조 sequence·120회/rolling1초·64KiB/rolling1초·in-flight64KiB를 검사한다. 일반 키 입력은4KiB packet과 단독 Enter를 허용하고 혼합 줄바꿈은 거절하며, 승인된 paste 경로와 구분한다. duplicate sequence는 재전송하지 않는다.10초 쓰기 callback 미확정은 입력 불명과 pause로 처리하되 실제 callback/socket 종료 전 Buffer와 in-flight 소유권을 유지한다. timeout만으로 버퍼를0으로 덮어 전송 중 내용을 바꾸지 않는다. 실제 settlement 뒤에만 참조·byte를 해제하고 복구 ACK 전 미확정 write가 남으면 입력을 재개하지 않는다. 입력 내용과 순서는 영수증에 기록하지 않는다.
+
+216개 단위 검사·타입/build·실제 PTY utilityProcess/SSH 검사가 통과했다. GUI exec와 PTY가 인증된 socket 하나를 공유하고 초기80×24와132×40 변경, 복구 전 입력 거절, input duplicate 거절, Ctrl+C byte와 TERM 구분,256KiB 역압, 고정 snapshot과 history 초기화, 정상 exit0/close, 타 실행 및 control 유지를 확인했다. 실행 GUI/transfer engine 회귀도 통과했다. 기존 POSIX shell 시험은 child exit가 아니라 stdio close 후 결과를 검사하도록 경합을 수정했다. GUI 완료 출력은 서버 세션 종료 시 worker와 renderer에서 해제하고 늦은 byte가 다시 추가되지 않도록 했다. evidence/d09-engine에 실제 출력을 보존했다. 아직 xterm 제품 창·paste 확인·보안 parser·vi/IME/clipboard·지원 OS 수용 통과가 아니다. 다음은 main terminal 권한과 xterm UI다.

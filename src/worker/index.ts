@@ -8,6 +8,7 @@ import { PathLocks } from './files/path-locks';
 import { ViewerReader } from './viewers/reader';
 import { WorkerReceiptWriter } from './receipt-writer';
 import { TransferCoordinator } from './transfers/coordinator';
+import { TerminalSessions } from './terminal/sessions';
 import { GUIExecutions } from './execution/gui';
 import { WorkerStorageRecovery } from './storage-recovery';
 import { TransferInspector } from './transfers/inspect';
@@ -18,7 +19,7 @@ if (!process.parentPort) throw new Error('Utility process parent port required')
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
 process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary: 'ssh2' });
 let transfers:TransferCoordinator|null=null;
-let executions:GUIExecutions|null=null;let executionSequence=0;
+let executions:GUIExecutions|null=null;let executionSequence=0;let terminals:TerminalSessions|null=null;let terminalSequence=0;
 const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message),() => transfers?.storageFault());
 let sequence = 0;
 let readers:ViewerReader|null=null;
@@ -34,6 +35,7 @@ const locks=new PathLocks();
 let transferSequence=0;
 transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
 executions=new GUIExecutions(epoch,sessions,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'execution',backendEpoch:epoch,sequence:++executionSequence,snapshot}));
+terminals=new TerminalSessions(epoch,executions.channels,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'pty',backendEpoch:epoch,sequence:++terminalSequence,snapshot}));
 const recovery=new WorkerStorageRecovery(epoch,receiptWriter,transfers,message=>process.parentPort?.postMessage(message));
 const transferInspector=new TransferInspector((serverId,generation) => sessions.control(serverId,generation,true));
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
@@ -42,7 +44,17 @@ const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {
   try {
     let result: unknown;
-    if (request.action === 'execution:inspect') result=await executions!.inspect(request.serverId,request.generation,request.spec);
+    if(request.action === 'pty:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=terminals!.start(request.receipt);}
+    else if(request.action === 'pty:freeze')result=terminals!.freeze(request.serverId,request.generation,request.terminalId,request.restoreToken,request.clear);
+    else if(request.action === 'pty:restoreAck')terminals!.acknowledge(request.serverId,request.generation,request.terminalId,request.restoreToken,request.offset);
+    else if(request.action === 'pty:read')result=terminals!.read(request.serverId,request.generation,request.terminalId,request.cursor);
+    else if(request.action === 'pty:pause')terminals!.pause(request.serverId,request.generation,request.terminalId);
+    else if(request.action === 'pty:input')await terminals!.input(request.serverId,request.generation,request.terminalId,request.sequence,request.bytes,request.source);
+    else if(request.action === 'pty:resize')terminals!.resize(request.serverId,request.generation,request.terminalId,request.size);
+    else if(request.action === 'pty:close')terminals!.close(request.serverId,request.generation,request.terminalId);
+    else if(request.action === 'pty:forget')await terminals!.forget(request.serverId,request.generation,request.terminalId);
+    else if(request.action === 'pty:snapshot')result={...terminals!.snapshot(request.serverId,request.generation,request.offset),sequence:terminalSequence};
+    else if (request.action === 'execution:inspect') result=await executions!.inspect(request.serverId,request.generation,request.spec);
     else if (request.action === 'execution:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=executions!.start(request.receipt,request.spec,request.expected);}
     else if (request.action === 'execution:snapshot') result={...executions!.page(request.serverId,request.generation,request.offset),sequence:executionSequence};
     else if (request.action === 'execution:read') result=executions!.read(request.serverId,request.generation,request.executionId,request.cursor);
@@ -92,7 +104,7 @@ process.parentPort.on('message', (event: { data: unknown }) => {
       inFlight.delete(request.requestId);
       // Viewer bytes have their own one-chunk sequence replay buffer. Never put
       // file content into the generic RPC completion/snapshot cache.
-      if (request.action !== 'viewer:next' && request.action !== 'execution:read') completed.set(request.requestId, result);
+      if (request.action !== 'viewer:next' && request.action !== 'execution:read' && request.action !== 'pty:read') completed.set(request.requestId, result);
       while (completed.size > 200) completed.delete(completed.keys().next().value!);
     });
   }

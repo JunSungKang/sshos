@@ -16,6 +16,7 @@ export class EngineGateway {
       if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
+      if(data.type === 'pty')return;
       if (data.type === 'execution') {if(data.sequence<=this.lastExecutionSequence)return;const gap=data.sequence !== this.lastExecutionSequence+1;this.lastExecutionSequence=data.sequence;this.executionChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'transfer') {if (data.sequence<=this.lastTransferSequence) return;const gap=data.sequence !== this.lastTransferSequence+1;this.lastTransferSequence=data.sequence;this.transferChanged?.(data.snapshot,gap,data.sequence);return;}
       if (data.type === 'session') {

@@ -103,7 +103,7 @@ async function main(): Promise<void> {
   const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   let executions:ExecutionController|null=null;
-  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence));
+  const gateway = new EngineGateway(worker, epoch, snapshot => {connections?.observe(snapshot);executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');},receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted && !storageRecovering && !recoveryLocked));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);

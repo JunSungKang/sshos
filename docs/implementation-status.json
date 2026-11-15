@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D08",
+  "stage": "D09",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -87,14 +87,19 @@
     "Main-owned execution output capabilities,32KiB cursor/replay and1MiB/s pacing with stale-renderer/window byte rejection",
     "Virtual plain stdout/stderr log window joins split UTF8/line fragments, escapes ANSI and reports bounded-display omission",
     "Confirmed running-window hide/keep/stop and confirmed TERM/channel close; task output reopen and renderer reload attach without rerunning",
-    "Historical execution receipts open as metadata only; task record closure releases worker output memory"
+    "Historical execution receipts open as metadata only; task record closure releases worker output memory",
+    "PTY backend shares execution slots/socket, durably gates shell creation and preserves exit versus local-close uncertainty",
+    "Per-channel1MiB/global6MiB PTY history,256KiB live backpressure and fixed output replay snapshot with exact restore-token ACK before input",
+    "Monotonic PTY input with rolling120-events/64KiB limits,64KiB in-flight ownership and no duplicate write replay",
+    "Timed-out input keeps its buffer and byte reservation until actual write callback/socket close, then scrubs only settled bytes",
+    "GUI execution output is released on owning-server session end and stale post-end data is discarded"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 206,
-      "evidence": "evidence/d08-gui/test-unit.txt"
+      "tests": 216,
+      "evidence": "evidence/d09-engine/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -297,6 +302,22 @@
         "receipts exclude arguments, inputs, outputs and command hashes"
       ],
       "limitation": "Emulated programs on a real loopback SSH server and current Mac development Electron. Actual Ubuntu/OpenSSH program/CPU/noexec/PTY and supported target matrix remain."
+    },
+    "actual_terminal_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual utilityProcess PTY with durable main intent and shared GUI-exec socket",
+        "xterm-256color80x24 and explicit132x40 resize",
+        "input blocked until frozen snapshot consumption and exact restore ACK",
+        "exact monotonic input and duplicate rejection; Ctrl+C byte is not TERM",
+        "256KiB live output backpressure and bounded fixed replay snapshot",
+        "explicit new display drops old history without creating a shell",
+        "observed exit0 plus channel close, other execution and control remain",
+        "PTY receipts contain no input/output/argv"
+      ],
+      "limitation": "Backend SSH fixture PTY channel; no xterm UI, native vi/IME/clipboard or target Ubuntu/OpenSSH/OS acceptance."
     }
   },
   "remaining_D01": [
@@ -313,14 +334,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D09 PTY using the shared execution channel pool, bounded output/input, paste confirmation and xterm restore barrier; then D10 active-execution storage reconciliation, lifecycle/probe, D11 validation and D12 packaging.",
+  "next_action": "Connect main terminal capabilities to xterm window, restore barrier, bounded input queue and paste confirmation/security handlers, then D10 lifecycle/storage/probe and remaining validation/packaging.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d08-gui",
+  "latest_evidence_directory": "evidence/d09-engine",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D08 confirmed GUI exec and readonly output workflows locally verified; D09 PTY begins",
+    "current_stage": "D09 PTY backend, replay/input boundaries and actual SSH pipeline locally verified; main/xterm/paste UI remains",
     "product_features_available": "Profiles/SSH trust, desktop windows, tree/list files, confirmed file mutations, text/image viewers, asynchronous SFTP shelf and confirmed GUI remote executions with output windows. PTY and full lifecycle/probe remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
@@ -331,7 +352,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D09 PTY stream/input/paste/restore is not implemented yet.",
+    "D09 PTY main/xterm window, paste confirmation, parser safety and renderer replay/input integration remain.",
     "D10 storage retry with a faulted but still-running execution must reconcile live worker observations before re-enabling writes; healthy active execution retry is already refused.",
     "D10 worker recreation, app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
