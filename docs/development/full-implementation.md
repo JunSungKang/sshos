@@ -127,3 +127,13 @@ execution/PTY 공유 채널 슬롯은 전체6·서버4이며 opening과 close �
 영수증 저장은 file_transfer/file_mutation/gui_exec/pty의 strict union으로 확장했다. 실행/PTY에는 argv·입력·출력·command hash를 허용하지 않는다. prepared 복구는 전송하지 않은 취소, dispatch/running/stop 복구는 결과 불명이며 backup은 종결 관측도 최신성 불명으로 처리한다. 코드0을 업무 성공으로 해석하지 않는다. exit 관측과 channel close가 모두 확인돼야 exited다. TERM1회·5초 stop_unconfirmed·명시적 채널 닫기와 결과 불명을 분리한다.
 
 192개 단위 검사·타입/build 및 actual Electron utilityProcess/SSH/main JSON ACK 실행 검사가 통과했다. 실제 SSH 채널에서 동시 두 실행의 socket 공유, stdout/stderr, 종료7, 무출력 stdin 유지, TERM 무시, 로컬 채널 닫기 후 불명, 명시 거절과 control 유지를 확인했다. fixture의 프로그램 동작은 SSH server channel로 모사하며 실제 셸 quoting은 별도 /bin/sh 시험이다. transfer engine/GUI와 file 회귀도 통과했다. evidence/d08-engine에 출력·source hash를 저장했다. 아직 사용자 실행 확인창·출력 창·POSIX 세션 확인·출력 소비 ACK/복구 UI·실제 Ubuntu 실행 수용 완료를 뜻하지 않는다. 다음은 main 권한과 실행 GUI 연결이다.
+
+## 실행 확인창·출력 창과 작업 관리자 연결
+
+탐색기의 명시적 실행 버튼은 direct 기본값·인수별 입력·검증된 directoryToken 실행 위치 선택·세션별 POSIX 호환 확인을 제공한다. main이 source/stat/인수/세대/epoch에 고정한60초 일회성 확인을 발급한다. preview는 원격 실행을 보내지 않는다. 확정 후 내부 출력 창 자리를 확보하고 prepared 저장을 완료한 뒤 worker에 실행을 요청한다. 실행 인수는 요청 후 main 메모리 참조를 비우며 영수증에 저장하지 않는다. 실행 비트 없는 direct는 거절하며 사용자가 sh/bash를 선택해야 한다.
+
+출력 창은 stdout/stderr와 ANSI escape를 plain text로 표시하고 UTF8 분할/줄 조각을 이어 붙인다. 표시 한도4,194,304 UTF-16 code unit·20,000행·단일행100,000 UTF-16 code unit을 적용하며 이전 출력 생략을 알린다. 이는 worker 원본 byte ring 한도와 별도인 표시 한도다. 가상 행과32KiB 소비 cursor·한 청크 재전달·1MiB/s 전송 pacing을 사용한다. 모든 viewer/exec 읽기는 공통100회/s renderer scheduler를 공유해 main의128회/s stream budget을 넘지 않는다. renderer 교체와 창 닫기 후 늦은 byte를 폐기하며 출력 byte를 상태 snapshot에 넣지 않는다.
+
+실행 출력 창 닫기는 창 유지/창만 닫고 계속 실행/중지 요청을 구분한다. main은 실행 중 창의 일반 close 우회를 거절하고 확인 token을 요구한다. 숨긴 창은 전체 작업에서 같은 실행의 메모리 출력에 다시 연결하며 renderer reload도 실행을 재요청하지 않는다. 과거 영수증은 관측 metadata만 열고 자동 실행하지 않는다. TERM과 채널 닫기도 서버·경로가 고정된 별도 일회성 확인을 사용한다. 실제 종료 정보와 기록 저장 오류·대기·정리 미확정을 구분한다.
+
+206개 단위 검사·타입/build·actual Electron 실행 GUI와 기존 Electron/file/viewer/transfer GUI 회귀가 통과했다. 실행 확인 전 exec/auth 없음, 빈 인수·특수문자·cwd, plain 로그, 창 닫기 main guard, 숨기기/재열기/reload 동안 실행1회 유지, 활성 실행 중 정상 저장소 재확인 거절, TERM 무시5초 뒤 불명, 나중의 exit0와 close, non-executable direct 거절 후 sh와 exit3 보존을 확인했다. evidence/d08-gui에 출력·실제 화면3장·source hash를 보존했다. 실제 Ubuntu 프로그램/noexec/CPU/지원 OS 수용은 사용자 시험 대상이다. 저장 오류와 활성 실행이 겹치는 writer 재확인·worker 재생성·종료/절전/renderer 장애 통합은 D10에서 완료해야 하며 현재 완료 또는 release-ready로 표시하지 않는다. 다음 구현은 D09 PTY다.

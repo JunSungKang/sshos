@@ -1,0 +1,17 @@
+{
+  "status": "pass",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "assertions": [
+    "GUI explicit execution with direct default, POSIX session confirmation, validated cwd and separate empty/metacharacter argv",
+    "preview makes no SSH exec or execution authentication",
+    "safe plain stdout/stderr and visible ANSI escapes",
+    "main rejects unconfirmed running-window closure",
+    "hide/reopen and renderer reload preserve execution without replay",
+    "healthy active execution blocks storage reset",
+    "TERM once,5s unconfirmed stop, later observed exit0 plus close",
+    "explicit sh of a non-executable file after direct refusal, exit3 preserved",
+    "receipts exclude arguments, inputs, outputs and command hashes"
+  ],
+  "limitation": "Emulated programs on a real loopback SSH server and current Mac development Electron. Actual Ubuntu/OpenSSH program/CPU/noexec/PTY and supported target matrix remain."
+}

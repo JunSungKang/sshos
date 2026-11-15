@@ -81,14 +81,20 @@
     "Shared6-global/4-server execution channel reservations retain opening/closing/late callback ownership until actual close",
     "GUI execution backend revalidates source/cwd, gates SSH exec on durable intent, keeps stdin open and records exit versus channel-close observations",
     "Bounded per-job4MiB/global16MiB stdout/stderr memory ring with metadata charges, omission reporting, terminal-first global eviction and no generic RPC byte cache",
-    "Four-kind strict durable receipt schema includes GUI exec/PTY metadata while rejecting argv/input/output/hash; conservative no-replay execution recovery"
+    "Four-kind strict durable receipt schema includes GUI exec/PTY metadata while rejecting argv/input/output/hash; conservative no-replay execution recovery",
+    "Main-owned60s single-use GUI exec confirmation binds argv/source/cwd/stat/session/epoch and requires per-session POSIX acknowledgement",
+    "Explicit file execution dialog with direct default, separate argv, validated directory-token cwd and sh/bash choice after executable-bit refusal",
+    "Main-owned execution output capabilities,32KiB cursor/replay and1MiB/s pacing with stale-renderer/window byte rejection",
+    "Virtual plain stdout/stderr log window joins split UTF8/line fragments, escapes ANSI and reports bounded-display omission",
+    "Confirmed running-window hide/keep/stop and confirmed TERM/channel close; task output reopen and renderer reload attach without rerunning",
+    "Historical execution receipts open as metadata only; task record closure releases worker output memory"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 192,
-      "evidence": "evidence/d08-engine/test-unit.txt"
+      "tests": 206,
+      "evidence": "evidence/d08-gui/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -274,6 +280,23 @@
         "receipts exclude argv/stdin/output/hash"
       ],
       "limitation": "SSH fixture programs are emulated server channels; actual POSIX quoting separately tested with /bin/sh. GUI execution confirmation/output and target Ubuntu/native matrix remain."
+    },
+    "actual_execution_gui": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "GUI explicit execution with direct default, POSIX session confirmation, validated cwd and separate empty/metacharacter argv",
+        "preview makes no SSH exec or execution authentication",
+        "safe plain stdout/stderr and visible ANSI escapes",
+        "main rejects unconfirmed running-window closure",
+        "hide/reopen and renderer reload preserve execution without replay",
+        "healthy active execution blocks storage reset",
+        "TERM once,5s unconfirmed stop, later observed exit0 plus close",
+        "explicit sh of a non-executable file after direct refusal, exit3 preserved",
+        "receipts exclude arguments, inputs, outputs and command hashes"
+      ],
+      "limitation": "Emulated programs on a real loopback SSH server and current Mac development Electron. Actual Ubuntu/OpenSSH program/CPU/noexec/PTY and supported target matrix remain."
     }
   },
   "remaining_D01": [
@@ -290,15 +313,15 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement main-owned execution previews/POSIX confirmation/output capabilities and GUI windows, then PTY and lifecycle/probe/security/performance/packaging.",
+  "next_action": "Implement D09 PTY using the shared execution channel pool, bounded output/input, paste confirmation and xterm restore barrier; then D10 active-execution storage reconciliation, lifecycle/probe, D11 validation and D12 packaging.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d08-engine",
+  "latest_evidence_directory": "evidence/d08-gui",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D08 GUI exec backend and shared execution channel/output kernels locally verified; confirmation/output GUI remains",
-    "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, readonly text/image windows and asynchronous SFTP upload/download with persistent shelf. Exec/PTY remain in progress.",
+    "current_stage": "D08 confirmed GUI exec and readonly output workflows locally verified; D09 PTY begins",
+    "product_features_available": "Profiles/SSH trust, desktop windows, tree/list files, confirmed file mutations, text/image viewers, asynchronous SFTP shelf and confirmed GUI remote executions with output windows. PTY and full lifecycle/probe remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
   "user_owned_verification": {
@@ -306,5 +329,11 @@
     "quote": "아 없어. 내가 직접 시험할게 넌 작성된 모든 문서 기반으로 개발만 정확하게 진행하도록 해.",
     "signing_available": false,
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
-  }
+  },
+  "implementation_gaps": [
+    "D09 PTY stream/input/paste/restore is not implemented yet.",
+    "D10 storage retry with a faulted but still-running execution must reconcile live worker observations before re-enabling writes; healthy active execution retry is already refused.",
+    "D10 worker recreation, app close/disconnect decisions, sleep/crash integration and SSH response probe remain.",
+    "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
+  ]
 }

@@ -1,0 +1,7 @@
+
+> sshos@0.1.0 test:e2e
+> node scripts/electron-smoke.mjs
+
+{"status":"pass","platform":"darwin","architecture":"arm64","versions":{"electron":"45.3.2","node":"24.22.2","chrome":"156.0.8078.100"},"assertions":["main/preload/renderer/utilityProcess handshake","sandbox, contextIsolation and Node isolation","profile persistence across UI reload","desktop window drag, minimize, restore and maximize","renderer external fetch and eval denied","xterm DOM renderer and addon-fit under production CSP"],"limitation":"Development executable on current machine only; no signing or Windows/Ubuntu result."}
+Debugger ending on ws://127.0.0.1:59659/2ee3573c-63c2-477a-874a-86195a98e567
+For help, see: https://nodejs.org/learn/getting-started/debugging

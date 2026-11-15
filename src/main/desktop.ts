@@ -8,6 +8,7 @@ export class DesktopController {
   private readonly resources=new Map<string,(token:string)=>{serverId:string;generation:number;resourceId:string}>();
   constructor(private readonly connections: ConnectionController) {}
   registerResourceResolver(kind:string,resolve:(token:string)=>{serverId:string;generation:number;resourceId:string}):void {this.resources.set(kind,resolve);}
+  findWindow(id:string):WindowModel|null {const row=this.windows.get(id);return row ? structuredClone(row):null;}
   requireWindow(id: string, kind: string): WindowModel {
     const window = this.windows.get(id);
     if (!window || window.kind !== kind) throw new Error('TOKEN_EXPIRED');
