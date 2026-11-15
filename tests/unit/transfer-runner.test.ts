@@ -3,7 +3,7 @@ import { TransferRunner,TransferIOFailure,type TransferPorts,type TransferSource
 import type { TransferReceipt } from '../../src/shared/transfers';
 import { transferReceipt } from '../fixtures/transfers';
 const deferred=<T>() => {let resolve!:(value:T)=>void;const promise=new Promise<T>(done => {resolve=done;});return {promise,resolve};};
-function fixture(options:{direction?:'upload'|'download';data?:Buffer;corrupt?:boolean;changed?:boolean;createFailure?:TransferIOFailure;linkFailure?:TransferIOFailure;cleanupFailure?:TransferIOFailure;failSave?:string;saveGate?:{stage:string;promise:Promise<void>};prepareGate?:Promise<void>;shutdownFailure?:boolean}={}) {
+function fixture(options:{direction?:'upload'|'download';data?:Buffer;corrupt?:boolean;truncated?:boolean;changed?:boolean;createFailure?:TransferIOFailure;linkFailure?:TransferIOFailure;cleanupFailure?:TransferIOFailure;failSave?:string;saveGate?:{stage:string;promise:Promise<void>};prepareGate?:Promise<void>;shutdownFailure?:boolean}={}) {
   const data=options.data ?? Buffer.from('abc');const initial=transferReceipt(options.direction ?? 'upload',data.length);const trace:string[]=[];const durable:TransferReceipt[]=[];const updates:ReturnType<TransferRunner['snapshot']>[]=[];
   let sourceStats=0,temp:Buffer|null=null,final:Buffer|null=null,writes=0,aborted=false;
   let lateCallback:(stage:'temp_create_ack'|'final_link_ack'|'temp_remove_ack')=>void=() => {};
@@ -15,7 +15,7 @@ function fixture(options:{direction?:'upload'|'download';data?:Buffer;corrupt?:b
       prepare:async () => {trace.push('prepare');if (options.prepareGate) await Promise.race([options.prepareGate,new Promise<void>((_resolve,reject) => signal.addEventListener('abort',() => reject(signal.reason),{once:true}))]);return source;},
       createTemp:async () => {trace.push('temp_wx');if (options.createFailure) throw options.createFailure;temp=Buffer.alloc(data.length);return {write:async (bytes,offset,length,position) => {writes++;bytes.copy(temp!,position,offset,offset+length);return length;}};},
       finishWrite:async () => {trace.push('sync_and_close');},tempStat:async () => ({size:temp!.length,mtime:'1',identity:'temp'}),
-      openVerification:async () => {trace.push('read_back');const contents=Buffer.from(temp!);if (options.corrupt && contents.length) contents[0]^=255;return {read:read(contents),stat:async () => ({size:contents.length,mtime:'1',identity:'temp'}),close:async () => {trace.push('verify_close');}};},
+      openVerification:async () => {trace.push('read_back');const contents=options.truncated ? Buffer.from(temp!).subarray(0,temp!.length-1) : Buffer.from(temp!);if (options.corrupt && contents.length) contents[0]^=255;return {read:read(contents),stat:async () => ({size:temp!.length,mtime:'1',identity:'temp'}),close:async () => {trace.push('verify_close');}};},
       linkDestination:async () => {trace.push('exclusive_link');if (options.linkFailure) throw options.linkFailure;final=Buffer.from(temp!);},confirmDestination:async () => {trace.push('destination_stat');},
       removeTemp:async () => {trace.push('temp_unlink');if (options.cleanupFailure) throw options.cleanupFailure;temp=null;},shutdown:async () => {trace.push('resources_closed');if (options.shutdownFailure) throw new Error('Fixture close failure');}
     };return ports;
@@ -38,7 +38,7 @@ describe('durable non-overwriting transfer orchestration',() => {
   it('preserves existing temp/destination and refuses source change or hash mismatch',async () => {
     const collision=fixture({createFailure:new TransferIOFailure('NAME_CONFLICT')});expect((await collision.runner.run()).snapshot.phase).toBe('failed');expect(collision.trace).not.toContain('temp_unlink');
     const destination=fixture({linkFailure:new TransferIOFailure('NAME_CONFLICT')});expect((await destination.runner.run()).snapshot).toMatchObject({phase:'failed',cleanupState:'needed'});expect(destination.trace).not.toContain('temp_unlink');expect(destination.final).toBeNull();
-    for (const options of [{changed:true},{corrupt:true}]) {const f=fixture(options);expect((await f.runner.run()).snapshot.errorCode).toBe(options.changed ? 'SOURCE_CHANGED' : 'VERIFY_MISMATCH');expect(f.trace).not.toContain('exclusive_link');}
+    for (const options of [{changed:true},{corrupt:true},{truncated:true}]) {const f=fixture(options);expect((await f.runner.run()).snapshot.errorCode).toBe(options.changed ? 'SOURCE_CHANGED' : 'VERIFY_MISMATCH');expect(f.trace).not.toContain('exclusive_link');}
   });
   it('makes finalization win before its intent storage ACK and rejects cancellation while waiting',async () => {
     const gate=deferred<void>();const f=fixture({saveGate:{stage:'final_link_intent',promise:gate.promise}});const run=f.runner.run();

@@ -5,7 +5,7 @@ import { copyAndHash,hashReadBack,type ReadPort,type WritePort,type IOObserver }
 import { TransferRate } from './progress';
 
 export class TransferIOFailure extends Error {
-  constructor(code:string,readonly uncertain=false) {super(code);}
+  constructor(code:string,readonly uncertain=false,readonly statusCode:number|string|null=null) {super(code);}
 }
 export interface TransferSource extends ReadPort {stat():Promise<TransferStat>;close():Promise<void>}
 export interface TransferPorts {
@@ -67,7 +67,6 @@ export class TransferRunner {
   }
   private late(stage:'temp_create_ack'|'final_link_ack'|'temp_remove_ack'):void {
     // A late callback is an observation, never a state transition to completed.
-    if (!this.abort.signal.aborted && !transferTerminal(this.state.phase)) return;
     if (this.row.lateObservations.some(row => row.stage === stage) || this.row.lateObservations.length>=16) return;
     this.row.lateObservations.push({stage,observedAt:new Date().toISOString()});
     void this.persist().then(() => this.publish(true)).catch(() => {this.recordError=true;this.publish(true);});
@@ -95,7 +94,9 @@ export class TransferRunner {
       await this.ports.finishWrite();this.check();const temp=transferStatSchema.parse(await this.ports.tempStat());this.check();if (temp.size !== this.row.totalBytes) throw new Error('VERIFY_MISMATCH');
       this.move('verifying');this.rate.reset(this.now());await this.persist({stage:'verifying',streamSha256:digest,lastConfirmedPhase:'bytes_and_handles_closed'});this.check();
       const verification=await this.ports.openVerification();this.check();const before=transferStatSchema.parse(await verification.stat());this.check();if (before.size !== this.row.totalBytes) throw new Error('VERIFY_MISMATCH');
-      const verified=await hashReadBack(verification,this.row.totalBytes,observer);this.check();const after=transferStatSchema.parse(await verification.stat());this.check();await verification.close();this.check();
+      let verified:string;
+      try {verified=await hashReadBack(verification,this.row.totalBytes,observer);} catch (error) {if (codeOf(error) === 'SOURCE_CHANGED') throw new TransferIOFailure('VERIFY_MISMATCH');throw error;}
+      this.check();const after=transferStatSchema.parse(await verification.stat());this.check();await verification.close();this.check();
       if (!sameStat(before,after) || verified !== digest) throw new Error('VERIFY_MISMATCH');
       // Synchronous reducer decision wins the race before any await of storage.
       this.move('finalize_intent_pending');await this.persist({stage:'final_link_intent',dispatchAllowed:true,lastConfirmedPhase:'content_verified'});this.check();
@@ -113,7 +114,7 @@ export class TransferRunner {
       let phase:TransferPhase;
       if (this.state.phase === 'cancel_requested') phase=uncertain || !resourcesClosed ? 'result_unknown' : 'cancelled';
       else if (this.state.phase === 'finalizing') phase=uncertain || this.linkAcknowledged || this.destinationConfirmed || errorCode === 'STORAGE_FAILED' ? 'result_unknown' : 'failed';
-      else phase=uncertain ? 'result_unknown' : this.abort.signal.aborted ? 'interrupted' : 'failed';
+      else phase=uncertain ? 'result_unknown' : this.abort.signal.aborted || ['CONNECTION_LOST','IO_TIMEOUT','ENGINE_STOPPED'].includes(errorCode) ? 'interrupted' : 'failed';
       this.move(phase,false);this.row.errorCode=errorCode;if (this.row.cleanupState === 'none') this.row.cleanupState=this.row.tempCreated ? 'needed' : uncertain ? 'unknown' : 'none';
       if (!this.recordError) {try {await this.persist({stage:phase});} catch {this.row.errorCode='STORAGE_FAILED';}}
       this.publish(true);
