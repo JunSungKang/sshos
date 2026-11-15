@@ -19,6 +19,6 @@ export const mutationReceiptSchema = z.object({
   createdAt:z.iso.datetime(), updatedAt:z.iso.datetime()
 }).strict();
 export type MutationReceipt = z.infer<typeof mutationReceiptSchema>;
-export type TaskSummary = {taskId:string;kind:'file_mutation'|'file_transfer';operation:'mkdir'|'delete'|'rename'|'upload'|'download';phase:string;source:string|null;destination:string|null;errorCode:string|null;acknowledgedAt:string|null;updatedAt:string;serverName:string;recordError:boolean;unresolved:boolean;terminal:boolean;transferredBytes:number|null;verifiedBytes:number|null;totalBytes:number|null;cleanupState:string|null;cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean};
+export type TaskSummary = {taskId:string;kind:'file_mutation'|'file_transfer'|'gui_exec'|'pty';operation:'mkdir'|'delete'|'rename'|'upload'|'download'|'exec'|'pty';phase:string;source:string|null;destination:string|null;errorCode:string|null;acknowledgedAt:string|null;updatedAt:string;serverName:string;recordError:boolean;unresolved:boolean;terminal:boolean;transferredBytes:number|null;verifiedBytes:number|null;totalBytes:number|null;cleanupState:string|null;cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean};
 export type TaskPage = {rows:TaskSummary[];nextOffset:number|null;damagedIds:string[]};
 export type RecordActionPreview = {confirmationToken:string;taskId:string;action:'acknowledge'|'forget';source:string|null;destination:string|null;phase:string};

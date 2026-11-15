@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { ReceiptRepository, recoverMutation } from '../../src/main/persistence/receipts';
 import { mutationReceiptSchema, type MutationReceipt } from '../../src/shared/mutations';
 import { fileReceiptSchema } from '../../src/shared/receipts';
+import { executionReceipt } from '../fixtures/executions';
 import { transferReceipt } from '../fixtures/transfers';
 import { transferClaims } from '../../src/worker/transfers/claims';
 const owned:string[]=[];
@@ -45,4 +46,10 @@ it('rejects mutable transfer identity, credentials and in-memory finalization st
 });
 it('requires a new acknowledgement for the uncertainty introduced by backup recovery',() => {
   const row={...receipt(),phase:'completed' as const,acknowledgedAt:new Date().toISOString()};expect(recoverMutation(row,true)).toMatchObject({phase:'result_unknown',acknowledgedAt:null});
+});
+
+it('persists four distinct operation kinds and recovers execution without argv or automatic replay',async()=>{
+  const dir=await directory(),repo=await ReceiptRepository.open(dir),record=executionReceipt();await repo.save({...record,phase:'running',channelAccepted:true});await expect(repo.save({...record,source:'/another/program'})).rejects.toThrow('INPUT_INVALID');
+  const ptyId=crypto.randomUUID();const pty={...executionReceipt(),kind:'pty' as const,taskId:ptyId,executionId:null,terminalId:ptyId,source:null,cwd:null};await repo.save(pty);const reopened=await ReceiptRepository.open(dir);expect(reopened.get(record.taskId)).toMatchObject({phase:'result_unknown',recoveredFromPhase:'running'});expect(reopened.get(ptyId)?.phase).toBe('cancelled_not_sent');
+  expect(()=>reopened.checkNew(record.serverId,[{path:record.source!,mode:'write'}])).not.toThrow();await reopened.acknowledge(record.taskId);expect(reopened.get(record.taskId)?.phase).toBe('result_unknown');const payload=await readFile(resolve(dir,'receipts',record.taskId+'.json'),'utf8');for(const key of ['argv','stdin','stdout','stderr','commandHash'])expect(payload).not.toContain('"'+key+'"');
 });

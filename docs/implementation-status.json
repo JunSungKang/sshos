@@ -8,7 +8,7 @@
     "source": "actual_user_message",
     "quote": "그리고 프로젝트의 제품 계획서, 개발 계획서등 작성한 모든 문서를 기반으로 프로젝트 개발을 시작하라."
   },
-  "stage": "D07",
+  "stage": "D08",
   "stage_status": "implementation_in_progress_user_target_tests_separate",
   "release_ready": false,
   "completed_stages": [],
@@ -76,14 +76,19 @@
     "Persistent2-slot transfer shelf with separate transfer/readback byte progress and speed, task cancellation and redacted native-path task details",
     "Accepted transfers survive explorer closure and renderer reload; sequence-aware cross-server snapshot resync avoids stale progress and reconciles lost terminal events",
     "Per-generation bounded whole-operation metadata FIFO serializes OS inspection, browsing, mutations and transfer previews on control SFTP",
-    "Epoch/request/token storage-retry barrier requires worker quiescence and settled JSON writes before explicit fault reset; interrupted queued tasks never replay"
+    "Epoch/request/token storage-retry barrier requires worker quiescence and settled JSON writes before explicit fault reset; interrupted queued tasks never replay",
+    "POSIX-quoted GUI execution contracts with64 argv/16KiB limits and actual /bin/sh injection fixtures",
+    "Shared6-global/4-server execution channel reservations retain opening/closing/late callback ownership until actual close",
+    "GUI execution backend revalidates source/cwd, gates SSH exec on durable intent, keeps stdin open and records exit versus channel-close observations",
+    "Bounded per-job4MiB/global16MiB stdout/stderr memory ring with metadata charges, omission reporting, terminal-first global eviction and no generic RPC byte cache",
+    "Four-kind strict durable receipt schema includes GUI exec/PTY metadata while rejecting argv/input/output/hash; conservative no-replay execution recovery"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 175,
-      "evidence": "evidence/d07-recovery/test-unit.txt"
+      "tests": 192,
+      "evidence": "evidence/d08-engine/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -253,6 +258,22 @@
       "status": "pass",
       "evidence": "evidence/d07-recovery",
       "scope": "Unit protocol and actual utilityProcess fault barrier/reopen/reset plus a new3MiB upload; GUI retry then download. Native disk-full/permission/Windows locking faults remain."
+    },
+    "actual_execution_engine": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron utilityProcess and durable main receipt ACK before SSH exec",
+        "readonly inspection does not execute commands",
+        "two concurrent executions share one independently verified execution socket",
+        "quoted command and separate stdout/stderr bytes across real SSH",
+        "observed exit7 plus channel close is exited, not business success",
+        "silent execution keeps stdin open, TERM once,5s unconfirmed stop then local close remains unknown",
+        "explicit exec rejection preserves control SSH",
+        "receipts exclude argv/stdin/output/hash"
+      ],
+      "limitation": "SSH fixture programs are emulated server channels; actual POSIX quoting separately tested with /bin/sh. GUI execution confirmation/output and target Ubuntu/native matrix remain."
     }
   },
   "remaining_D01": [
@@ -269,14 +290,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D08 confirmed POSIX-quoted GUI execution and D09 flow-controlled PTY, then complete lifecycle/probe/security/performance/packaging and accurate handoff evidence.",
+  "next_action": "Implement main-owned execution previews/POSIX confirmation/output capabilities and GUI windows, then PTY and lifecycle/probe/security/performance/packaging.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-recovery",
+  "latest_evidence_directory": "evidence/d08-engine",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 transfer GUI, durable pipeline, storage retry barrier and control serialization locally verified; D08 execution begins",
+    "current_stage": "D08 GUI exec backend and shared execution channel/output kernels locally verified; confirmation/output GUI remains",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, readonly text/image windows and asynchronous SFTP upload/download with persistent shelf. Exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

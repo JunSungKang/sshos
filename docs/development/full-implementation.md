@@ -117,3 +117,13 @@ control metadata SFTP의 OS 확인·목록·mutation inspection/prepare/step·tr
 저장소 재확인은 main↔worker 전용 epoch/requestId/token protocol을 사용한다. 정상 실행 중에는 재확인을 거절하며 저장 오류 복구는 신규 변경을 잠그고 진행 등록·mutation·transfer 종료와 영수증 writer settlement를 확인한다. worker의 active/reserved 작업이5초 내 정리되지 않으면 재개하지 않는다. barrier 뒤 JSON을 검증·재개방하고 일회성 token으로 worker writer fault/pause를 해제한다. 불명 응답은 잠금을 유지하며 자동 작업 재실행은 없다. profile 쓰기와 host trust도 영수증 fault/복구 중 변경 잠금을 공유한다. 기존 읽기 조회를 같은 이유로 잠그지 않는다.
 
 175개 단위 검사·타입/build·실제 Electron backend/GUI/file/session 회귀가 통과했다. 실제 utilityProcess에서 강제 저장 fault barrier→JSON reopen→writer reset 뒤 새 task만3MiB 전송하고 이전 두 task가 재실행되지 않음을 신규 인증 횟수와 파일 hash로 확인했다. GUI 저장소 재확인 후 다운로드도 통과했다. evidence/d07-recovery에 출력과 source hash를 보존했다. 실제 디스크 부족·Windows 파일 잠금·지원 OS 매트릭스·앱 종료/절전/crash 통합 검사는 남아 있으며 다음 구현은 D08 실행과 D09 PTY다.
+
+## GUI 실행 backend와 공유 채널·출력 한도
+
+실행 명세는 direct/sh/bash와 canonical path/cwd, 최대64개·각4096byte·합계16KiB argv를 검증한다. POSIX single-quote 명령 구성은 실제 /bin/sh fixture에서 metacharacter·작은따옴표·빈 인수·Unicode를 별도 인수로 보존했다. 원격 실행 파일·cwd·실행 비트를 control metadata FIFO에서 재검사하고 dispatching intent의 main 저장 ACK 후에만 exec를 보낸다. stdin에 선행 EOF를 보내지 않으며 실행 전체 시간·무출력 기한을 두지 않는다.
+
+execution/PTY 공유 채널 슬롯은 전체6·서버4이며 opening과 close 미확정도 포함한다. 같은 execution socket을 공유하고 마지막 실제 채널 close 뒤 유휴 socket을 닫는다. 요청10초 timeout/거절 후 다른 실행이 살아 있으면 socket을 강제 종료하지 않고 미정리 슬롯을 보존한다. 늦게 반환된 channel은 즉시 close하고 close event/socket 종료 전 슬롯을 해제하지 않는다. stdout/stderr는 arrival chunk를 구분하고 작업4MiB/전체16MiB의 payload+metadata charge로 tiny chunk 수도 제한한다. 종결 작업의 출력부터 해제하며 전역 압력에서는 가장 오래된 chunk를 제거하고 생략 사실을 노출한다. 원격 출력은 메모리만 사용하고 read RPC는 범용 완료 캐시에 저장하지 않는다.
+
+영수증 저장은 file_transfer/file_mutation/gui_exec/pty의 strict union으로 확장했다. 실행/PTY에는 argv·입력·출력·command hash를 허용하지 않는다. prepared 복구는 전송하지 않은 취소, dispatch/running/stop 복구는 결과 불명이며 backup은 종결 관측도 최신성 불명으로 처리한다. 코드0을 업무 성공으로 해석하지 않는다. exit 관측과 channel close가 모두 확인돼야 exited다. TERM1회·5초 stop_unconfirmed·명시적 채널 닫기와 결과 불명을 분리한다.
+
+192개 단위 검사·타입/build 및 actual Electron utilityProcess/SSH/main JSON ACK 실행 검사가 통과했다. 실제 SSH 채널에서 동시 두 실행의 socket 공유, stdout/stderr, 종료7, 무출력 stdin 유지, TERM 무시, 로컬 채널 닫기 후 불명, 명시 거절과 control 유지를 확인했다. fixture의 프로그램 동작은 SSH server channel로 모사하며 실제 셸 quoting은 별도 /bin/sh 시험이다. transfer engine/GUI와 file 회귀도 통과했다. evidence/d08-engine에 출력·source hash를 저장했다. 아직 사용자 실행 확인창·출력 창·POSIX 세션 확인·출력 소비 ACK/복구 UI·실제 Ubuntu 실행 수용 완료를 뜻하지 않는다. 다음은 main 권한과 실행 GUI 연결이다.

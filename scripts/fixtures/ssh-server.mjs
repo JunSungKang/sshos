@@ -25,6 +25,7 @@ export async function startSSHFixture(directory, options = {}) {
     connection.on('authentication', ctx => { metrics.authenticationRequests++; if (ctx.method === 'password' && ctx.username === 'fixture' && ctx.password === 'test-only') ctx.accept(); else ctx.reject(['password']); });
     connection.on('session', accept => {
       const session = accept();
+      session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
       session.on('sftp', acceptSFTP => {
         const stream = acceptSFTP(); const handles = new Map();
         if (options.hardlink) {
