@@ -87,3 +87,11 @@ worker의 JSON 직접 쓰기 없이 main writer에64KiB 이하 영수증을 보�
 worker에 batch reserve→각 row stage→전체 commit 순서를 연결했다. stage만으로 socket·temp를 만들지 않는다. commit 뒤 전역2/서버1 FIFO와 path lock으로 실행하고 실제 자원 close 및 마지막 관측 기록 처리가 끝난 뒤 슬롯을 해제한다. close 불명은 정리 대기로 유지한다. queued 취소는 runner를 생성하지 않으며 disconnect/세대 변경은 해당 작업만 중단한다. 저장 fault는 active transfer를 중단하고 queued 작업을 제거해 이후 저장소 확인이 같은 task를 재실행하지 못하게 한다. progress는 raw path/file byte 없이 metadata event와100행 page로 전달한다.
 
 149개 단위 검사·타입/build·Electron 기반 회귀가 통과했다. scripts/transfer-engine-smoke.mjs는 workspace 안에만 임시 main harness를 만들고 actual utilityProcess 하나와 실제 main ReceiptRepository/ACK 채널을 연결한다. 실제3MiB+17byte 두 파일의 upload/download, 전체 SHA256 read-back, exclusive link, temp 제거, 서버별 순서 및 매 task 새 인증, 작업 뒤 control 유지가 통과했다. harness는 종료 시 자신의 main 파일·fixture·runtime을 제거한다. native dialog 및 renderer enqueue를 우회하는 backend 시험이므로 UI 전송 완료를 뜻하지 않는다. evidence/d07-coordinator에 실제 출력을 보존했다. 저장소 재확인과 worker fault 해제의 실제 수명 결합, 선택/충돌 preview/확인/진행 UI는 다음 통합 대상이다.
+
+## 로컬 선택 권한과 native dialog 제한
+
+main 소유 파일/폴더 선택 서비스는 실제 경로·stat·canonical parent를 메모리에 보관하고 renderer에는 표시명·선택 token·크기/지원 여부만 반환한다.120초 도달 시 권한이 만료되며 role별 map을 사용한다. 혼합 선택은 미지원 항목도 모두 반환하고101개 선택은 전체 거절한다. renderer 교체를 무효화한 뒤 늦게 끝난 dialog 결과는 권한으로 발급하지 않는다. key picker와 전송 선택 서비스가 동일한 frame별 dialog gate를 공유하도록 구성했다. 원격 프로그램 실행·파일 변경을 이 서비스에서 수행하지 않는다.
+
+155개 단위 검사·타입/build와 Electron 회귀가 통과했다. native OS dialog 자체는 unit fixture로 대체하고 실제 workspace 파일 metadata와 symlink 거절을 검사했으므로 Windows/macOS native picker 실기 통과를 뜻하지 않는다. 파일 선택 서비스의 UI bridge와 transfer preview/confirmation은 다음 구현 대상이다. evidence/d07-selections에 출력을 보존했다.
+
+개인키 선택도120초 경계에서 만료한 capability를 정리해20개 선택 제한이 과거 만료 항목 때문에 영구 소진되지 않도록 수정하고 검사했다.

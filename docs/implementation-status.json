@@ -68,14 +68,16 @@
     "Worker transfer coordinator combines batch reservation/staging/commit, FIFO queue, per-server/global slots, Runner/Ports and main-only receipt writer",
     "Queued cancellation and generation disconnect never create a runner/socket; storage fault interrupts active transfers and removes queued jobs before a later reset can replay them",
     "Bounded metadata-only runtime events and100-row snapshots report active resource ownership separately from terminal operation outcome",
-    "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation"
+    "Actual Electron main/utilityProcess/SSH/SFTP/disk-JSON pipeline verifies two3MiB FIFO transfers, source/readback SHA256, exclusive finalization and control connection isolation",
+    "Shared per-frame native dialog gate used by profile key selection and the transfer selection service",
+    "Main-only native upload/directory capabilities with120s expiry, immutable filesystem identity, explicit unsupported rows, whole101-file rejection and renderer-generation invalidation"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 149,
-      "evidence": "evidence/d07-coordinator/test-unit.txt"
+      "tests": 155,
+      "evidence": "evidence/d07-selections/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -239,14 +241,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement one-per-frame native dialog gate and local selection capabilities; add bounded transfer preview/enqueue controller and renderer upload/download, task and shelf UI. Finish manual storage verification/reset handshake and remaining lifecycle integration in D07/D10.",
+  "next_action": "Connect native selection service to bounded transfer preview/confirmation/enqueue controller, then file explorer multi-selection and upload/download dialog, persistent transfer shelf and task actions. Storage reset/worker lifecycle integration remains outstanding.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-coordinator",
+  "latest_evidence_directory": "evidence/d07-selections",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 worker/main/SSH durable backend pipeline verified; native selection capabilities, conflict/confirmation previews and renderer enqueue/shelf still remain",
+    "current_stage": "D07 backend pipeline and native selection service locally verified; main preview/confirmation/enqueue API and renderer upload/download/shelf remain",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, task receipts and readonly text/image windows. Transfer/exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
