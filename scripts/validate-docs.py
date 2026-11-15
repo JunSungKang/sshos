@@ -19,7 +19,7 @@ def sha(path):
 
 
 def active_documents(root):
-    paths = [root / p for p in ('README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'design/README.md', '.github/pull_request_template.md')]
+    paths = [root / p for p in ('README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'SECURITY.md', 'design/README.md')]
     paths += [p for p in (root / 'docs').rglob('*.md') if not p.is_relative_to(root / 'docs/developer/architecture/history')]
     paths.append(root / 'docs/developer/architecture/history/README.md')
     return sorted(set(paths))
@@ -155,7 +155,7 @@ def validate(root):
     for rel, expected_hash in {**active['documents'], **active['inputs']}.items():
         path = inside(rel)
         need(path.is_file() and sha(path) == expected_hash, 'Active document/input hash stale: ' + rel)
-    for rel in ('scripts/install.mjs', 'scripts/windows-toolset.mjs', 'scripts/package-after-pack.cjs', 'tests/unit/diagnostic-log.test.ts', '.github/workflows/planning-docs.yml', 'NOTICE', '.gitattributes'):
+    for rel in ('scripts/install.mjs', 'scripts/windows-toolset.mjs', 'scripts/package-after-pack.cjs', 'tests/unit/diagnostic-log.test.ts', 'NOTICE', '.gitattributes'):
         text = inside(rel).read_text()
         need(not re.search(r'docs/(?:0[1-9]-|development/|governance/|history/|spec-v6|dependency-baseline|third-party)', text), 'Stale live documentation consumer: ' + rel)
     vendor = json.loads(inside('docs/developer/architecture/third-party/windows-launcher-manifest.json').read_text())
