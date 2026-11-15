@@ -109,3 +109,11 @@ main 소유 preview는 native 선택 권한과 파일 창·서버·세대·epoch
 main은 worker 전체 batch 예약 뒤 모든 queued 영수증을 저장하고 모든 row를 stage한 뒤 한 번만 commit한다. 사전 등록 실패는 commit하지 않고 저장한 대기 기록을 중단 처리한다. 등록 중과 실행 중을 구별하고 등록 중 취소는 요청을 거절한다. 시작된 작업은 파일 창 닫기와 renderer reload에 귀속되지 않는다. 하단60px 선반은 실행최대2개·전송/검증 단계·byte·최근 속도·대기/등록/실패/확인 필요 수·취소·전체 작업을 표시한다. task list/detail에는 runtime 관측과 durable 기록을 합치되 native 전체 경로를 renderer로 반환하지 않는다. event sequence gap은 모든 등록된 서버의 bounded snapshot과 대조하며 더 오래된 snapshot이 진행값을 되돌리지 못한다. 누락된 종결 이벤트는 안정된 worker snapshot과 durable terminal 영수증으로 대조한다.
 
 169개 단위 검사·타입/build·Electron/file/viewer/backend 회귀가 통과했다. 실제 Electron GUI에서 두 파일 업로드와 Ctrl/Cmd 두 파일 다운로드, 충돌 이름 변경, 확인 전 변경·보조 인증 없음,4MiB 업로드 중 창 닫기 및 renderer reload 후 전송 유지, 전체 SHA256·목적지 보존·temp 제거·매 task 신규 socket 인증과 control 유지를 확인했다. native picker는 시험 main process에서만 fixture 응답으로 대체했으며 제품 backdoor는 추가하지 않았다. evidence/d07-transfer-ui에 출력·실제 화면3장·source hash를 저장했다. 지원 OS/Ubuntu/OpenSSH/대용량/서명 수용 검사와 저장소 재확인·앱 수명 통합까지 완료했다는 뜻은 아니다. 다음은 저장소 오류 복구 및 control metadata 직렬화다.
+
+## 저장소 재확인 barrier와 metadata 직렬화
+
+control metadata SFTP의 OS 확인·목록·mutation inspection/prepare/step·transfer inspection을 세대별32개 이하 whole-operation FIFO로 직렬화했다. 앞 요청 실패가 다음 요청을 영구 정지시키지 않으며 연결 해제 뒤 대기 작업은 원격 요청을 보내지 않는다. 읽기 전용 viewer와 실제 전송은 별도 채널을 유지한다.
+
+저장소 재확인은 main↔worker 전용 epoch/requestId/token protocol을 사용한다. 정상 실행 중에는 재확인을 거절하며 저장 오류 복구는 신규 변경을 잠그고 진행 등록·mutation·transfer 종료와 영수증 writer settlement를 확인한다. worker의 active/reserved 작업이5초 내 정리되지 않으면 재개하지 않는다. barrier 뒤 JSON을 검증·재개방하고 일회성 token으로 worker writer fault/pause를 해제한다. 불명 응답은 잠금을 유지하며 자동 작업 재실행은 없다. profile 쓰기와 host trust도 영수증 fault/복구 중 변경 잠금을 공유한다. 기존 읽기 조회를 같은 이유로 잠그지 않는다.
+
+175개 단위 검사·타입/build·실제 Electron backend/GUI/file/session 회귀가 통과했다. 실제 utilityProcess에서 강제 저장 fault barrier→JSON reopen→writer reset 뒤 새 task만3MiB 전송하고 이전 두 task가 재실행되지 않음을 신규 인증 횟수와 파일 hash로 확인했다. GUI 저장소 재확인 후 다운로드도 통과했다. evidence/d07-recovery에 출력과 source hash를 보존했다. 실제 디스크 부족·Windows 파일 잠금·지원 OS 매트릭스·앱 종료/절전/crash 통합 검사는 남아 있으며 다음 구현은 D08 실행과 D09 PTY다.

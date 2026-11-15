@@ -1,0 +1,18 @@
+{
+  "docs/development/full-implementation.md": "c770257dc0c069c9a6763b5a576ff3e7107ae60acacd3a03257f219b1b6457a8",
+  "scripts/transfer-engine-smoke.mjs": "b5f09af8112a39bf8793b0dc4f9218371a997510481ac6f0d65e5d5bafc865bc",
+  "scripts/transfer-gui-smoke.mjs": "62d0ee68f6c8cf0636230ac60f9798c9bb002186eb07e18b5dba6ee6912d2668",
+  "src/main/index.ts": "a13017d6294c828a26344942352166912bac5b1301b3e4221ca7353e66e652e4",
+  "src/main/mutations.ts": "f17e37affb688c1c44eb16f61d519a44ae1db53d036d891a9ee9a0137957b498",
+  "src/main/transfers.ts": "36f410332c9c7092afd4375a6643e677459f37c9c2dc89ad930f95ceee86e43a",
+  "src/worker/connection/session-manager.ts": "631c8769e5ecd896339ed64bca55647979235be3bb25ee1802744ae80f47bd23",
+  "src/worker/index.ts": "f3afcc002158258b433c2a16a5ec7271cdb9c8ed76a564a7f31e90977b365ea6",
+  "src/worker/receipt-writer.ts": "49b649ebf2956690032efefcc36418e59cd09239fd5faf5929a048d2bf36382a",
+  "src/worker/transfers/coordinator.ts": "88d60d8795ed572c6caff5bbff541cc3fcf03a0a30bdeffd4f9f05a37c12fbf6",
+  "src/main/storage-recovery.ts": "3ad9579ef5e2f3cca82558e6616caac1518ede8fbaac4df87b4dae79d186f381",
+  "src/shared/storage-recovery.ts": "111c310a7a5863d511a88d7fa71ee9302ed1cc7e3a9d0a37516855b93b59a7bb",
+  "src/worker/connection/metadata-queue.ts": "6f3242dc5a2b049ec13714b6a4b435bf1ef9883810b84c036e3cec3d2acdd1b5",
+  "src/worker/storage-recovery.ts": "56bd1ac5c50e36286385d4f83bb649c8051090aed61a761fb1c302a819a73fb9",
+  "tests/unit/metadata-queue.test.ts": "63222aba98a76d43bb907b43d5601540d7062b648ce1f088e34357ab1da40f33",
+  "tests/unit/storage-recovery.test.ts": "01d083ec5e5a0c66d21b6f516dbd49540781415aaf55271c18ca98a2f7fba401"
+}

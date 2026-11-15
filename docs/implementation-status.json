@@ -74,14 +74,16 @@
     "Main-owned readonly transfer previews with bounded pages, explicit conflict/unsupported rows, editable destinations, selection-bound single-use confirmation and native path privacy",
     "Restricted transfer bridge, whole-batch durable acceptance, file explorer multi-selection and explicit upload/download conflict confirmation",
     "Persistent2-slot transfer shelf with separate transfer/readback byte progress and speed, task cancellation and redacted native-path task details",
-    "Accepted transfers survive explorer closure and renderer reload; sequence-aware cross-server snapshot resync avoids stale progress and reconciles lost terminal events"
+    "Accepted transfers survive explorer closure and renderer reload; sequence-aware cross-server snapshot resync avoids stale progress and reconciles lost terminal events",
+    "Per-generation bounded whole-operation metadata FIFO serializes OS inspection, browsing, mutations and transfer previews on control SFTP",
+    "Epoch/request/token storage-retry barrier requires worker quiescence and settled JSON writes before explicit fault reset; interrupted queued tasks never replay"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 169,
-      "evidence": "evidence/d07-transfer-ui/test-unit.txt"
+      "tests": 175,
+      "evidence": "evidence/d07-recovery/test-unit.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -246,6 +248,11 @@
         "one fresh authenticated transfer socket per task and control survives"
       ],
       "limitation": "OS native dialogs replaced in this test process; current-host loopback fixture only, target OS/Ubuntu/OpenSSH and signed production packages remain untested."
+    },
+    "storage_recovery": {
+      "status": "pass",
+      "evidence": "evidence/d07-recovery",
+      "scope": "Unit protocol and actual utilityProcess fault barrier/reopen/reset plus a new3MiB upload; GUI retry then download. Native disk-full/permission/Windows locking faults remain."
     }
   },
   "remaining_D01": [
@@ -262,14 +269,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Integrate explicit storage-retry quiescence/writer reset and serialize control metadata operations, then D08 execution and D09 PTY; continue lifecycle/security/performance/packaging work.",
+  "next_action": "Implement D08 confirmed POSIX-quoted GUI execution and D09 flow-controlled PTY, then complete lifecycle/probe/security/performance/packaging and accurate handoff evidence.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d07-transfer-ui",
+  "latest_evidence_directory": "evidence/d07-recovery",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "D07 upload/download GUI and durable pipeline locally verified; storage retry/lifecycle integration remains",
+    "current_stage": "D07 transfer GUI, durable pipeline, storage retry barrier and control serialization locally verified; D08 execution begins",
     "product_features_available": "Profile/SSH trust, desktop windows, tree/list browsing, confirmed file mutations, readonly text/image windows and asynchronous SFTP upload/download with persistent shelf. Exec/PTY remain in progress.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },

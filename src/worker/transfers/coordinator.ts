@@ -102,5 +102,6 @@ export class TransferCoordinator {
   snapshot(serverId:string,generation:number,offset=0):{rows:TransferRuntime[];nextOffset:number|null} {
     if (!Number.isSafeInteger(offset) || offset<0) throw new Error('INPUT_INVALID');const values=[...[...this.jobs.values()].map(job => this.runtime(job)),...this.errors.values()].filter(row => row.serverId === serverId && row.generation === generation);const rows=values.slice(offset,offset+100);return {rows,nextOffset:offset+rows.length<values.length ? offset+rows.length : null};
   }
+  quiescent():boolean {return this.jobs.size === 0 && this.reservations.size === 0;}
   async settled():Promise<void> {await this.queuedWrites;}
 }
