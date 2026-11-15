@@ -13,6 +13,7 @@ import { SecretVault } from './persistence/secrets';
 import { DesktopController } from './desktop';
 import { FileController } from './files';
 import { ReceiptRepository } from './persistence/receipts';
+import { MainReceiptChannel } from './receipt-channel';
 import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
 
@@ -88,7 +89,8 @@ async function main(): Promise<void> {
   const epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
-  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot));
+  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted),message => worker.postMessage(message));
+  const gateway = new EngineGateway(worker, epoch, snapshot => connections?.observe(snapshot),receiptChannel);
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
@@ -167,7 +169,7 @@ async function main(): Promise<void> {
   }
   ipcMain.handle('settings:retryStorage', async (event, payload: unknown) => {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
-    try { await mutations.settled(); await receipts?.settled(); await openRepository(); receipts=await ReceiptRepository.open(dataRoot); } catch { throw new Error('STORAGE_FAILED'); }
+    try { await mutations.settled(); await receiptChannel.settled();await receipts?.settled(); await openRepository(); receipts=await ReceiptRepository.open(dataRoot); } catch { throw new Error('STORAGE_FAILED'); }
   });
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {
     validateSender(event);

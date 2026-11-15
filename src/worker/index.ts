@@ -6,12 +6,14 @@ import { FileBrowser } from './files/browser';
 import { FileMutations } from './files/mutations';
 import { PathLocks } from './files/path-locks';
 import { ViewerReader } from './viewers/reader';
+import { WorkerReceiptWriter } from './receipt-writer';
 
 const epoch = z.uuid().parse(process.argv[2]);
 if (!process.parentPort) throw new Error('Utility process parent port required');
 // Loading the SSH implementation proves runtime linkage without connecting anywhere.
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
 process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary: 'ssh2' });
+const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message));
 let sequence = 0;
 let readers:ViewerReader|null=null;
 const sessions = new SessionManager(snapshot => {
@@ -48,6 +50,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
   }
 }
 process.parentPort.on('message', (event: { data: unknown }) => {
+  if (receiptWriter.accept(event.data)) return;
   const parsed = engineRequestSchema.safeParse(event.data);
   if (!parsed.success || parsed.data.backendEpoch !== epoch) return;
   const request = parsed.data;

@@ -108,7 +108,7 @@ export class TransferRunner {
       await this.persist({phase:'completed',stage:'completed',cleanupState:cleanup,lastConfirmedPhase:cleanup === 'confirmed' ? 'temp_removed' : 'destination_confirmed'});
       this.move('completed');
     } catch (error) {failure=error;}
-    finally {if (this.deadline) {clearTimeout(this.deadline);this.deadline=null;}resourcesClosed=await this.closePorts();if (this.progressTimer) {clearInterval(this.progressTimer);this.progressTimer=null;}}
+    finally {if (this.deadline) {clearTimeout(this.deadline);this.deadline=null;}resourcesClosed=await this.closePorts();await this.persistTail;if (this.progressTimer) {clearInterval(this.progressTimer);this.progressTimer=null;}}
     if (failure) {
       const errorCode=codeOf(failure);const uncertain=failure instanceof TransferIOFailure ? failure.uncertain : this.tempRequestPending || this.linkRequestPending;
       let phase:TransferPhase;

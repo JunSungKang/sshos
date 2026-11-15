@@ -7,8 +7,9 @@ export class EngineGateway {
   private readonly pending = new Map<string, { serverId: string; generation: number; resolve: (value: unknown) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
   private stopped = false;
   private lastSequence = 0;
-  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void) {
+  constructor(private readonly worker: UtilityProcess, readonly epoch: string, private readonly sessionChanged: (snapshot: SessionSnapshot) => void,private readonly receiptChannel?:{accept(raw:unknown):boolean}) {
     worker.on('message', (raw: unknown) => {
+      if (this.receiptChannel?.accept(raw)) return;
       const event = engineEventSchema.safeParse(raw); if (!event.success || event.data.backendEpoch !== epoch) return;
       const data = event.data;
       if (data.type === 'session') {
