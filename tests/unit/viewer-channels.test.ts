@@ -48,3 +48,6 @@ describe('isolated read channel lifecycle',() => {
     const cancelled=pool.acquire('cancel','server1');const rejected=expect(cancelled).rejects.toThrow('REQUEST_CANCELLED');pool.cancel('cancel');await rejected;b.release();c.release();d.release();e.release();
   });
 });
+
+
+it('bounds FIFO waiting to32, rejects duplicate active/waiting IDs and makes release idempotent',async()=>{const pool=new ViewerReadPool(),active=await Promise.all(['a','b','c','d'].map((id,index)=>pool.acquire(id,index<2?'one':'two'))),waiting=Array.from({length:32},(_,index)=>pool.acquire('wait'+index,'one'));const cancelled=waiting.map(promise=>expect(promise).rejects.toThrow('REQUEST_CANCELLED'));await expect(pool.acquire('a','one')).rejects.toThrow('REQUEST_BUSY');await expect(pool.acquire('wait0','one')).rejects.toThrow('REQUEST_BUSY');await expect(pool.acquire('overflow','three')).rejects.toThrow('REQUEST_BUSY');pool.cancel('missing');for(let i=0;i<32;i++)pool.cancel('wait'+i);await Promise.all(cancelled);for(const lease of active){lease.release();lease.release();}const next=await pool.acquire('a','one');next.release();});
