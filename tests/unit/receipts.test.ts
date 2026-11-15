@@ -1,5 +1,7 @@
 import { afterEach, expect, it } from 'vitest';
-import { mkdtemp, mkdir, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, readFile, writeFile,readdir } from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {canonicalJSON} from '../../src/main/persistence/store';
 import { resolve } from 'node:path';
 import { ReceiptRepository, recoverMutation } from '../../src/main/persistence/receipts';
 import { mutationReceiptSchema, type MutationReceipt } from '../../src/shared/mutations';
@@ -11,6 +13,13 @@ const owned:string[]=[];
 async function directory() {const root=resolve('.local/tmp');await mkdir(root,{recursive:true});const path=await mkdtemp(resolve(root,'receipts-'));owned.push(path);return path;}
 afterEach(async () => {for (const path of owned.splice(0)) await rm(path,{recursive:true});});
 export function receipt():MutationReceipt {const now=new Date().toISOString();return {kind:'file_mutation',taskId:crypto.randomUUID(),serverId:crypto.randomUUID(),generation:1,backendEpoch:crypto.randomUUID(),endpointSnapshot:{name:'fixture',host:'example.invalid',port:22,username:'fixture',endpoint:'example.invalid:22'},hostKeyFingerprint:'SHA256:fixture',operation:'mkdir',source:null,destination:'/home/new',parent:'/home',sourceInitialStat:null,phase:'prepared',stage:'prepared',lastConfirmedPhase:'prepared',destinationCreated:false,sourceRemovalConfirmed:false,errorCode:null,recoveryUncertain:false,recoveredFromPhase:null,acknowledgedAt:null,createdAt:now,updatedAt:now};}
+it('reopens5001 valid completed records and prunes them while preserving unresolved, live and backup-uncertain records',async()=>{
+  const dir=await directory();await ReceiptRepository.open(dir);const base=receipt(),now=Date.now()-10000,ids:string[]=[];
+  const write=async(row:unknown,backup=false)=>{const payload=fileReceiptSchema.parse(row),raw=JSON.stringify({schemaVersion:1,revision:1,payload,payloadSha256:createHash('sha256').update(canonicalJSON(payload)).digest('hex')});await writeFile(resolve(dir,'receipts',payload.taskId+'.json'+(backup?'.bak':'')),raw,{mode:0o600});};
+  let next=0;await Promise.all(Array.from({length:16},async()=>{while(next<5001){const index=next++,id=crypto.randomUUID();ids[index]=id;await write({...base,taskId:id,phase:'completed',destinationCreated:true,createdAt:new Date(now+index).toISOString()});}}));
+  const unknown={...receipt(),phase:'result_unknown' as const},cleanup={...transferReceipt(),phase:'failed' as const,tempCreated:true,cleanupState:'needed' as const},live={...executionReceipt(),phase:'running' as const,channelAccepted:true},backup={...receipt(),phase:'completed' as const};await Promise.all([write(unknown),write(cleanup),write(live),write(backup,true)]);
+  const opened=await ReceiptRepository.open(dir,{epoch:live.backendEpoch,executionIds:new Set([live.taskId])});expect(opened.snapshots()).toHaveLength(1004);expect(opened.get(ids[0]!)).toBeUndefined();expect(opened.get(ids[5000]!)).toMatchObject({phase:'completed'});expect(opened.get(unknown.taskId)?.phase).toBe('result_unknown');expect(opened.get(cleanup.taskId)).toMatchObject({phase:'failed',cleanupState:'needed'});expect(opened.get(live.taskId)?.phase).toBe('running');expect(opened.get(backup.taskId)).toMatchObject({phase:'result_unknown',recoveryUncertain:true});expect(opened.damagedIds()).toEqual([]);expect((await readdir(resolve(dir,'receipts'))).filter(name=>name.endsWith('.json'))).toHaveLength(1004);expect(()=>opened.checkNew(unknown.serverId,[{path:unknown.destination!,mode:'write'}])).toThrow('RESULT_UNKNOWN');
+},30000);
 it('stores strict receipts without credential, input or output payloads',async () => {
   const dir=await directory();const repo=await ReceiptRepository.open(dir);const row=receipt();await repo.save(row);expect(repo.snapshots()).toEqual([row]);
   expect(mutationReceiptSchema.safeParse({...row,password:'sentinel'}).success).toBe(false);expect(mutationReceiptSchema.safeParse({...row,argv:['secret']}).success).toBe(false);

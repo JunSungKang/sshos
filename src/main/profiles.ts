@@ -5,9 +5,16 @@ import { z } from 'zod';
 import { profileDraftSchema, type Profile, type ProfileDraft, type ProfileView } from '../shared/models';
 import { StateRepository } from './persistence/state-repository';
 import { NativeDialogGate } from './native-dialogs';
+import {receiptUnresolved,type FileReceipt} from '../shared/receipts';
+
+export function hasBlockingProfileWork(id:string,rows:readonly(FileReceipt&{recordError?:boolean})[],active:(taskId:string)=>boolean):boolean {
+  return rows.some(row=>row.serverId===id && (receiptUnresolved(row) || active(row.taskId) || row.recordError===true));
+}
 
 export class ProfileController {
   private generation=0;
+  private pendingWrites=0;
+  get writing():boolean {return this.pendingWrites>0;}
   invalidate():void {this.generation++;this.selectedKeys.clear();}
   private readonly selectedKeys = new Map<string, { path: string; expires: number }>();
   constructor(private readonly repository: StateRepository, private readonly window: () => BrowserWindow | null, private readonly busy: (id: string) => boolean,private readonly dialogGate=new NativeDialogGate()) {}
@@ -29,13 +36,13 @@ export class ProfileController {
   }
   async handle(action: string, payload: unknown): Promise<unknown> {
     if (action === 'profile:list') { if (payload !== undefined) throw new Error('INPUT_INVALID'); return this.list(); }
-    if (action === 'profile:create') return this.view(await this.repository.create(this.materialize(profileDraftSchema.parse(payload))));
+    if (action === 'profile:create') {const input=this.materialize(profileDraftSchema.parse(payload));this.pendingWrites++;try{return this.view(await this.repository.create(input));}finally{this.pendingWrites--;}}
     if (action === 'profile:update') {
       const parsed = z.object({ id: z.uuid(), input: profileDraftSchema }).strict().parse(payload);
       const old = this.repository.snapshot().profiles.find(p => p.id === parsed.id); if (!old) throw new Error('PROFILE_NOT_FOUND');
-      return this.view(await this.repository.update(parsed.id, this.materialize(parsed.input, old), this.busy));
+      const input=this.materialize(parsed.input,old);this.pendingWrites++;try{return this.view(await this.repository.update(parsed.id,input,this.busy));}finally{this.pendingWrites--;}
     }
-    if (action === 'profile:delete') { await this.repository.remove(z.uuid().parse(payload), this.busy); return undefined; }
+    if (action === 'profile:delete') {const id=z.uuid().parse(payload);this.pendingWrites++;try{await this.repository.remove(id,this.busy);return undefined;}finally{this.pendingWrites--;}}
     if (action === 'profile:pickKey') {
       if (payload !== undefined) throw new Error('INPUT_INVALID');
       this.pruneKeys();

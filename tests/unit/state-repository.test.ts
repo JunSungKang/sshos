@@ -1,13 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it,vi } from 'vitest';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { StateRepository, normalizeHost } from '../../src/main/persistence/state-repository';
 import { SecretVault } from '../../src/main/persistence/secrets';
 const owned: string[] = [];
-afterEach(async () => { for (const path of owned.splice(0)) await rm(path, { recursive: true }); });
+afterEach(async () => {vi.restoreAllMocks(); for (const path of owned.splice(0)) await rm(path, { recursive: true }); });
 async function dataRoot() { await mkdir(resolve('.local/tmp'), { recursive: true }); const parent = await mkdtemp(resolve('.local/tmp/repo-')); owned.push(parent); return resolve(parent, 'data'); }
 const draft = { name: '운영 서버', host: 'EXAMPLE.COM.', port: 22, username: 'ubuntu', authentication: 'password' as const };
 describe('profile persistence and identity', () => {
+  it.each(['clone','authentication','delete'])('rechecks profile busy state when a queued %s write actually executes',async operation=>{const repo=await StateRepository.open(await dataRoot()),profile=await repo.create(draft),native=repo.store.update.bind(repo.store);let busy=false,release!:()=>void;vi.spyOn(repo.store,'update').mockImplementationOnce(change=>new Promise<void>((resolve,reject)=>{release=()=>{void native(change).then(resolve,reject);};}));const pending=operation==='delete'?repo.remove(profile.id,()=>busy):repo.update(profile.id,operation==='clone'?{...draft,host:'other.test'}:{...draft,authentication:'key',keyPath:'/main-owned/key'},()=>busy),rejected=expect(pending).rejects.toThrow('PROFILE_BUSY');busy=true;release();await rejected;expect(repo.snapshot().profiles).toEqual([profile]);expect(repo.store.faulted).toBe(false);});
   it('normalizes DNS/IP and rejects URL/invalid hosts', () => {
     expect(normalizeHost(draft.host)).toBe('example.com'); expect(normalizeHost('[::1]')).toBe('::1');
     for (const value of ['https://host', 'user@host', 'bad host', '-bad.test', 'host/path','127.00.0.1','0x7f000001','127.1','127.0.0.1.','[example.com]','[127.0.0.1]']) expect(() => normalizeHost(value)).toThrow();

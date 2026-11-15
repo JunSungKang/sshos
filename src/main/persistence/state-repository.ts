@@ -24,11 +24,11 @@ export const endpointFor = (profile: Pick<Profile, 'host' | 'port'>) => `${profi
 
 export class StateRepository {
   private constructor(readonly store: AtomicJSONStore<AppState>, readonly recovered: boolean) {}
-  static async open(dataRoot: string): Promise<StateRepository> {
+  static async open(dataRoot: string,onDirectorySyncUnavailable?:()=>void): Promise<StateRepository> {
     let created = false;
     try { await mkdir(dataRoot, { mode: 0o700 }); created = true; }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw new Error('STORAGE_FAILED'); }
-    const store = new AtomicJSONStore(join(dataRoot, 'state.json'), stateSchema, 1024 * 1024);
+    const store = new AtomicJSONStore(join(dataRoot, 'state.json'), stateSchema, 1024 * 1024,onDirectorySyncUnavailable);
     if (created) { await store.initialize(initialState()); return new StateRepository(store, false); }
     // A pre-existing directory without a valid state is not silently reset.
     if ((await readdir(dataRoot)).length === 0) throw new Error('STORAGE_FAILED');
@@ -62,15 +62,21 @@ export class StateRepository {
     const validated = profileInputSchema.parse(Object.fromEntries(Object.entries(parsed).filter(([, value]) => value !== undefined)));
     const normalized = { ...validated, host: normalizeHost(validated.host) };
     const old = this.snapshot().profiles.find(p => p.id === id); if (!old) throw new Error('PROFILE_NOT_FOUND');
-    const identityChanged = old.host !== normalized.host || old.port !== normalized.port || old.username !== normalized.username;
-    const authenticationChanged = old.authentication !== normalized.authentication || old.keyPath !== normalized.keyPath;
-    if (isBusy(id) && (identityChanged || authenticationChanged)) throw new Error('PROFILE_BUSY');
-    if (identityChanged) { const { secretId: _secret, ...cloned } = normalized; return this.create(cloned); }
-    const result: Profile = { ...normalized, id };
-    if (!authenticationChanged && old.secretId && result.secretId === undefined) result.secretId = old.secretId;
+    const identityChanged=(profile:Profile)=>profile.host!==normalized.host || profile.port!==normalized.port || profile.username!==normalized.username;
+    const authenticationChanged=(profile:Profile)=>profile.authentication!==normalized.authentication || profile.keyPath!==normalized.keyPath;
+    const check=(profile:Profile)=>{if(isBusy(id) && (identityChanged(profile) || authenticationChanged(profile)))throw new Error('PROFILE_BUSY');};
+    check(old);let result!:Profile;
     await this.store.update(state => {
       if (!state) throw new Error('STORAGE_FAILED');
-      return { ...state, profiles: state.profiles.map(p => p.id === id ? result : p), encryptedSecrets: authenticationChanged ? state.encryptedSecrets.filter(secret => secret.profileId !== id) : state.encryptedSecrets };
+      const current=state.profiles.find(profile=>profile.id===id);if(!current)throw new Error('PROFILE_NOT_FOUND');check(current);
+      if(identityChanged(current)){
+        if(state.profiles.length>=10)throw new Error('PROFILE_LIMIT');
+        const {secretId:_secret,...cloned}=normalized;result={...cloned,id:randomUUID()};
+        return {...state,profiles:[...state.profiles,result]};
+      }
+      const authChanged=authenticationChanged(current);result={...normalized,id};
+      if(!authChanged && current.secretId && result.secretId===undefined)result.secretId=current.secretId;
+      return { ...state, profiles: state.profiles.map(p => p.id === id ? result : p), encryptedSecrets: authChanged ? state.encryptedSecrets.filter(secret => secret.profileId !== id) : state.encryptedSecrets };
     });
     return structuredClone(result);
   }
@@ -78,6 +84,7 @@ export class StateRepository {
     if (isBusy(id)) throw new Error('PROFILE_BUSY');
     await this.store.update(state => {
       if (!state) throw new Error('STORAGE_FAILED');
+      if(isBusy(id))throw new Error('PROFILE_BUSY');
       return { ...state, profiles: state.profiles.filter(p => p.id !== id), encryptedSecrets: state.encryptedSecrets.filter(secret => secret.profileId !== id) };
     });
   }

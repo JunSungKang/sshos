@@ -1,4 +1,5 @@
 import { LicensesController } from './licenses';
+import { configureRuntimePaths } from './runtime-paths';
 import { DiagnosticLog } from './diagnostic-log';
 import { DiagnosticsController } from './diagnostics';
 import { errorCodeOf } from '../shared/errors';
@@ -8,14 +9,13 @@ import { ResponseProbe } from './probes';
 import { z } from 'zod';
 import { inShutdownScope,shutdownSummary,runShutdown,type ShutdownScope } from './shutdown';
 import { app, BrowserWindow, ipcMain, Menu, dialog, powerMonitor, protocol, session, utilityProcess, safeStorage } from 'electron';
-import { readFile, mkdir, realpath } from 'node:fs/promises';
-import { resolve, relative, isAbsolute, sep, dirname } from 'node:path';
-import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { CSP, isAppOrigin, RequestBudget, resolveAsset, validateTerminalEnvelope } from './security';
 import { runtimeSnapshotSchema, workerEventSchema, type RuntimeSnapshot } from '../shared/contracts';
 import { StateRepository } from './persistence/state-repository';
-import { ProfileController } from './profiles';
+import { ProfileController,hasBlockingProfileWork } from './profiles';
 import { ConnectionController } from './connections';
 import { EngineGateway } from './engine-gateway';
 import { SecretVault } from './persistence/secrets';
@@ -41,37 +41,7 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-component-update');
 
 async function main(): Promise<void> {
-  // Development must never choose an implicit home-directory userData path.
-  if (!app.isPackaged) {
-    const root = await realpath(resolve(__dirname, '../..'));
-    const requested = process.env['SSHOS_RUNTIME_ROOT'];
-    if (!requested) throw new Error('Development runtime root is required');
-    const dir = resolve(requested);
-    const rel = relative(root, dir);
-    if (!rel || isAbsolute(rel) || rel === '..' || rel.startsWith(`..${sep}`)) throw new Error('Runtime path outside workspace');
-    let ancestor = dir;
-    while (!existsSync(ancestor)) ancestor = dirname(ancestor);
-    const parentRel = relative(root, await realpath(ancestor));
-    if (isAbsolute(parentRel) || parentRel === '..' || parentRel.startsWith(`..${sep}`)) throw new Error('Runtime parent symlink outside workspace');
-    await mkdir(dir, { recursive: true });
-    const actual = await realpath(dir);
-    const realRel = relative(root, actual);
-    if (isAbsolute(realRel) || realRel === '..' || realRel.startsWith(`..${sep}`)) throw new Error('Runtime symlink outside workspace');
-    const children: Record<string, string> = {};
-    for (const name of ['runtime', 'crashes', 'logs']) {
-      const target = resolve(actual, name);
-      if (existsSync(target)) {
-        const childRel = relative(actual, await realpath(target));
-        if (isAbsolute(childRel) || childRel === '..' || childRel.startsWith(`..${sep}`)) throw new Error('Runtime child symlink outside workspace');
-      }
-      await mkdir(target, { recursive: true });
-      children[name] = target;
-    }
-    app.setPath('userData', actual);
-    app.setPath('sessionData', children['runtime']!);
-    app.setPath('crashDumps', children['crashes']!);
-    app.setAppLogsPath(children['logs']!);
-  }
+  await configureRuntimePaths(app,resolve(__dirname,'../..'),process.env['SSHOS_RUNTIME_ROOT']);
   if (!app.requestSingleInstanceLock()) { app.quit(); return; }
   await app.whenReady();
   Menu.setApplicationMenu(null);
@@ -93,8 +63,11 @@ async function main(): Promise<void> {
   let win: BrowserWindow | null = null;let replacingRenderer=false,uiReady=false;let lifecycleClosing=false,quitFinal=false,quitPrompt=false;let powerTransition=false,powerSequence=0;
   const dataRoot = resolve(app.getPath('userData'), 'data');
   const diagnosticLog=await DiagnosticLog.create(resolve(app.getPath('logs'),'events'),app.getVersion()).catch(()=>null);diagnosticLog?.record({to:'starting'});
+  let directorySyncUnavailable=false;
+  const recordDirectorySyncUnavailable=()=>{if(!directorySyncUnavailable){directorySyncUnavailable=true;diagnosticLog?.record({errorCode:'DIRECTORY_SYNC_UNAVAILABLE'});}};
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
+  let profileHasWork:(id:string)=>boolean=()=>true;
   const dialogGate=new NativeDialogGate();
   const pasteGesture=new TerminalPasteGesture();
   let connections: ConnectionController | null = null;
@@ -104,14 +77,14 @@ async function main(): Promise<void> {
   const openRepository = (): Promise<void> => {
     if (repositoryOpening) return repositoryOpening;
     repositoryOpening = (async () => {
-      if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot);
-      profiles?.invalidate();profiles = new ProfileController(repository, () => win, id => connections?.isBusy(id) ?? false,dialogGate);
+      if (repository) await repository.retryStorage(); else repository = await StateRepository.open(dataRoot,recordDirectorySyncUnavailable);
+      profiles?.invalidate();profiles = new ProfileController(repository, () => win, id => Boolean(connections?.isBusy(id)) || profileHasWork(id),dialogGate);
     })().finally(() => { repositoryOpening = null; });
     return repositoryOpening;
   };
   try { await openRepository(); } catch { /* Keep a locked, visible recovery UI instead of resetting data. */ }
   let receipts:ReceiptRepository|null=null;
-  try { receipts=await ReceiptRepository.open(dataRoot); } catch { /* Keep changes locked and reads available. */ }
+  try { receipts=await ReceiptRepository.open(dataRoot,undefined,recordDirectorySyncUnavailable); } catch { /* Keep changes locked and reads available. */ }
   let epoch = randomUUID();
   let engine: RuntimeSnapshot['engine'] = 'starting';
   let worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
@@ -141,6 +114,7 @@ async function main(): Promise<void> {
   });
   void observeEngine(worker,epoch).catch(()=>{});
   const activeOperation=(id:string)=>mutations.isActive(id) || transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id);
+  profileHasWork=id=>hasBlockingProfileWork(id,mutations.snapshots(),activeOperation);
   const shutdown=async(scope:ShutdownScope,budgetMs=10000)=>{
     const targets=connections!.views().filter(row=>!scope || row.serverId===scope.serverId && row.generation===scope.generation);for(const row of targets)connections!.beginDisconnect(row.serverId,row.generation);
     return runShutdown({interrupt:()=>Promise.allSettled([transfers!.cancelForShutdown(scope?.serverId,scope?.generation),executions!.closeForShutdown(scope?.serverId,scope?.generation),terminals!.closeForShutdown(scope?.serverId,scope?.generation)]).then(()=>{}),finalizing:()=>transfers!.hasFinalizing(scope?.serverId,scope?.generation),disconnect:()=>Promise.allSettled(targets.map(row=>connections!.disconnect(row.serverId,row.generation))).then(()=>{}),active:()=>mutations.snapshots().some(row=>inShutdownScope(row,scope) && activeOperation(row.taskId)),settled:async()=>{await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();}},budgetMs);
@@ -189,7 +163,7 @@ async function main(): Promise<void> {
         if (!connections || !['session:list','session:selectActive'].includes(action) && engine !== 'ready') throw new Error('ENGINE_STOPPED');
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
         if(action==='session:selectActive'){responseProbe!.select(z.uuid().nullable().parse(payload));return;}
-        if((powerTransition || settings.writing) && ['session:connect','session:confirmOS','trust:approve'].includes(action))throw new Error('REQUEST_BUSY');
+        if((powerTransition || settings.writing || profiles?.writing) && ['session:connect','session:confirmOS','trust:approve'].includes(action))throw new Error('REQUEST_BUSY');
         if(action==='session:connect' && payload && typeof payload==='object' && 'id' in payload && typeof payload.id==='string' && disconnectPrompts.has(payload.id))throw new Error('SESSION_BUSY');
         if(action==='session:disconnect'){await confirmDisconnect(z.uuid().parse(payload));return;}
         return await connections.handle(action, payload);
@@ -258,7 +232,7 @@ async function main(): Promise<void> {
     storageRecovering=true;let barrier:string|null=null;
     try {
       await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
-      await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();const liveExecutions=new Set([...executions!.storageContinuity(),...terminals!.storageContinuity()]);receipts=await ReceiptRepository.open(dataRoot,{epoch,executionIds:liveExecutions});if([...liveExecutions].some(id=>!receipts!.get(id)))throw new Error('STORAGE_FAILED');
+      await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();const liveExecutions=new Set([...executions!.storageContinuity(),...terminals!.storageContinuity()]);receipts=await ReceiptRepository.open(dataRoot,{epoch,executionIds:liveExecutions},recordDirectorySyncUnavailable);if([...liveExecutions].some(id=>!receipts!.get(id)))throw new Error('STORAGE_FAILED');
       await mutations.reconcileStorage(receipts);recoveryAccepting=true;await storageRecovery.reset(barrier,receipts.snapshots().filter(row=>liveExecutions.has(row.taskId) && (row.kind === 'gui_exec' || row.kind === 'pty') && row.recoveryUncertain).map(row=>({taskId:row.taskId,fromPhase:row.recoveredFromPhase})));recoveryLocked=false;
     } catch (error) {if (barrier || faulted || !(error instanceof Error) || error.message !== 'REQUEST_BUSY') recoveryLocked=true;throw new Error(error instanceof Error && error.message === 'REQUEST_BUSY' ? 'REQUEST_BUSY' : 'STORAGE_FAILED');}
     finally {recoveryAccepting=false;storageRecovering=false;}
