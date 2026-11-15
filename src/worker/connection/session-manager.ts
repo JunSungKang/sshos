@@ -32,6 +32,7 @@ export class SessionManager {
     entry.auxiliary ??=new AuxiliarySockets(() => ({input:entry.input,agent:entry.agent,check}));return entry.auxiliary.open(role);
   }
   withMetadata<T>(serverId:string,generation:number,action:()=>Promise<T>):Promise<T> {this.control(serverId,generation).check();const entry=this.entries.get(serverId)!;return entry.metadata.run(action);}
+  probeAccess(serverId:string,generation:number):{client:Client;metadataBusy:boolean;check():void} {const entry=this.entries.get(serverId);const check=()=>{if(!entry || this.entries.get(serverId)!==entry || entry.snapshot.generation!==generation || entry.snapshot.status!=='connected')throw new Error('CONNECTION_LOST');};check();return {client:entry!.client,metadataBusy:entry!.metadata.busy,check};}
   readClient(serverId:string,generation:number):Client {
     const entry=this.entries.get(serverId);
     if (!entry || entry.snapshot.generation !== generation || entry.snapshot.status !== 'connected' || entry.snapshot.sftp !== 'available') throw new Error('CONNECTION_LOST');return entry.client;

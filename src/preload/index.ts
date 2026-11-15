@@ -72,6 +72,7 @@ contextBridge.exposeInMainWorld('sshOS', Object.freeze({
     closeWindow: (id: string) => ipcRenderer.invoke('desktop:closeWindow', id)
   }),
   session: Object.freeze({
+    selectActiveServer:(id:string|null)=>ipcRenderer.invoke('session:selectActive',id),
     list: () => ipcRenderer.invoke('session:list'),
     connect: (id: string, credentials: unknown) => ipcRenderer.invoke('session:connect', { id, credentials }),
     disconnect: (id: string) => ipcRenderer.invoke('session:disconnect', id),

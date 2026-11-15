@@ -1,3 +1,4 @@
+import { ResponseProbe } from './probes';
 import { z } from 'zod';
 import { inShutdownScope,shutdownSummary,runShutdown,type ShutdownScope } from './shutdown';
 import { app, BrowserWindow, ipcMain, Menu, dialog, powerMonitor, protocol, session, utilityProcess, safeStorage } from 'electron';
@@ -80,7 +81,7 @@ async function main(): Promise<void> {
       return new Response(new Uint8Array(data), { headers: { 'Content-Type': asset.mime, 'Content-Security-Policy': CSP, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' } });
     } catch { return new Response(null, { status: 404 }); }
   });
-  let win: BrowserWindow | null = null;let replacingRenderer=false;let lifecycleClosing=false,quitFinal=false,quitPrompt=false;let powerTransition=false,powerSequence=0;
+  let win: BrowserWindow | null = null;let replacingRenderer=false,uiReady=false;let lifecycleClosing=false,quitFinal=false,quitPrompt=false;let powerTransition=false,powerSequence=0;
   const dataRoot = resolve(app.getPath('userData'), 'data');
   let repository: StateRepository | null = null;
   let profiles: ProfileController | null = null;
@@ -108,8 +109,8 @@ async function main(): Promise<void> {
   let receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   let executions:ExecutionController|null=null;
-  let terminals:TerminalController|null=null;
-  const gateway = new EngineGateway(worker, epoch, snapshot => {connections?.observe(snapshot);executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');terminals?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');},receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>terminals?.observe(snapshot,gap,sequence));
+  let terminals:TerminalController|null=null;let responseProbe:ResponseProbe|null=null;
+  const gateway = new EngineGateway(worker, epoch, snapshot => {connections?.observe(snapshot);responseProbe?.refresh();executions?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');terminals?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');},receiptChannel,(snapshot,gap,sequence) => transfers?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>executions?.observe(snapshot,gap,sequence),(snapshot,gap,sequence)=>terminals?.observe(snapshot,gap,sequence));
   connections = new ConnectionController(() => repository, gateway, new SecretVault(safeStorage),() => Boolean(receipts && !receipts.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition));
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
@@ -121,11 +122,12 @@ async function main(): Promise<void> {
   executions=new ExecutionController(executionPreviews,connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),()=>receiptChannel.settled());
   terminals=new TerminalController(connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),()=>win,pasteGesture,()=>receiptChannel.settled());
   const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),id => transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if(row.kind === 'gui_exec')await executions!.releaseRecord(row);else if(row.kind === 'pty')await terminals!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays(),...terminals!.overlays()],id => transfers!.taskState(id));
+  responseProbe=new ResponseProbe(gateway,()=>connections!.views(),()=>Boolean(uiReady && win && !win.isDestroyed() && !win.isMinimized() && win.isFocused() && !lifecycleClosing && !powerTransition),id=>transfers!.overlays().some(row=>row.serverId===id && transfers!.isActive(row.taskId)));
   let engineStopping:Promise<void>=Promise.resolve(),engineRestarting=false;
   const observeEngine=(observed:Electron.UtilityProcess,observedEpoch:string):Promise<void>=>new Promise((resolveReady,rejectReady)=>{
     let ready=false;const timer=setTimeout(()=>{if(!ready){observed.kill();rejectReady(new Error('ENGINE_STOPPED'));}},10000);timer.unref();
     observed.on('message',(message:unknown)=>{if(worker !== observed || epoch !== observedEpoch)return;const parsed=workerEventSchema.safeParse(message);if(parsed.success && parsed.data.backendEpoch === observedEpoch){ready=true;clearTimeout(timer);engine='ready';resolveReady();}});
-    observed.on('exit',()=>{clearTimeout(timer);if(!ready)rejectReady(new Error('ENGINE_STOPPED'));if(worker !== observed || epoch !== observedEpoch)return;engine='stopped';const previous=connections!.views();connections!.engineStopped();for(const row of previous){executions!.sessionChanged(row.serverId,row.generation,false);terminals!.sessionChanged(row.serverId,row.generation,false);}viewers.interruptRenderer();transfers!.invalidateRenderer();executionPreviews.invalidate();profiles?.invalidate();engineStopping=Promise.allSettled([mutations.settled(),transfers!.engineStopped(),executions!.engineStopped(),terminals!.engineStopped()]).then(()=>{});});
+    observed.on('exit',()=>{clearTimeout(timer);if(!ready)rejectReady(new Error('ENGINE_STOPPED'));if(worker !== observed || epoch !== observedEpoch)return;engine='stopped';const previous=connections!.views();connections!.engineStopped();responseProbe?.invalidate();for(const row of previous){executions!.sessionChanged(row.serverId,row.generation,false);terminals!.sessionChanged(row.serverId,row.generation,false);}viewers.interruptRenderer();transfers!.invalidateRenderer();executionPreviews.invalidate();profiles?.invalidate();engineStopping=Promise.allSettled([mutations.settled(),transfers!.engineStopped(),executions!.engineStopped(),terminals!.engineStopped()]).then(()=>{});});
   });
   void observeEngine(worker,epoch).catch(()=>{});
   const activeOperation=(id:string)=>mutations.isActive(id) || transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id);
@@ -135,7 +137,7 @@ async function main(): Promise<void> {
   };
   let powerWork:Promise<void>|null=null;
   const invalidatePower=()=>{
-    if(quitFinal || lifecycleClosing)return;powerSequence++;powerTransition=true;profiles?.invalidate();executionPreviews.invalidate();transfers!.invalidateRenderer();viewers.interruptRenderer();
+    if(quitFinal || lifecycleClosing)return;powerSequence++;powerTransition=true;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();transfers!.invalidateRenderer();viewers.interruptRenderer();
     const targets=connections!.views().filter(row=>!['idle','disconnected','failed'].includes(row.status));for(const row of targets){connections!.beginDisconnect(row.serverId,row.generation);executions!.sessionChanged(row.serverId,row.generation,false);terminals!.sessionChanged(row.serverId,row.generation,false);}if(powerWork)return;
     // Dispatch disconnect immediately: an OS suspend cannot wait for a final link.
     const draining=Promise.allSettled([transfers!.cancelForShutdown(),executions!.closeForShutdown(),terminals!.closeForShutdown(),...targets.map(row=>connections!.disconnect(row.serverId,row.generation))]).then(()=>{});let timer:ReturnType<typeof setTimeout>;
@@ -164,12 +166,13 @@ async function main(): Promise<void> {
       catch (error) { throw new Error(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INPUT_INVALID'); }
     });
   }
-  for (const action of ['session:list', 'session:connect', 'session:disconnect', 'session:confirmOS', 'trust:approve', 'trust:reject']) {
+  for (const action of ['session:list', 'session:selectActive', 'session:connect', 'session:disconnect', 'session:confirmOS', 'trust:approve', 'trust:reject']) {
     ipcMain.handle(action, async (event, payload: unknown) => {
       validateSender(event);
       try {
-        if (!connections || action !== 'session:list' && engine !== 'ready') throw new Error('ENGINE_STOPPED');
+        if (!connections || !['session:list','session:selectActive'].includes(action) && engine !== 'ready') throw new Error('ENGINE_STOPPED');
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        if(action==='session:selectActive'){responseProbe!.select(z.uuid().nullable().parse(payload));return;}
         if(powerTransition && ['session:connect','session:confirmOS','trust:approve'].includes(action))throw new Error('REQUEST_BUSY');
         if(action==='session:connect' && payload && typeof payload==='object' && 'id' in payload && typeof payload.id==='string' && disconnectPrompts.has(payload.id))throw new Error('SESSION_BUSY');
         if(action==='session:disconnect'){await confirmDisconnect(z.uuid().parse(payload));return;}
@@ -255,27 +258,27 @@ async function main(): Promise<void> {
     if (payload !== undefined) throw new Error('INPUT_INVALID');
     return runtimeSnapshotSchema.parse({ backendEpoch: epoch, engine, connectedServers: connections.views().filter(row => row.status === 'connected').length,
       storage: { status: !repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked ? 'unavailable' : repository.recovered ? 'recovered' : 'ready', path: dataRoot },
-      powerSequence,closing:lifecycleClosing,appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
+      probe:responseProbe!.view(),powerSequence,closing:lifecycleClosing,appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {
-    win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
-    pasteGesture.bind(win);win.on('close',event=>{if(!quitFinal){event.preventDefault();void requestQuit();}});
+    uiReady=false;win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
+    pasteGesture.bind(win);win.on('focus',()=>responseProbe?.invalidate());win.on('blur',()=>responseProbe?.invalidate());win.on('minimize',()=>responseProbe?.invalidate());win.on('restore',()=>responseProbe?.invalidate());win.on('close',event=>{if(!quitFinal){event.preventDefault();void requestQuit();}});
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', event => event.preventDefault());
     win.webContents.on('will-attach-webview', event => event.preventDefault());
     let loaded=false;
-    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
-    win.webContents.on('did-finish-load',() => {loaded=true;});
+    win.webContents.on('did-start-navigation',(_event,_url,_inPlace,isMainFrame) => {if (loaded && isMainFrame) {uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();}});
+    win.webContents.on('did-finish-load',() => {loaded=true;uiReady=true;responseProbe?.invalidate();});
     const owner=win;let recoveringRenderer=false;
-    win.webContents.on('render-process-gone',(_event,details) => {profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();if(details.reason === 'clean-exit' || recoveringRenderer || owner.isDestroyed())return;recoveringRenderer=true;void dialog.showMessageBox(owner,{type:'warning',title:'sshOS 화면 복구',message:'화면 프로세스가 종료되었습니다.',detail:'연결 엔진과 작업은 계속 실행 중일 수 있습니다. 화면을 다시 열면 현재 상태를 복원하며 원격 작업을 다시 실행하지 않습니다.',buttons:['화면 다시 열기','나중에'],defaultId:0,cancelId:1,noLink:true}).then(async result=>{if(result.response===0 && !owner.isDestroyed()){replacingRenderer=true;try{owner.destroy();createWindow();}finally{replacingRenderer=false;}}}).catch(()=>{}).finally(()=>{recoveringRenderer=false;});});
+    win.webContents.on('render-process-gone',(_event,details) => {uiReady=false;responseProbe?.invalidate();profiles?.invalidate();executionPreviews.invalidate();viewers.interruptRenderer();transfers?.invalidateRenderer();executions?.invalidateRenderer();terminals?.invalidateRenderer();if(details.reason === 'clean-exit' || recoveringRenderer || owner.isDestroyed())return;recoveringRenderer=true;void dialog.showMessageBox(owner,{type:'warning',title:'sshOS 화면 복구',message:'화면 프로세스가 종료되었습니다.',detail:'연결 엔진과 작업은 계속 실행 중일 수 있습니다. 화면을 다시 열면 현재 상태를 복원하며 원격 작업을 다시 실행하지 않습니다.',buttons:['화면 다시 열기','나중에'],defaultId:0,cancelId:1,noLink:true}).then(async result=>{if(result.response===0 && !owner.isDestroyed()){replacingRenderer=true;try{owner.destroy();createWindow();}finally{replacingRenderer=false;}}}).catch(()=>{}).finally(()=>{recoveringRenderer=false;});});
     win.on('ready-to-show', () => {if(!owner.isDestroyed())owner.show();});
-    win.on('closed', () => {if(win===owner)win=null;});
+    win.on('closed', () => {if(win===owner){win=null;uiReady=false;}});
     void win.loadURL('app://ui/');
   };
   app.on('second-instance', () => { if (win?.isMinimized()) win.restore(); win?.focus(); });
   app.on('activate', () => { if (!win) createWindow(); });
   app.on('window-all-closed', () => {if(!replacingRenderer)app.quit();});
-  app.on('before-quit',event=>{if(quitFinal){worker.kill();return;}event.preventDefault();void requestQuit();});
+  app.on('before-quit',event=>{if(quitFinal){responseProbe?.dispose();worker.kill();return;}event.preventDefault();void requestQuit();});
   createWindow();
 }
 

@@ -105,14 +105,16 @@
     "Actual control/auxiliary close barriers across generations, cancellation-aware connect reservations and global bounds including closing sockets",
     "Bounded one-thread key parsing FIFO with three owned requests, cancelled-queue checks and owned credential RPC cleanup",
     "Suspend and resume generation invalidation with best-effort interrupt/close intents, immediate scoped disconnect and no automatic replay",
-    "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue"
+    "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue",
+    "Foreground active-server SSH command-completion response metric with literal /bin/true, actual-close cooldown, identity validation, 5s delayed/15s freshness and no reconnect",
+    "Pinned ssh2 paused-channel disposal preserves genuine protocol close and frees slots without closing sibling PTYs; transport loss cannot imply observed channel close"
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 216,
-      "evidence": "evidence/d09-engine/test-unit.txt"
+      "tests": 263,
+      "evidence": "evidence/d10-probe/verification.json"
     },
     "build": "pass",
     "electron_smoke": {
@@ -418,6 +420,21 @@
         "connection engine remains ready with unchanged epoch and unknown result records"
       ],
       "limitation": "PowerMonitor notifications emitted in test main; no physical OS sleep, network loss on sleep or target-platform acceptance claimed."
+    },
+    "response_probe": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "actual Electron main/worker control-SSH response probe and header text/tooltip",
+        "only literal /bin/true; no probe authentication or extra shell",
+        "blur clears numbers and pauses requests; focus resumes after actual-close cooldown",
+        "header server selection does not reassign existing terminal window",
+        "real delayed completion produces delay without a stale numeric value",
+        "exec rejection disables future probes while two SSH controls and other PTY input remain usable",
+        "disconnect removes displayed number"
+      ],
+      "limitation": "Foreground focus and native disconnect decision mocked in test main; actual physical focus/sleep, target OpenSSH/OS and controlled network performance remain."
     }
   },
   "remaining_D01": [
@@ -434,10 +451,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 SSH response probe and PTY renderer-memory guard, then D11 functional/security/performance audit and D12-D13.",
+  "next_action": "Implement D10 PTY renderer-memory guard, then D11 functional/security/performance audit and D12-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-power",
+  "latest_evidence_directory": "evidence/d10-probe",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -452,7 +469,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 SSH response probe and PTY renderer-memory guard remain.",
+    "D10 PTY renderer-memory guard remains.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
 }

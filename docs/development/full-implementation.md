@@ -199,3 +199,11 @@ PowerMonitor의 suspend와 resume 모두 현재 세션 capability를 즉시 폐�
 일반 RPC는24개, cleanup은28개, session disconnect는32개까지 허용하여 전체32개 상한 안에서 제어 여유를 둔다. main과 worker가 같은 정책을 사용한다. 전송 큐 취소는100개를 한꺼번에 요청하지 않고 동시4개로 처리하며 dispatch 전 REQUEST_BUSY만 제한 시간 안에서 대기한다. worker epoch가 바뀌면 이전 취소 루프를 중단한다.
 
 248개 단위 검사·타입/build·실제 SSH를 사용한 모의 suspend/resume GUI·기한 종료·전송 GUI 회귀가 통과했다. 복귀 뒤 인증/입력/shell 재전송0회, 명시적 재접속의 새 generation, 선행 suspend 없는 resume 무효화를 확인했다. 100행 취소 동시성은 메모리 receipt adapter로 RPC 자체를 검사하며 실제100개 durable 등록 성능을 인증하지 않는다. 실제 OS sleep과 지원 OS 수용은 미검증이다. evidence/d10-power에 출력·화면·source hash를 보존했다. 다음은 SSH 응답시간과 PTY 메모리 guard다.
+
+## Foreground SSH response and genuine channel closure
+
+The main-owned probe measures only the active foreground server using the existing control SSH connection and the literal /bin/true. It does not create a new authentication, PTY, helper or ICMP ping. Samples require exit0 and genuine channel close within5s. Pending/closing probes retain their slot; subsequent attempts wait at least5s after actual close. Focus/selection/generation/epoch changes invalidate old results. Numeric values expire after15s from request start; rejection/output overflow disables this generation's probe without declaring the server disconnected. The header explains that network and server processing both contribute.
+
+Real SSH testing exposed ssh2 1.17.0 paused readable channels withholding public close after protocol close. The version-pinned disposal adapter clears local Node buffers without draining output or fabricating a close event. Execution slots release only at actual channel or transport closure. Transport loss remains result_unknown and does not count its synthetic per-channel event as a known close, even when exit0 had arrived. A closed PTY can release while a sibling PTY stays usable.
+
+263 unit cases, typecheck/build, actual probe GUI and terminal GUI passed. Foreground and native clipboard/disconnect decisions are mocked in test main; native OS focus and supported-target acceptance remain untested. Evidence: evidence/d10-probe. Next: renderer memory circuit breaker and D11-D13 implementation.

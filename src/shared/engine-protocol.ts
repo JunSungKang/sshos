@@ -9,6 +9,8 @@ import { viewerReadKindSchema } from './viewers/reader';
 import { stagedTransferSchema,transferRuntimeSchema } from './transfer-protocol';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
+  z.object({...identity,action:z.literal('probe:run'),probeEpoch:z.uuid(),probeId:z.uuid(),transferActive:z.boolean()}).strict(),
+  z.object({...identity,action:z.literal('probe:invalidate'),probeEpoch:z.uuid()}).strict(),
   z.object({...identity,action:z.literal('pty:start'),receipt:executionReceiptSchema}).strict(),
   z.object({...identity,action:z.literal('pty:freeze'),terminalId:z.uuid(),restoreToken:z.uuid(),clear:z.boolean()}).strict(),
   z.object({...identity,action:z.literal('pty:restoreAck'),terminalId:z.uuid(),restoreToken:z.uuid(),offset:z.int().nonnegative()}).strict(),

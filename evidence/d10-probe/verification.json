@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "unitTests": 263,
+  "unitFiles": 48,
+  "typecheck": "pass",
+  "build": "pass",
+  "probeGUI": "probe-gui.json",
+  "terminalGUI": "pass; acknowledged closed channel while sibling PTY remained alive",
+  "scope": "Current macOS26.6.2 arm64 development executable and loopback SSH fixture; native focus mocked. Target matrix, network performance, signing untested."
+}
