@@ -67,3 +67,6 @@ describe('actual loopback SFTP and workspace-local filesystem transfer ports',()
     expect(record.result.snapshot).toMatchObject({phase:'cancelled',tempCreated:true,cleanupState:'needed'});expect(record.result.resourcesClosed).toBe(true);expect(performance.now()-cancelledAt).toBeLessThan(5000);expect(f.sessions.snapshots()[0]?.status).toBe('connected');await expect(lstat(record.finalPath)).rejects.toMatchObject({code:'ENOENT'});expect(f.remote.metrics.mutations.some(row => row.operation === 'hardlink')).toBe(false);
   });
 });
+
+
+it.each(['SENTINEL_REMOTE_TEXT','AUTH_FAILED'])('discards actual server FAILURE description %s before durable receipts',async message=>{const f=await fixture({hardlink:true,readFailure:(path:string)=>path.endsWith('.part')?{code:4,message}:null}),record=await f.run('upload','poisoned-error.bin',Buffer.from('fixture contents'));expect(record.result.snapshot).toMatchObject({phase:'failed',errorCode:'INTERNAL_ERROR',tempCreated:true,cleanupState:'needed'});expect(f.repo.get(record.row.taskId)?.errorCode).toBe('INTERNAL_ERROR');expect(JSON.stringify(f.repo.snapshots())).not.toContain(message);expect(f.sessions.snapshots()[0]?.status).toBe('connected');await expect(lstat(record.finalPath)).rejects.toMatchObject({code:'ENOENT'});});

@@ -17,7 +17,7 @@
     "test:unit": "vitest run",
     "test:e2e": "node scripts/electron-smoke.mjs",
     "test:integration": "node scripts/verify.mjs integration",
-    "test:security": "vitest run tests/unit/security.test.ts tests/unit/diagnostic-log.test.ts tests/unit/ssh-authentication.test.ts tests/unit/ssh-handshake.test.ts tests/unit/key-parser.test.ts tests/unit/terminal-boundaries.test.ts tests/unit/terminal-gestures.test.ts && node scripts/verify.mjs security",
+    "test:security": "vitest run tests/unit/security.test.ts tests/unit/diagnostic-log.test.ts tests/unit/ssh-authentication.test.ts tests/unit/ssh-handshake.test.ts tests/unit/key-parser.test.ts tests/unit/terminal-boundaries.test.ts tests/unit/terminal-gestures.test.ts tests/unit/transfer-scope.test.ts && node scripts/verify.mjs security",
     "test:performance": "node scripts/performance.mjs",
     "package:win": "node scripts/package.mjs win",
     "package:mac": "node scripts/package.mjs mac",

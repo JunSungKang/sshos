@@ -65,6 +65,8 @@ export async function startSSHFixture(directory, options = {}) {
         stream.on('OPEN',(id,path,flags) => run(id,async () => {
           metrics.openedPaths.push(path);
           const flag = ssh2.utils.sftp.flagsToString(flags); if (!flag) throw new Error('Unsupported flags');
+          const readFailure=flag==='r' ? options.readFailure?.(path):null;
+          if(readFailure){stream.status(id,readFailure.code,readFailure.message);return;}
           if (flag === 'r' && options.denyRead?.(path)) {stream.status(id,status.PERMISSION_DENIED);return;}
           stream.handle(id,addHandle({ kind:'file', path,flag,file:await fs.open(resolveRemote(path),flag,0o600) }));
         }));

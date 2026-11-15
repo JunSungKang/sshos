@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../shared/errors';
 import { engineRequestCapacity } from '../shared/engine-priority';
 import { setDefaultAutoSelectFamily } from 'node:net';
 import { SSHProbe } from './probe';
@@ -95,7 +96,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else transfers!.acknowledge(request.serverId,request.generation,request.taskId);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: true, result };
   } catch (error) {
-    const errorCode = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';
+    const errorCode = errorCodeOf(error);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: false, errorCode };
   }
 }

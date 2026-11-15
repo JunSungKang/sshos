@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import { posix } from 'node:path';
 import type { Client, Stats } from 'ssh2';
 import { remotePathSchema } from '../../shared/files';
@@ -15,7 +16,7 @@ type RecordEntry=ReadSpec & {
   timer:ReturnType<typeof setTimeout>|null;abortListeners:Set<(error:Error)=>void>;
   busy:boolean;lastSequence:number;lastFrame:ViewerFrame|null;offset:number;
 };
-const fixedError=(error:unknown) => error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INTERNAL_ERROR';
+const fixedError=errorCodeOf;
 export class ViewerReader {
   private readonly entries=new Map<string,RecordEntry>();
   private readonly pool=new ViewerReadPool();

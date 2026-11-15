@@ -1,0 +1,8 @@
+import { describe,it,expect } from 'vitest';
+import { ExecutionInspector } from '../../src/worker/execution/inspect';
+import type { ControlAccess } from '../../src/worker/files/browser';
+function fixture(kind='file',mode=0o100700){const paths:string[]=[];const file={isFile:()=>kind==='file',isSymbolicLink:()=>kind==='symlink',mode,size:7,mtime:3},directory={isDirectory:()=>true,isSymbolicLink:()=>false};const access={check:()=>{},quarantine:()=>{},sftp:{lstat:(path:string,done:Function)=>{paths.push(path);done(null,path==='/home/program'?file:directory);},realpath:(path:string,done:Function)=>done(null,path)}} as unknown as ControlAccess;return {paths,inspector:new ExecutionInspector(()=>access)};}
+describe('readonly execution source and cwd inspection',()=>{
+ it('validates a distinct cwd separately and returns only bounded initial stat metadata',async()=>{const f=fixture();expect(await f.inspector.inspect('server',1,{path:'/home/program',cwd:'/work',mode:'direct',argv:[]})).toEqual({type:'file',size:7,mtime:3,mode:0o100700});expect(f.paths).toEqual(['/home','/work','/home/program']);});
+ it('refuses symlink/nonfiles and executable-bit absence while allowing explicit shell interpretation',async()=>{for(const kind of ['directory','symlink'])await expect(fixture(kind).inspector.inspect('server',1,{path:'/home/program',cwd:'/home',mode:'direct',argv:[]})).rejects.toThrow('PATH_UNSUPPORTED');const f=fixture('file',0o100600);await expect(f.inspector.inspect('server',1,{path:'/home/program',cwd:'/home',mode:'direct',argv:[]})).rejects.toThrow('EXEC_PERMISSION');expect(await f.inspector.inspect('server',1,{path:'/home/program',cwd:'/home',mode:'sh',argv:[]})).toMatchObject({mode:0o100600});});
+});

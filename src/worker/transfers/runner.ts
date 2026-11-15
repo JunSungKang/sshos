@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import { performance } from 'node:perf_hooks';
 import { TransferState } from '../../shared/transfer-state';
 import { transferReceiptSchema,transferStatSchema,transferTerminal,type TransferReceipt,type TransferStat,type TransferPhase } from '../../shared/transfers';
@@ -22,7 +23,7 @@ export interface TransferPorts {
 }
 export type TransferLive=TransferReceipt & {recordError:boolean;bytesPerSecond:number|null};
 export type TransferHooks={persist(row:TransferReceipt):Promise<void>;update(row:TransferLive):void;now?:()=>number};
-const codeOf=(error:unknown) => error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'IO_FAILED';
+const codeOf=errorCodeOf;
 const sameStat=(a:TransferStat,b:TransferStat) => a.size === b.size && a.mtime === b.mtime && a.identity === b.identity;
 
 /** One accepted task. No retry, overwrite, destination rollback or resume path. */

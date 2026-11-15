@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import type { AuxiliaryLease } from '../connection/auxiliary-sockets';
 import { TransferIOFailure } from './runner';
 export type MutationACK='temp_create_ack'|'final_link_ack'|'temp_remove_ack';
@@ -5,7 +6,8 @@ const knownNative=new Set(['EEXIST','EACCES','EPERM','EROFS','ENOENT','ENOTDIR',
 export function transferFailure(error:unknown,mutation:MutationACK|null=null,native=false):TransferIOFailure {
   if (error instanceof TransferIOFailure) return error;
   const status=(error as {code?:unknown})?.code;const value=typeof status === 'number' || typeof status === 'string' ? status : null;
-  let code=error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INTERNAL_ERROR';
+  // A protocol status owns classification. Its server-supplied description is never an app code.
+  let code=value===null ? errorCodeOf(error):'INTERNAL_ERROR';
   if (value === 3 || ['EACCES','EPERM','EROFS'].includes(String(value))) code='PERMISSION_DENIED';
   else if (value === 'EEXIST') code='NAME_CONFLICT';
   else if (value === 2 || ['ENOENT','ENOTDIR','EISDIR','ENAMETOOLONG','EINVAL'].includes(String(value))) code='PATH_UNSUPPORTED';
@@ -36,7 +38,7 @@ export class TransferScope {
     return new Promise<T>((resolve,reject) => {
       let settled=false,cancelled=false;let timer:ReturnType<typeof setTimeout>|null=null;
       const finish=(error:TransferIOFailure|null,value?:T) => {if (settled) return;settled=true;this.cancellations.delete(cancel);if (timer) clearTimeout(timer);if (error) reject(error);else resolve(value as T);};
-      const cancel=(error:Error) => {cancelled=true;finish(new TransferIOFailure(/^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'CONNECTION_LOST',mutation !== null));};
+      const cancel=(error:Error) => {cancelled=true;finish(new TransferIOFailure(errorCodeOf(error)==='INTERNAL_ERROR' ? 'CONNECTION_LOST':errorCodeOf(error),mutation !== null));};
       this.cancellations.add(cancel);
       if (timeout !== null) timer=setTimeout(() => this.stop(new Error('IO_TIMEOUT')),timeout);
       const done=(error:unknown,value?:T) => {

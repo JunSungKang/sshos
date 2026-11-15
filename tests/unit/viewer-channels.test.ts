@@ -1,5 +1,6 @@
 import { fixtureKey } from '../../scripts/fixtures/keys.mjs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it,vi } from 'vitest';
+import { EventEmitter } from 'node:events';
 import { Client, Server, utils, type Connection } from 'ssh2';
 import { openReadChannel } from '../../src/worker/viewers/sftp-channel';
 import { ViewerReadPool } from '../../src/worker/viewers/read-pool';
@@ -51,3 +52,14 @@ describe('isolated read channel lifecycle',() => {
 
 
 it('bounds FIFO waiting to32, rejects duplicate active/waiting IDs and makes release idempotent',async()=>{const pool=new ViewerReadPool(),active=await Promise.all(['a','b','c','d'].map((id,index)=>pool.acquire(id,index<2?'one':'two'))),waiting=Array.from({length:32},(_,index)=>pool.acquire('wait'+index,'one'));const cancelled=waiting.map(promise=>expect(promise).rejects.toThrow('REQUEST_CANCELLED'));await expect(pool.acquire('a','one')).rejects.toThrow('REQUEST_BUSY');await expect(pool.acquire('wait0','one')).rejects.toThrow('REQUEST_BUSY');await expect(pool.acquire('overflow','three')).rejects.toThrow('REQUEST_BUSY');pool.cancel('missing');for(let i=0;i<32;i++)pool.cancel('wait'+i);await Promise.all(cancelled);for(const lease of active){lease.release();lease.release();}const next=await pool.acquire('a','one');next.release();});
+
+describe('pinned read-channel adapter failure boundaries',()=>{
+  function adapter(run:(client:any,callback:(error:Error|null,stream?:any)=>void)=>void){const client:any=new EventEmitter(),callbacks:any[]=[];client._chanMgr={add:(value:any)=>{callbacks.push(value);return callbacks.length-1;}};client.sftp=(callback:any)=>run(client,callback);return {client:client as Client,callbacks};}
+  it('refuses a client without the pinned channel manager',()=>{expect(()=>openReadChannel(new EventEmitter() as Client)).toThrow('SFTP_UNAVAILABLE');});
+  it('handles synchronous failure before reservation and releases closure',async()=>{const f=adapter(()=>{throw new Error('native socket detail');}),original=(f.client as any)._chanMgr.add,channel=openReadChannel(f.client);await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');await channel.closed;expect((f.client as any)._chanMgr.add).toBe(original);channel.cancel();});
+  it('maps subsystem refusal without a channel to fixed failure and settles closure',async()=>{const f=adapter((_client,callback)=>callback(new Error('remote description'))),channel=openReadChannel(f.client);await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');await channel.closed;});
+  it('closes a captured channel on subsystem failure, retaining the slot until peer close',async()=>{const stream:any=new EventEmitter();stream.end=vi.fn();const f=adapter((client,callback)=>{const dispatch:any=()=>{};dispatch.type='sftp';client._chanMgr.add(dispatch);f.callbacks[0](null,stream);callback(new Error('remote description'));});const channel=openReadChannel(f.client);await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');expect(stream.end).toHaveBeenCalledOnce();let closed=false;void channel.closed.then(()=>{closed=true;});await Promise.resolve();expect(closed).toBe(false);stream.emit('close');await channel.closed;});
+  it('preserves unrelated manager callbacks and handles open refusal or transport loss',async()=>{let called=0;const f=adapter((client,_callback)=>{client._chanMgr.add({type:'other'});client._chanMgr.add(()=>{});const dispatch:any=()=>{called++;};dispatch.type='sftp';client._chanMgr.add(dispatch);});const channel=openReadChannel(f.client);f.callbacks[2](new Error('channel rejected'));await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');await channel.closed;expect(called).toBe(1);expect(f.callbacks).toHaveLength(3);f.client.emit('close');});
+  it('waits for transport close after a synchronous failure with a reserved channel',async()=>{const f=adapter(client=>{const dispatch:any=()=>{};dispatch.type='sftp';client._chanMgr.add(dispatch);throw new Error('protocol fault');});const channel=openReadChannel(f.client);await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');f.client.emit('close');await channel.closed;});
+  it('rejects pending readiness when the shared transport closes',async()=>{const f=adapter(()=>{}),channel=openReadChannel(f.client);f.client.emit('close');await expect(channel.ready).rejects.toThrow('SFTP_UNAVAILABLE');await channel.closed;channel.cancel();});
+});

@@ -1,3 +1,4 @@
+import { errorCodeOf } from '../../shared/errors';
 import { posix } from 'node:path';
 import type { Stats } from 'ssh2';
 import { mutationSpecSchema, initialStatSchema, type MutationSpec, type InitialStat, type MutationResult,type MutationObservation } from '../../shared/mutations';
@@ -81,7 +82,7 @@ export class FileMutations {
       if (spec.operation === 'rename' && stage === 'first') { task.stage='first_ack'; return result('first_ack',null,'link_ack'); }
       task.stage='terminal'; return result('completed',null,stage === 'remove_source' ? 'source_removed' : spec.operation === 'mkdir' ? 'mkdir_ack' : 'delete_ack');
     } catch (error) {
-      const code=(error as {code?:number}).code === 8 && task.spec.operation === 'rename' ? 'HARDLINK_UNSUPPORTED' : error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';
+      const code=(error as {code?:number}).code === 8 && task.spec.operation === 'rename' ? 'HARDLINK_UNSUPPORTED' : errorCodeOf(error);
       const confirmedFailure=typeof (error as {code?:number}).code === 'number';
       task.stage='terminal';
       const uncertain=sent && (!confirmedFailure || acknowledged);
