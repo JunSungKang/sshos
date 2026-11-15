@@ -103,7 +103,9 @@
     "Shared monotonic shutdown budget, queued cancellation and finalizing protection; actual held-link/late-success restart remains unknown with no replay",
     "Generation-guarded late trust approval/disconnect callbacks and stable DOM window identity for same-title multi-generation windows",
     "Actual control/auxiliary close barriers across generations, cancellation-aware connect reservations and global bounds including closing sockets",
-    "Bounded one-thread key parsing FIFO with three owned requests, cancelled-queue checks and owned credential RPC cleanup"
+    "Bounded one-thread key parsing FIFO with three owned requests, cancelled-queue checks and owned credential RPC cleanup",
+    "Suspend and resume generation invalidation with best-effort interrupt/close intents, immediate scoped disconnect and no automatic replay",
+    "Shared main/worker RPC capacity reservations for cleanup/disconnect and four-way bounded cancellation of a100-item queue"
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -403,6 +405,19 @@
         "actual SSH session, renderer/engine restart, held-link shutdown and transfer engine regressions pass"
       ],
       "limitation": "Delayed-close paths use controlled client fixtures; actual SSH regressions use loopback ssh2. Target OpenSSH/OS, sleep, probe, memory and production-package acceptance remain."
+    },
+    "power_lifetime": {
+      "status": "pass",
+      "platform": "darwin",
+      "architecture": "arm64",
+      "assertions": [
+        "synthetic suspend notification revokes session capabilities and disconnects real SSH/PTY",
+        "resume after suspend performs no authentication, shell or input replay",
+        "explicit reconnect alone creates a newer generation and PTY",
+        "resume without a preceding suspend also invalidates existing generation",
+        "connection engine remains ready with unchanged epoch and unknown result records"
+      ],
+      "limitation": "PowerMonitor notifications emitted in test main; no physical OS sleep, network loss on sleep or target-platform acceptance claimed."
     }
   },
   "remaining_D01": [
@@ -419,10 +434,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Implement D10 sleep invalidation, SSH response probe and PTY renderer-memory circuit breaker; audit remaining lifecycle/channel boundaries, then D11-D13.",
+  "next_action": "Implement D10 SSH response probe and PTY renderer-memory guard, then D11 functional/security/performance audit and D12-D13.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d10-socket-retirement",
+  "latest_evidence_directory": "evidence/d10-power",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
@@ -437,7 +452,7 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "D10 sleep invalidation, SSH response probe and PTY renderer-memory guard remain.",
+    "D10 SSH response probe and PTY renderer-memory guard remain.",
     "D11 full checklist/coverage/performance/security evidence and D12 distributable packages/licenses/SBOM remain."
   ]
 }

@@ -15,7 +15,7 @@ import type { ViewerFrame, ViewerDescriptor } from './viewers/reader';
 export const runtimeSnapshotSchema = z.object({
   backendEpoch: z.uuid(),
   engine: z.enum(['starting', 'ready', 'stopped']),
-  closing:z.boolean().default(false),
+  closing:z.boolean().default(false),powerSequence:z.int().nonnegative().default(0),
   connectedServers: z.int().min(0).max(3),
   storage: z.object({ status: z.enum(['ready', 'recovered', 'unavailable']), path: z.string().max(4096) }).strict(),
   appVersion: z.string().max(32),

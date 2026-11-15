@@ -1,3 +1,4 @@
+import { engineRequestCapacity } from '../shared/engine-priority';
 import { Client } from 'ssh2';
 import { z } from 'zod';
 import { SessionManager } from './connection/session-manager';
@@ -98,7 +99,7 @@ process.parentPort.on('message', (event: { data: unknown }) => {
   if (cached) { if (cached.type === 'response' && cached.serverId === request.serverId && cached.generation === request.generation) process.parentPort?.postMessage(cached); return; }
   let work = inFlight.get(request.requestId);
   if (!work) {
-    if (inFlight.size >= 32) { process.parentPort?.postMessage({ type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: false, errorCode: 'REQUEST_BUSY' }); return; }
+    if (inFlight.size >= engineRequestCapacity(request.action)) { process.parentPort?.postMessage({ type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: false, errorCode: 'REQUEST_BUSY' }); return; }
     work = execute(request); inFlight.set(request.requestId, work);
     void work.then(result => {
       inFlight.delete(request.requestId);

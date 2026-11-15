@@ -1,3 +1,4 @@
+import { engineRequestCapacity } from '../shared/engine-priority';
 import { randomUUID } from 'node:crypto';
 import type { UtilityProcess } from 'electron';
 import { engineEventSchema, engineRequestSchema, type EngineCommand } from '../shared/engine-protocol';
@@ -49,7 +50,7 @@ export class EngineGateway {
   }
   request(request: EngineCommand): Promise<unknown> {
     if (this.stopped) return Promise.reject(new Error('ENGINE_STOPPED'));
-    if(this.pending.size>=32)return Promise.reject(new Error('REQUEST_BUSY'));
+    if(this.pending.size>=engineRequestCapacity(request.action))return Promise.reject(new Error('REQUEST_BUSY'));
     const message = engineRequestSchema.parse({ ...request, requestId: randomUUID(), backendEpoch: this.epoch });
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { this.pending.delete(message.requestId); reject(new Error('IO_TIMEOUT')); }, 90000);

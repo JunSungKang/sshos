@@ -191,3 +191,11 @@ worker는 control과 모든 auxiliary의 실제 close를 기다린 뒤 같은 �
 parser는 active1+queued2까지 FIFO로 소유하며 각 thread에5초 기한을 적용한다. terminate 완료 뒤 다음 thread를 시작하고 취소된 queued 요청은 thread를 만들지 않는다. 수락한 private-key Buffer는 완료/실패/취소 때0으로 덮는다. SessionManager가 인증 입력의 clone을 소유하며 들어온 RPC의 password/passphrase/key byte 참조는 outcome 뒤 지운다. 문자열과 OS dump의 물리적 완전 소거 보장은 아니다.
 
 246개 단위 검사·타입/build·실제 session/engine 재생성/held-link 종료/전송 engine 회귀가 통과했다. close 지연·전역 closing3·대기 취소는 제어 가능한 transport fixture, key FIFO는 실제 worker_thread를 사용했다. 실제 서버/지원 OS의 지연 행렬 수용을 대신하지 않는다. evidence/d10-socket-retirement에 출력과 source hash를 보존했다. 다음은 절전·SSH 응답시간·PTY 메모리 차단이다.
+
+## 절전 세대 무효화와 RPC 정리 용량
+
+PowerMonitor의 suspend와 resume 모두 현재 세션 capability를 즉시 폐기한다. resume만 받은 경우에도 이전 연결을 유지하지 않는다. 새 인증/변경을 잠시 잠그고 취소·실행/PTY 닫기 intent를 요청한 뒤 같은 세대의 control disconnect를 즉시 발행한다. OS 절전은 최종 link를 기다릴 수 없으므로 이 경로는 최종 확정 대기를 하지 않으며 결과 불명 규칙을 적용한다. 자동 재접속·전송/입력/프로그램 재실행은 없다. 이미 종료된 engine의 disconnected 이력을 다시 disconnecting으로 만들지 않는다.
+
+일반 RPC는24개, cleanup은28개, session disconnect는32개까지 허용하여 전체32개 상한 안에서 제어 여유를 둔다. main과 worker가 같은 정책을 사용한다. 전송 큐 취소는100개를 한꺼번에 요청하지 않고 동시4개로 처리하며 dispatch 전 REQUEST_BUSY만 제한 시간 안에서 대기한다. worker epoch가 바뀌면 이전 취소 루프를 중단한다.
+
+248개 단위 검사·타입/build·실제 SSH를 사용한 모의 suspend/resume GUI·기한 종료·전송 GUI 회귀가 통과했다. 복귀 뒤 인증/입력/shell 재전송0회, 명시적 재접속의 새 generation, 선행 suspend 없는 resume 무효화를 확인했다. 100행 취소 동시성은 메모리 receipt adapter로 RPC 자체를 검사하며 실제100개 durable 등록 성능을 인증하지 않는다. 실제 OS sleep과 지원 OS 수용은 미검증이다. evidence/d10-power에 출력·화면·source hash를 보존했다. 다음은 SSH 응답시간과 PTY 메모리 guard다.
