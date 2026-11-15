@@ -135,7 +135,8 @@
     "Canonical allowlisted worker error codes reject untrusted SFTP descriptions before durable receipts; numeric protocol status owns classification.",
     "Transfer resync bounds pagination and attempts, checks engine epoch and never infers absence from an incomplete snapshot.",
     "PTY paste body accepts exactly64KiB UTF8 independently of JSON escaping and bounded control metadata.",
-    "Synchronous SFTP inspection exceptions release their timeout timer."
+    "Synchronous SFTP inspection exceptions release their timeout timer.",
+    "Application-owned pre-ready background networking/component update suppression and live Session/window spellchecker disablement; security smoke supplies no masking CLI flags."
   ],
   "local_verification": {
     "typecheck": "pass",
@@ -496,7 +497,7 @@
     "integration_suite": {
       "status": "pass",
       "suites": 17,
-      "evidence": "evidence/d11-boundaries/integration-report.json",
+      "evidence": "evidence/d11-network-policy/integration-report.json",
       "sourceUnchanged": true
     },
     "coverage": {
@@ -508,7 +509,8 @@
       "perFile": true,
       "failingModules": 0,
       "evidence": "evidence/d11-boundaries/coverage-summary.json",
-      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded."
+      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded.",
+      "comparison": "evidence/d11-network-policy/coverage-comparison.json"
     },
     "desktop_ui": {
       "status": "pass",
@@ -526,7 +528,7 @@
     "security_current": {
       "status": "pass",
       "unitTests": 61,
-      "evidence": "evidence/d11-boundaries/security-report.json",
+      "evidence": "evidence/d11-network-policy/security-report.json",
       "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
     }
   },
@@ -544,10 +546,10 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Rebuild all three current-source development packages, finish specification/security traceability audit and obtain independent current-head review. Native target/signing evidence remains user-owned.",
+  "next_action": "Build final three development artifacts from the committed network-policy source, then complete artifact handoff and independent current-head review. Native/signing/performance/usability acceptance remains untested.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d11-boundaries",
+  "latest_evidence_directory": "evidence/d11-network-policy",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,

@@ -37,6 +37,8 @@ import { TransferController } from './transfers';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
 app.setName('sshOS');
+app.commandLine.appendSwitch('disable-background-networking');
+app.commandLine.appendSwitch('disable-component-update');
 
 async function main(): Promise<void> {
   // Development must never choose an implicit home-directory userData path.
@@ -74,6 +76,7 @@ async function main(): Promise<void> {
   await app.whenReady();
   Menu.setApplicationMenu(null);
   const ses = session.defaultSession;
+  ses.setSpellCheckerEnabled(false);
   ses.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   ses.setPermissionCheckHandler(() => false);
   ses.on('will-download', event => event.preventDefault());
@@ -275,7 +278,7 @@ async function main(): Promise<void> {
       displayLimitToken:memoryGuard.displayToken,probe:responseProbe!.view(),powerSequence,closing:lifecycleClosing,appVersion: app.getVersion(), versions: { electron: process.versions.electron, node: process.versions.node, chrome: process.versions.chrome } });
   });
   const createWindow = (): void => {
-    uiReady=false;win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, devTools: !app.isPackaged } });
+    uiReady=false;win = new BrowserWindow({ width: 1400, height: 900, minWidth: 1120, minHeight: 760, show: false, backgroundColor: '#123C47', webPreferences: { preload: resolve(__dirname, '../preload/index.js'), nodeIntegration: false, contextIsolation: true, sandbox: true, webSecurity: true, spellcheck: false, devTools: !app.isPackaged } });
     pasteGesture.bind(win);win.on('focus',()=>responseProbe?.invalidate());win.on('blur',()=>responseProbe?.invalidate());win.on('minimize',()=>responseProbe?.invalidate());win.on('restore',()=>responseProbe?.invalidate());win.on('close',event=>{if(!quitFinal){event.preventDefault();void requestQuit();}});
     win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     win.webContents.on('will-navigate', event => event.preventDefault());

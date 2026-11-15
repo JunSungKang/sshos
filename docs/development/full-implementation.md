@@ -307,3 +307,12 @@ The pinned NSIS development portable build at eb777ee7c25e completed with20 veri
 
 
 The complete current-source17-suite integration rerun passed with sourceUnchanged=true. It includes real main/worker/SSH/SFTP and PTY GUI flows, exactly64KiB paste preview boundaries, storage/engine/suspend/shutdown recovery, probes, display-memory guard, local-license/settings/diagnostics and desktop keyboard/window-limit behavior. The security rerun passed61 focused cases and actual Electron/xterm. Native dialog/vault/focus substitutions and current-host limitations are preserved in each report.
+
+
+## App-owned Chromium networking policy
+
+Final startup audit found the security harness supplied background-networking/component-update flags while the application entrypoint did not. The app now sets both switches before ready and disables the spellchecker on the live default Session and each BrowserWindow. The security harness removes its private flags and asserts actual app switches and Session state. Electron documents default spellcheck and Google-CDN dictionary downloads on Windows/Linux: https://www.electronjs.org/docs/latest/tutorial/spellchecker . This closes a configuration gap without claiming a native packet capture or that a dictionary request was observed on the current Mac.
+
+The first amended assertion inspected getLastWebPreferences().spellcheck, which macOS omits even with the explicit option. It failed with undefined; the assertion now checks the public live Session.isSpellCheckerEnabled() API. The final61-case security/Electron run and all17 integration suites pass with unchanged source during each run. The534-case per-file coverage inputs are byte-identical to their passing measurement; only the separately process-tested main entrypoint and security smoke changed. The comparison is retained in evidence/d11-network-policy. The v6 document consistency check also passes with38 requirements/13 tasks/152 checks and unchanged approved scope digest.
+
+A separate implementation-traceability document maps all38 R IDs to actual code, local evidence and remaining target/human gates. Historical planning status text is not silently rewritten as acceptance evidence. Development packages created at e9a13b3 precede this networking correction and are superseded for final handoff by the next committed-source rebuild.

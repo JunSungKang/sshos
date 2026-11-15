@@ -5,7 +5,7 @@ import { root, localPath, runtimeEnvironment,closeTestApplication } from './envi
 const env = runtimeEnvironment('smoke');
 Object.assign(process.env, env);
 const { default: executablePath } = await import('electron');
-const application = await electron.launch({ executablePath, args: [`--user-data-dir=${env.SSHOS_RUNTIME_ROOT}`, '--disable-background-networking', '--disable-component-update', root], cwd: root, env, timeout: 15000 });
+const application = await electron.launch({ executablePath, args: [`--user-data-dir=${env.SSHOS_RUNTIME_ROOT}`, root], cwd: root, env, timeout: 15000 });
 application.process().stderr?.on('data', data => process.stderr.write(data));
 try {
   const page = await application.firstWindow();
@@ -45,6 +45,8 @@ try {
   assert.equal(settings.contextIsolation, true);
   assert.equal(settings.sandbox, true);
   assert.equal(settings.webSecurity, true);
+  // macOS omits spellcheck from getLastWebPreferences; inspect the live Session.
+  assert.deepEqual(await application.evaluate(({app,session})=>({spellchecker:session.defaultSession.isSpellCheckerEnabled(),backgroundDisabled:app.commandLine.hasSwitch('disable-background-networking'),componentUpdatesDisabled:app.commandLine.hasSwitch('disable-component-update')})),{spellchecker:false,backgroundDisabled:true,componentUpdatesDisabled:true});
   const denied = await page.evaluate(async () => {
     try { await fetch('https://example.com'); return false; } catch { return true; }
   });
@@ -63,7 +65,7 @@ try {
   assert.equal(await page.locator('.xterm-screen').count(), 1);
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-eval-blocked'), 'true');
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-security'), 'osc-rep-paste-pass');
-  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no signing or Windows/Ubuntu result.' };
+  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'live Session spellchecker disabled and background networking/component update switches set by application without test-only flags', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no packet capture, signing or Windows/Ubuntu result.' };
   writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
 } finally { await closeTestApplication(application); }
