@@ -1,0 +1,30 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+ ❯ tests/unit/receipts.test.ts (12 tests | 1 failed) 1298ms
+   × reopens5001 valid completed records and prunes them while preserving unresolved, live and backup-uncertain records 876ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/receipts.test.ts > reopens5001 valid completed records and prunes them while preserving unresolved, live and backup-uncertain records
+Error: STORAGE_FAILED
+ ❯ ReceiptRepository.open src/main/persistence/receipts.ts:39:32
+     37|     for await (const entry of entries) {
+     38|       const match=/^([a-f0-9-]{36})\.json(?:\.bak)?$/u.exec(entry.name…
+     39|       if (ids.size>5000) throw new Error('STORAGE_FAILED');
+       |                                ^
+     40|     }
+     41|     for (const id of ids) {
+ ❯ tests/unit/receipts.test.ts:21:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+   Start at  21:02:08
+   Duration  1.52s (tests 92%, import 5%, transform 3%)
+

@@ -4,7 +4,7 @@
 
 아래의 구현 경로는 코드가 존재한다는 근거다. 로컬 자동 검증은 현재 macOS26 arm64와 loopback ssh2 fixture 결과다. 지원 대상 Windows11/macOS14·Ubuntu/OpenSSH, OS 암호화·IME·접근성·지정 성능·서명·공증 결과로 대신하지 않는다. 해당 수용 결과는 사용자 시험 전까지 untested다.
 
-로컬 기준 증거는 [534개 단위 검사와 파일별 커버리지](../../evidence/d11-boundaries/verification.json), [17개 통합 시나리오](../../evidence/d11-boundaries/integration-report.json), [Electron/xterm 보안 검사](../../evidence/d11-boundaries/security-report.json)다. 이후 변경의 재검증은 구현 상태와 개별 증거에 기록한다.
+로컬 기준 증거는 [553개 단위 검사와 파일별 커버리지](../../evidence/d11-review-corrections/coverage-summary.json), [17개 통합 시나리오](../../evidence/d11-review-corrections/integration-report.json), [Electron/xterm 보안 검사](../../evidence/d11-review-corrections/security-report.json)다. 이후 변경의 재검증은 구현 상태와 개별 증거에 기록한다.
 
 | 요구 | 구현 또는 준비된 절차 | 연결된 로컬 검증과 남은 판정 |
 | --- | --- | --- |

@@ -1,0 +1,25 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+ ❯ tests/unit/store-failures.test.ts (11 tests | 1 failed) 880ms
+   ❯ durable store failure and recovery (11)
+     × records unavailable directory sync once without claiming that file sync failed 54ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/store-failures.test.ts > durable store failure and recovery > records unavailable directory sync once without claiming that file sync failed
+AssertionError: expected "vi.fn()" to be called once, but got 0 times
+ ❯ tests/unit/store-failures.test.ts:11:571
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  20:43:23
+   Duration  1.10s (tests 89%, import 7%, transform 4%)
+

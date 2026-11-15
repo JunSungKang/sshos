@@ -1,0 +1,81 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vitest.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.1.0 /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS
+
+ ❯ tests/unit/state-repository.test.ts (14 tests | 3 failed) 623ms
+   ❯ profile persistence and identity (8)
+     × rechecks profile busy state when a queued clone write actually executes 92ms
+     × rechecks profile busy state when a queued authentication write actually executes 53ms
+     × rechecks profile busy state when a queued delete write actually executes 38ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/unit/state-repository.test.ts > profile persistence and identity > rechecks profile busy state when a queued clone write actually executes
+AssertionError: promise resolved "{ name: '운영 서버', …(5) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "authentication": "password",
++   "host": "other.test",
++   "id": "92039303-4fb9-49c2-ae2c-1b133e7bc404",
++   "name": "운영 서버",
++   "port": 22,
++   "username": "ubuntu",
+  }
+
+ ❯ tests/unit/state-repository.test.ts:11:691
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  tests/unit/state-repository.test.ts > profile persistence and identity > rechecks profile busy state when a queued authentication write actually executes
+AssertionError: promise resolved "{ name: '운영 서버', …(6) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "authentication": "key",
++   "host": "example.com",
++   "id": "c0b12011-c9a5-458d-b343-57ae80674246",
++   "keyPath": "/main-owned/key",
++   "name": "운영 서버",
++   "port": 22,
++   "username": "ubuntu",
+  }
+
+ ❯ tests/unit/state-repository.test.ts:11:691
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  tests/unit/state-repository.test.ts > profile persistence and identity > rechecks profile busy state when a queued delete write actually executes
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ tests/unit/state-repository.test.ts:11:691
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 11 passed (14)
+   Start at  20:59:20
+   Duration  844ms (tests 85%, import 10%, transform 5%)
+

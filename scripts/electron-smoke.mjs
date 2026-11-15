@@ -1,6 +1,7 @@
 import { _electron as electron,expect } from '@playwright/test';
 import { strict as assert } from 'node:assert';
 import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { root, localPath, runtimeEnvironment,closeTestApplication } from './environment.mjs';
 const env = runtimeEnvironment('smoke');
 Object.assign(process.env, env);
@@ -47,6 +48,10 @@ try {
   assert.equal(settings.webSecurity, true);
   // macOS omits spellcheck from getLastWebPreferences; inspect the live Session.
   assert.deepEqual(await application.evaluate(({app,session})=>({spellchecker:session.defaultSession.isSpellCheckerEnabled(),backgroundDisabled:app.commandLine.hasSwitch('disable-background-networking'),componentUpdatesDisabled:app.commandLine.hasSwitch('disable-component-update')})),{spellchecker:false,backgroundDisabled:true,componentUpdatesDisabled:true});
+  const paths=await application.evaluate(({app})=>({userData:app.getPath('userData'),sessionData:app.getPath('sessionData'),crashes:app.getPath('crashDumps'),logs:app.getPath('logs')}));
+  assert.equal(paths.sessionData,join(paths.userData,'runtime'));
+  assert.equal(paths.crashes,join(paths.userData,'crashes'));
+  assert.equal(paths.logs,join(paths.userData,'logs'));
   const denied = await page.evaluate(async () => {
     try { await fetch('https://example.com'); return false; } catch { return true; }
   });
@@ -65,7 +70,7 @@ try {
   assert.equal(await page.locator('.xterm-screen').count(), 1);
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-eval-blocked'), 'true');
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-security'), 'osc-rep-paste-pass');
-  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'live Session spellchecker disabled and background networking/component update switches set by application without test-only flags', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no packet capture, signing or Windows/Ubuntu result.' };
+  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'userData runtime/crash/log paths configured before Session use', 'live Session spellchecker disabled and background networking/component update switches set by application without test-only flags', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no packet capture, signing or Windows/Ubuntu result.' };
   writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
 } finally { await closeTestApplication(application); }

@@ -32,9 +32,10 @@ export class AtomicJSONStore<T> {
   private revision = 0;
   private tail: Promise<void> = Promise.resolve();
   private fault = false;
+  private directorySyncUnavailable = false;
   private readonly path: string;
   readonly backup: string;
-  constructor(path: string, private readonly schema: z.ZodType<T>, private readonly limit: number) {
+  constructor(path: string, private readonly schema: z.ZodType<T>, private readonly limit: number, private readonly onDirectorySyncUnavailable?:()=>void) {
     if (!/^(state|[a-f0-9-]{36})\.json$/u.test(basename(path))) throw new Error('STORAGE_INVALID');
     this.path = resolve(path); this.backup = `${this.path}.bak`;
   }
@@ -116,7 +117,10 @@ export class AtomicJSONStore<T> {
         if (previous) { await write(backupTemp, previous.raw); await this.replace(backupTemp, this.backup); owned.delete(backupTemp); }
         await this.replace(temp, this.path); owned.delete(temp);
         try { const directory = await open(dirname(this.path), 'r'); try { await directory.sync(); } finally { await directory.close(); } }
-        catch (error) { if (!['EINVAL', 'ENOTSUP', 'EISDIR', 'EPERM', 'EACCES'].includes(code(error) ?? '')) throw error; }
+        catch (error) {
+          if (!['EINVAL', 'ENOTSUP', 'EISDIR', 'EPERM', 'EACCES'].includes(code(error) ?? '')) throw error;
+          if(!this.directorySyncUnavailable){this.directorySyncUnavailable=true;try{this.onDirectorySyncUnavailable?.();}catch{ /* Reporting cannot change the already-written file outcome. */ }}
+        }
         this.current = payload; this.revision = revision;
       } catch { this.fault = true; throw new Error('STORAGE_FAILED'); }
       finally { for (const path of owned) { try { await unlink(path); } catch { /* Retain storage fault; never remove unknown files. */ } } }

@@ -22,22 +22,22 @@ export class ReceiptRepository {
   get revision():number {return this.version;}
   get(id:string):FileReceipt|undefined {return this.stores.get(id)?.snapshot();}
   private tail:Promise<void>=Promise.resolve();
-  private constructor(readonly root:string) {}
+  private constructor(readonly root:string,private readonly onDirectorySyncUnavailable?:()=>void) {}
   get faulted():boolean { return this.fault || [...this.stores.values()].some(store => store.faulted); }
   markFault():void {this.fault=true;}
   async settled():Promise<void> { await this.tail; await Promise.all([...this.stores.values()].map(store => store.settled())); }
-  static async open(dataRoot:string,continuity?:{epoch:string;executionIds:ReadonlySet<string>}):Promise<ReceiptRepository> {
+  static async open(dataRoot:string,continuity?:{epoch:string;executionIds:ReadonlySet<string>},onDirectorySyncUnavailable?:()=>void):Promise<ReceiptRepository> {
     const root=resolve(dataRoot,'receipts');
     try { const stat=await lstat(root); if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('STORAGE_FAILED'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; await mkdir(root,{mode:0o700}); }
     const actual=await realpath(root); const relation=relative(await realpath(dataRoot),actual);
     if (!relation || isAbsolute(relation) || relation === '..' || relation.startsWith(`..${sep}`)) throw new Error('STORAGE_FAILED');
-    const repo=new ReceiptRepository(actual); const ids=new Set<string>();
+    const repo=new ReceiptRepository(actual,onDirectorySyncUnavailable); const ids=new Set<string>();
     const entries=await opendir(actual);
     for await (const entry of entries) {
       const match=/^([a-f0-9-]{36})\.json(?:\.bak)?$/u.exec(entry.name); if (match) ids.add(match[1]!);
-      if (ids.size>5000) throw new Error('STORAGE_FAILED');
     }
+    let loadedSincePrune=0;
     for (const id of ids) {
       const store=repo.newStore(id);
       let loaded:Awaited<ReturnType<typeof store.load>>;
@@ -46,11 +46,14 @@ export class ReceiptRepository {
       const keepExecution=!loaded.recovered && continuity?.epoch === loaded.value.backendEpoch && continuity.executionIds.has(id) && (loaded.value.kind === 'gui_exec' || loaded.value.kind === 'pty');
       const recovered=keepExecution ? loaded.value : loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : loaded.value.kind === 'file_transfer' ? recoverTransfer(loaded.value,loaded.recovered) : recoverExecution(loaded.value,loaded.recovered); repo.stores.set(id,store);
       if (recovered !== loaded.value) { try { await store.save(recovered); } catch { repo.fault=true; } }
+      // One startup cleanup pass, processed in batches so legitimate completed
+      // history cannot hit the retained-record bound before pruning is reached.
+      if(++loadedSincePrune>=1000){await repo.prune(continuity?.executionIds);if(repo.stores.size+repo.damaged.size>5000)throw new Error('STORAGE_FAILED');loadedSincePrune=0;}
     }
-    await repo.prune(continuity?.executionIds); return repo;
+    await repo.prune(continuity?.executionIds);if(repo.stores.size+repo.damaged.size>5000)throw new Error('STORAGE_FAILED');return repo;
   }
   private newStore(id:string):AtomicJSONStore<FileReceipt> {
-    return new AtomicJSONStore(resolve(this.root,`${id}.json`),fileReceiptSchema,65536);
+    return new AtomicJSONStore(resolve(this.root,`${id}.json`),fileReceiptSchema,65536,this.onDirectorySyncUnavailable);
   }
   snapshots():FileReceipt[] { return [...this.stores.values()].map(store => store.snapshot()).sort((a,b) => b.createdAt.localeCompare(a.createdAt) || a.taskId.localeCompare(b.taskId)); }
   damagedIds():string[] { return [...this.damaged]; }

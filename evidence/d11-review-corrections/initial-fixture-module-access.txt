@@ -1,0 +1,149 @@
+
+> sshos@0.1.0 pretest:integration
+> npm run build
+
+
+> sshos@0.1.0 prebuild
+> node scripts/prepare-licenses.mjs
+
+Prepared 14 local license documents.
+
+> sshos@0.1.0 build
+> tsc -p tsconfig.json && vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - ESM syntax in a file loaded as CommonJS (vite.config.ts:1:1). Use a `.mjs` extension or set `"type": "module"` in the closest package.json
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 158 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/renderer/tests/xterm.html                          0.44 kB │ gzip:   0.28 kB
+dist/renderer/index.html                                0.53 kB │ gzip:   0.33 kB
+dist/renderer/assets/viewer-worker-Tge2YUQk.js          7.07 kB
+dist/renderer/assets/terminal-clipboard-B1njb2Cr.css    3.96 kB │ gzip:   1.02 kB
+dist/renderer/assets/main-DBjrKnwP.css                 18.93 kB │ gzip:   4.73 kB
+dist/renderer/assets/xterm-De9iwuCS.js                  1.83 kB │ gzip:   1.10 kB
+dist/renderer/assets/terminal-clipboard-D5ahGYRg.js   333.58 kB │ gzip:  84.04 kB
+dist/renderer/assets/main-DLYps5lE.js                 430.85 kB │ gzip: 128.97 kB
+
+✓ built in 162ms
+
+> sshos@0.1.0 test:integration
+> node scripts/verify.mjs integration
+
+Starting session-smoke
+{"status":"pass","host":"darwin","architecture":"arm64","authenticationRequests":1,"assertions":["unknown host rejected before authentication","native GUI host trust confirmation","fresh verified SSH password authentication","SFTP rejection leaves SSH connected","session-specific OS confirmation","disconnect and profile cleanup"],"limitation":"Loopback ssh2 fixture, not a manual Ubuntu/OpenSSH target acceptance result."}
+Starting file-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["real SSH/SFTP directory enumeration","folder navigation with spaces","untrusted names as text","symlink is metadata only","explicit refresh sees external changes","renderer reload restores cached directory without remote enumeration","GUI preview sends no mutation before confirmation","confirmed mkdir0700 and nonrecursive delete with durable receipts","unsupported hardlink preserves original file","task details and confirmed local receipt deletion without remote mutation","disconnect preserves readonly last listing"],"limitation":"Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance."}
+Starting viewer-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["actual Electron SSH/SFTP text read through restricted preload","HTML and ANSI source as plain text","virtual text and scroll restoration","explicit reread updates content","PNG signature despite unknown extension","isolated Worker decode to one bitmaprenderer canvas","pixel correctness and zoom without remote reread","JPEG EXIF orientations1–8 with dimensions and corner pixels","static WebP decode","multi-MiB PNG stream paced within IPC budget","invalid UTF8 refusal and successful explicit reread","unknown file explicit text selection","disconnected viewer cache and disabled reread"],"limitation":"Current macOS arm64 development build with local ssh2 fixture; not target OS, Ubuntu/OpenSSH or signed release acceptance."}
+Starting transfer-engine-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","versions":{"electron":"45.3.2","node":"24.22.2","chrome":"156.0.8078.100"},"assertions":["one actual Electron utilityProcess transfer engine","main-only durable JSON writer with worker ACK before each mutation phase","stage all tasks without SSH transfer or temp creation until commit","two FIFO tasks on one server with fresh per-task authentication","actual3MiB upload/download with full SHA256 read-back and exclusive final links","metadata-only progress events and terminal resource release","control SSH survives both transfers","explicit fault barrier, JSON reopen and writer reset allow only a newly confirmed task without replay"],"limitation":"Backend fixture harness; native dialogs, renderer enqueue/shelf, target Ubuntu/OpenSSH/OS and signed production package remain untested."}
+Starting transfer-gui-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["GUI native-selection adapter returns only names and tokens","readonly conflict preview makes no temp or auxiliary authentication","explicit destination rename rotates confirmation","whole-batch upload accepted through restricted preload","4MiB hash/readback upload continues after explorer close and renderer reload","always-visible transfer shelf and persisted task detail","Ctrl/Cmd two-file selection and GUI download","full byte/hash verification and no-overwrite preservation","one fresh authenticated transfer socket per task and control survives"],"limitation":"OS native dialogs replaced in this test process; current-host loopback fixture only, target OS/Ubuntu/OpenSSH and signed production packages remain untested."}
+Starting execution-engine-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["actual Electron utilityProcess and durable main receipt ACK before SSH exec","readonly inspection does not execute commands","two concurrent executions share one independently verified execution socket","quoted command and separate stdout/stderr bytes across real SSH","observed exit7 plus channel close is exited, not business success","silent execution keeps stdin open, TERM once,5s unconfirmed stop then local close remains unknown","explicit exec rejection preserves control SSH","receipts exclude argv/stdin/output/hash"],"limitation":"SSH fixture programs are emulated server channels; actual POSIX quoting separately tested with /bin/sh. GUI execution confirmation/output and target Ubuntu/native matrix remain."}
+Starting execution-gui-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["GUI explicit execution with direct default, POSIX session confirmation, validated cwd and separate empty/metacharacter argv","preview makes no SSH exec or execution authentication","safe plain stdout/stderr and visible ANSI escapes","main rejects unconfirmed running-window closure","hide/reopen and renderer reload preserve execution without replay","healthy active execution blocks storage reset","TERM once,5s unconfirmed stop, later observed exit0 plus close","explicit sh of a non-executable file after direct refusal, exit3 preserved","receipts exclude arguments, inputs, outputs and command hashes"],"limitation":"Emulated programs on a real loopback SSH server and current Mac development Electron. Actual Ubuntu/OpenSSH program/CPU/noexec/PTY and supported target matrix remain."}
+Starting terminal-engine-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["actual utilityProcess PTY with durable main intent and shared GUI-exec socket","xterm-256color80x24 and explicit132x40 resize","input blocked until frozen snapshot consumption and exact restore ACK","exact monotonic input and duplicate rejection; Ctrl+C byte is not TERM","256KiB live output backpressure and bounded fixed replay snapshot","explicit new display drops old history without creating a shell","observed exit0 plus channel close, other execution and control remain","PTY receipts contain no input/output/argv"],"limitation":"Backend SSH fixture PTY channel; no xterm UI, native vi/IME/clipboard or target Ubuntu/OpenSSH/OS acceptance."}
+Starting terminal-gui-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["actual xterm GUI over restricted main/worker SSH PTY bridge","live DA response, typed input and Ctrl+C byte with no TERM","OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs","native-gesture gate refuses unprompted clipboard read","multiline paste confirmation and exact bracketed bytes without added newline","automatic response held behind paste and next sequence synchronized","delayed clipboard result remains pinned to terminal1 after focus moves to terminal2","renderer reload replays output without new shell or old DA responses","minimized xterm consumes output and resizes stay within bounds","confirmed terminal close yields unknown, normal exit0 remains distinct","receipts exclude input/output/argv"],"limitation":"Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain."}
+Starting execution-recovery-smoke
+{"status":"pass","platform":"darwin","architecture":"arm64","assertions":["actual main JSON/worker storage fault barrier and reconciliation with active exec and PTY","same-epoch current receipts preserve live running phase and later actual exit7","established PTY inputs continue across storage faults and explicit verification without new shell","backup uncertainty dominates live observations and remains unknown after observed exit0 and close","reconciled receipts persist and recordError clears only after ACK; control and shared socket remain"],"limitation":"Injected receipt fault and corrupted-current backup fixture on current Mac; actual disk-full/Windows locking, power-loss and native target acceptance remain."}
+Starting lifecycle-gui-smoke
+sshOS 시오스
+데스크톱
+활성 서버 선택
+수명 검사
+연결 끊김
+▤
+연결
+▱
+파일
+›_
+터미널
+⚙
+설정
+⋮
+연결
+−
+□
+×
+내 서버
+1/10
+수명 검사
+
+fixture@127.0.0.1:54622
+
+비밀번호 인증
+
+연결 안 됨
+
+연결 엔진이 종료됐습니다.
+마지막 확인 단계
+disconnected
+영향 대상
+fixture@127.0.0.1:54622
+고정 오류 코드와 작업 상태를 확인하세요.
+기술 상세
+연결
+수정
+삭제
+서버 등록
+서버 이름
+호스트
+포트
+사용자명
+인증 방식
+비밀번호
+SSH 개인키
+
+비밀번호와 키 암호는 연결할 때 입력합니다. 기본적으로 저장하지 않습니다.
+
+서버 등록
+⋮
+터미널 1 · 수명 검사
+−
+□
+×
+연결 끊김
+복사
+붙여넣기
+표시 다시 연결
+새 표시 시작
+수명 검사 · fixture@127.0.0.1:54622
+요청 결과를 확인하지 못했습니다. 자동으로 다시 실행하지 않습니다.
+마지막 확인 단계
+channel_accepted
+영향 대상
+127.0.0.1:54622
+작업 상세의 실제 위치를 확인한 뒤 확인 후 기록 닫기를 선택하세요.
+기술 상세
+lifecycle prompt
+ 
+연결 엔진 준비됨
+전송
+진행 중인 전송 없음
+대기 0 · 등록 0 · 실패/중단 0 · 확인 필요 1
+전체 작업
+▦
+▤ 연결
+›_ 터미널 1
+연결 0
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+electronApplication.evaluate: ReferenceError: require is not defined
+    at eval (eval at evaluate (:370:30), <anonymous>:1:20)
+    at UtilityScript.evaluate (<anonymous>:372:16)
+    at UtilityScript.<anonymous> (<anonymous>:1:44)
+    at /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS/scripts/lifecycle-gui-smoke.mjs:21:20 {
+  log: []
+}
+
+Node.js v24.22.3
+Report: /Users/kkkk/Desktop/jskang/03.workspace/01.project/sshOS/.local/verification/integration-1794744251132

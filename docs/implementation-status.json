@@ -136,14 +136,18 @@
     "Transfer resync bounds pagination and attempts, checks engine epoch and never infers absence from an incomplete snapshot.",
     "PTY paste body accepts exactly64KiB UTF8 independently of JSON escaping and bounded control metadata.",
     "Synchronous SFTP inspection exceptions release their timeout timer.",
-    "Application-owned pre-ready background networking/component update suppression and live Session/window spellchecker disablement; security smoke supplies no masking CLI flags."
+    "Application-owned pre-ready background networking/component update suppression and live Session/window spellchecker disablement; security smoke supplies no masking CLI flags.",
+    "Packaged/development cache/crash/log path configuration shared before app.ready; production retains OS-default userData.",
+    "Unavailable directory fsync emits one fixed diagnostic code without raw native details, while actual IO failures remain fatal.",
+    "Unresolved/active/record-error work blocks profile identity/auth changes and deletion; profile writes reserve against new authentication until ACK and revalidate busy state inside the serialized state mutation.",
+    "Startup receipt cleanup handles5001 completed records before enforcing retained-record limits, preserving unresolved, live and backup-uncertain records."
   ],
   "local_verification": {
     "typecheck": "pass",
     "unit_tests": {
       "status": "pass",
-      "tests": 534,
-      "evidence": "evidence/d11-boundaries/coverage-pass.txt"
+      "tests": 553,
+      "evidence": "evidence/d11-review-corrections/coverage-pass.txt"
     },
     "build": "pass",
     "electron_smoke": {
@@ -497,20 +501,19 @@
     "integration_suite": {
       "status": "pass",
       "suites": 17,
-      "evidence": "evidence/d11-network-policy/integration-report.json",
+      "evidence": "evidence/d11-review-corrections/integration-report.json",
       "sourceUnchanged": true
     },
     "coverage": {
       "status": "pass",
-      "statements": 96.06,
-      "branches": 91.55,
+      "statements": 96.08,
+      "branches": 91.63,
       "requiredStatements": 90,
       "requiredBranches": 85,
       "perFile": true,
       "failingModules": 0,
-      "evidence": "evidence/d11-boundaries/coverage-summary.json",
-      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded.",
-      "comparison": "evidence/d11-network-policy/coverage-comparison.json"
+      "evidence": "evidence/d11-review-corrections/coverage-summary.json",
+      "scope": "All configured modules pass. Startup and parser-thread entrypoints retain their documented real-process verification; no newly failing module excluded."
     },
     "desktop_ui": {
       "status": "pass",
@@ -528,11 +531,11 @@
     "security_current": {
       "status": "pass",
       "unitTests": 61,
-      "evidence": "evidence/d11-network-policy/security-report.json",
+      "evidence": "evidence/d11-review-corrections/security-report.json",
       "scope": "Current-host Electron/xterm security suite; target/native checks remain user-owned."
     },
     "development_packages": {
-      "status": "pass_static_inspection",
+      "status": "superseded_pending_rebuild",
       "sourceRevision": "da5cb45d59f6a6943bbd885cfd7960961b9625c4",
       "targets": [
         "win32-x64",
@@ -542,7 +545,8 @@
       "evidence": "evidence/d12-final-development/artifacts.json",
       "nativeLaunch": "untested",
       "publisherSignature": "unavailable; Windows unsigned/macOS ad-hoc",
-      "notarization": "untested"
+      "notarization": "untested",
+      "reason": "Runtime-path, durability-observation and independent-review corrections changed application source after these historical artifacts."
     },
     "local_performance": {
       "status": "partial",
@@ -586,14 +590,14 @@
       "summary": "npm audit reports6 moderate build-tool dependency findings; no high/critical reported. No audit fix or version downgrade applied."
     }
   ],
-  "next_action": "Obtain explicit authorization for one separate-context read-only reviewer, obtain independent current-head review/App formal approval, then guarded merge and exact head-branch cleanup. Do not mark native/signing/performance/usability gates passed.",
+  "next_action": "Commit/push corrections, request latest-head re-review from the authorized existing reviewer, rebuild three development artifacts, and update handoff evidence. Native/signing/usability gates remain untested.",
   "product_acceptance_checks": "All 152 v6 product acceptance rows remain untested; local foundation tests do not complete those compound target criteria.",
   "evidence_directory": "evidence/d01",
-  "latest_evidence_directory": "evidence/d13-handoff",
+  "latest_evidence_directory": "evidence/d11-review-corrections",
   "progress_summary": {
     "completed_stages": 0,
     "total_stages": 13,
-    "current_stage": "Agent-owned feature implementation/local automated verification/development packaging prepared; independent current-head review and guarded merge remain",
+    "current_stage": "Independent review changes requested on91a81af; code corrections and553-unit/17-integration verification prepared",
     "product_features_available": "Profiles/SSH trust, desktop windows, files/viewers/transfers, GUI execution, PTY, lifecycle recovery, response metric, settings, diagnostics and local license viewer. Per-file coverage passes; final package and traceability audit remain.",
     "overall_percentage": "Not estimated; stage count and local tests are not a weighted completion percentage."
   },
@@ -604,7 +608,15 @@
     "policy": "Continue all code and available automated verification. Manual target tests remain untested for user handoff."
   },
   "implementation_gaps": [
-    "Independent current-head code review/App formal approval and guarded merge/branch cleanup.",
+    "Latest-head independent re-review/App APPROVED, final corrected-source development packages, guarded merge and branch cleanup.",
     "User-owned native/OpenSSH/vault/IME/accessibility/controlled-network performance tests; signing resources and G0/G2/G3 participants unavailable. Public-release license/security gate remains separate."
-  ]
+  ],
+  "independent_review": {
+    "authorized": true,
+    "authorizationQuote": "읽기 전용 리뷰 에이전트 허용",
+    "reviewedHead": "91a81af1f6570b3d803ed1824213f100bc58e7db",
+    "decision": "CHANGES_REQUESTED",
+    "formalEvidence": "evidence/d11-review-corrections/formal-changes-requested.json",
+    "corrections": "Implemented and locally verified; latest committed-head re-review still required."
+  }
 }

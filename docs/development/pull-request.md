@@ -4,7 +4,7 @@
 
 검증 결과:
 
-- 단위 검사534개와 모든 대상 파일의 statement90%/branch85% 게이트 통과. 전체96.06%/91.55%.
+- 단위 검사553개와 모든 대상 파일의 statement90%/branch85% 게이트 통과. 전체96.08%/91.63%.
 - 실제 Electron/main/worker/loopback SSH 통합17개 및 보안61개와 Electron/xterm 검사 통과.
 - Windows x64 portable와 macOS arm64/x64 개발 패키지의 ASAR 무결성·fuse·고지·크기 및 macOS ad-hoc 검사 통과. 산출물은 소스 커밋·lock hash·SHA256·대응 소스와 연결한다.
 - v6 범위 digest를 유지한 문서 검사 통과. 구현 추적표는38개 요구사항을 코드와 실제 증거에 연결한다.
