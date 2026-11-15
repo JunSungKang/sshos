@@ -9,10 +9,13 @@ const resultSchema = z.discriminatedUnion('ok', [
 export interface ParsedPrivateKey { privatePEM: string; publicSSH: string }
 
 export class PrivateKeyParser {
-  private active = false;
-  async parse(bytes: Buffer, passphrase?: string): Promise<ParsedPrivateKey> {
-    if (this.active || bytes.length === 0 || bytes.length > 512 * 1024 || (passphrase !== undefined && Buffer.byteLength(passphrase) > 1024)) throw new Error('KEY_INVALID');
-    this.active = true;
+  private pending=0;private tail:Promise<void>=Promise.resolve();
+  async parse(bytes:Buffer,passphrase?:string,current:()=>boolean=()=>true):Promise<ParsedPrivateKey> {
+    if(this.pending>=3 || bytes.length===0 || bytes.length>512*1024 || passphrase!==undefined && Buffer.byteLength(passphrase)>1024)throw new Error('KEY_INVALID');this.pending++;
+    const operation=this.tail.then(()=>{if(!current())throw new Error('CONNECTION_LOST');return this.parseOne(bytes,passphrase);});this.tail=operation.then(()=>{},()=>{});try{return await operation;}finally{bytes.fill(0);this.pending--;}
+  }
+  private async parseOne(bytes: Buffer, passphrase?: string): Promise<ParsedPrivateKey> {
+    if ( bytes.length === 0 || bytes.length > 512 * 1024 || (passphrase !== undefined && Buffer.byteLength(passphrase) > 1024)) throw new Error('KEY_INVALID');
     let worker: Worker | undefined;
     try {
       worker = new Worker(resolve(__dirname, 'key-parser-thread.js'), { workerData: { bytes, passphrase } });
@@ -33,6 +36,6 @@ export class PrivateKeyParser {
         running.on('error', () => finish(new Error('KEY_INVALID')));
         running.on('exit', () => finish(new Error('KEY_INVALID')));
       });
-    } finally { if (worker) await worker.terminate(); this.active = false; }
+    } finally { if (worker) await worker.terminate(); }
   }
 }

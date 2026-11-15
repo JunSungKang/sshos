@@ -29,13 +29,12 @@ describe('bounded isolated key parsing', () => {
     const encrypted = fixtureKey( { passphrase: 'fixture-only', cipher: 'aes256-ctr', rounds: 1 });
     await expect(parser.parse(Buffer.from(encrypted.private), 'wrong-fixture')).rejects.toThrow('KEY_INVALID');
   });
-  it('rejects oversize/concurrent requests without allowing unbounded parser threads', async () => {
+  it('serializes three owned requests, rejects excess queueing and clears accepted key buffers', async () => {
     const parser = new PrivateKeyParser();
     await expect(parser.parse(Buffer.alloc(512 * 1024 + 1))).rejects.toThrow('KEY_INVALID');
     const key = fixtureKey();
-    const first = parser.parse(Buffer.from(key.private));
-    await expect(parser.parse(Buffer.from(key.private))).rejects.toThrow('KEY_INVALID');
-    await first;
+    const encrypted=fixtureKey({passphrase:'fixture-only',cipher:'aes256-ctr',rounds:20}),inputs=[Buffer.from(encrypted.private),Buffer.from(key.private),Buffer.from(key.private)],order:number[]=[];
+    const pending=inputs.map((bytes,index)=>parser.parse(bytes,index===0 ? 'fixture-only':undefined).then(()=>{order.push(index);}));await expect(parser.parse(Buffer.from(key.private))).rejects.toThrow('KEY_INVALID');await Promise.all(pending);expect(order).toEqual([0,1,2]);expect(inputs.every(bytes=>bytes.every(value=>value===0))).toBe(true);
   });
   it('rejects malformed or excessive bcrypt work before decryption', () => {
     expect(() => inspectPrivateKey(Buffer.from('not a key'))).toThrow();

@@ -61,7 +61,7 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'execution:stop') executions!.stop(request.serverId,request.generation,request.executionId);
     else if (request.action === 'execution:close') executions!.closeChannel(request.serverId,request.generation,request.executionId);
     else if (request.action === 'execution:forget') await executions!.forget(request.serverId,request.generation,request.executionId);
-    else if (request.action === 'session:connect') result = await sessions.connect(request.serverId, request.generation, request.payload);
+    else if (request.action === 'session:connect'){try{result=await sessions.connect(request.serverId,request.generation,request.payload);}finally{request.payload.keyBytes?.fill(0);delete request.payload.keyBytes;delete request.payload.password;delete request.payload.passphrase;}}
     else if (request.action === 'session:disconnect') sessions.disconnect(request.serverId, request.generation);
     else if (request.action === 'session:snapshot') result = sessions.snapshots();
     else if (request.action === 'session:confirmOS') sessions.confirmOS(request.serverId, request.generation);

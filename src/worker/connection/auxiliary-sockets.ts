@@ -46,5 +46,6 @@ export class AuxiliarySockets {
     catch {finish('INPUT_INVALID');lease.close();}
     return lease;
   }
+  settled():Promise<void> {return Promise.all([...this.sockets.values()].map(lease=>lease.closed)).then(()=>{});}
   closeAll():void {for (const lease of this.sockets.values()) lease.close();}
 }
