@@ -1,3 +1,4 @@
+import type { ExecutionRecoveryUncertainty } from '../../shared/storage-recovery';
 import type { ClientChannel } from 'ssh2';
 import { executionCommand,executionReceiptSchema,executionSpecSchema,executionTerminal,type ExecutionReceipt,type ExecutionSpec } from '../../shared/executions';
 import { initialStatSchema,type InitialStat } from '../../shared/mutations';
@@ -14,6 +15,12 @@ export class GUIExecutions {
   constructor(private readonly epoch:string,private readonly sessions:Pick<SessionManager,'control'|'auxiliary'|'withMetadata'>,private readonly writer:Pick<WorkerReceiptWriter,'persist'|'faulted'>,private readonly emit:(row:ExecutionRuntime)=>void) {
     this.channels=new ExecutionChannels(sessions,(id,pending)=>{const job=this.jobs.get(id);if(job){job.cleanupPending=pending;this.publish(job);}});this.inspector=new ExecutionInspector((serverId,generation)=>sessions.control(serverId,generation,true));
   }
+ get hasActive():boolean {return [...this.jobs.values()].some(job=>job.active || job.pending>0 || job.cleanupPending);}
+ async settled():Promise<void> {await Promise.all([...this.jobs.values()].map(job=>job.tail));}
+ async reconcileStorage(uncertain:ExecutionRecoveryUncertainty[]):Promise<void> {
+  const byId=new Map(uncertain.map(row=>[row.taskId,row.fromPhase]));
+  await Promise.all([...this.jobs.values()].filter(job=>job.recordError || byId.has(job.row.taskId)).map(async job=>{const change:Partial<ExecutionReceipt>=byId.has(job.row.taskId) ? {phase:'result_unknown',recoveryUncertain:true,recoveredFromPhase:byId.get(job.row.taskId)!,acknowledgedAt:null,errorCode:'EXEC_RESULT_UNKNOWN'}:{};await this.persist(job,change);job.recordError=false;this.publish(job);}));
+ }
   private publish(job:Job):void {try{this.emit(this.runtime(job));}catch{}}
   private runtime(job:Job):ExecutionRuntime{return {receipt:structuredClone(job.row),recordError:job.recordError,recordPending:job.pending>0,active:job.active,cleanupPending:job.cleanupPending};}
   private persist(job:Job,change:Partial<ExecutionReceipt>):Promise<void> {
@@ -43,7 +50,7 @@ export class GUIExecutions {
     channel.on('error',()=>{job.channelError=true;});
     channel.on('exit',(code:number|null,signal?:string)=>{const validCode=Number.isSafeInteger(code) && code !== null && code>=0 && code<=0xffffffff,validSignal=typeof signal === 'string' && /^[A-Z0-9_-]{1,32}$/u.test(signal);if(!validCode && !validSignal)return;if(job.stopTimer)clearTimeout(job.stopTimer);this.save(job,{exitObserved:true,exitCode:validCode ? code:null,exitSignal:validSignal ? signal:null,lastConfirmedPhase:'exit_observed'});});
     channel.once('close',()=>{if(job.stopTimer)clearTimeout(job.stopTimer);const known=job.row.exitObserved && !job.channelError && !job.closeRequested,terminal=executionTerminal(job.row.phase);this.save(job,{channelClosed:true,phase:terminal ? job.row.phase : known ? 'exited':'result_unknown',errorCode:terminal ? job.row.errorCode : known ? null:'EXEC_RESULT_UNKNOWN',lastConfirmedPhase:known ? 'exit_and_channel_close':'channel_closed_without_confirmed_exit'});});
-    this.save(job,{phase:'running',channelAccepted:true,lastConfirmedPhase:'channel_accepted'});
+    this.save(job,{phase:executionTerminal(job.row.phase) ? job.row.phase:'running',channelAccepted:true,lastConfirmedPhase:'channel_accepted'});
   }
   snapshot(serverId:string,generation:number):ExecutionRuntime[] {return [...this.jobs.values()].filter(job=>job.row.serverId === serverId && job.row.generation === generation).map(job=>this.runtime(job));}
   page(serverId:string,generation:number,offset:number):{rows:ExecutionRuntime[];nextOffset:number|null} {const values=this.snapshot(serverId,generation);const rows:ExecutionRuntime[]=[];let size=0;for(const row of values.slice(offset,offset+100)){const length=Buffer.byteLength(JSON.stringify(row));if(size+length>240*1024)break;size+=length;rows.push(row);}return {rows,nextOffset:offset+rows.length<values.length ? offset+rows.length:null};}

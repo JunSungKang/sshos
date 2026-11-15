@@ -85,7 +85,7 @@ async function main(): Promise<void> {
   const dialogGate=new NativeDialogGate();
   const pasteGesture=new TerminalPasteGesture();
   let connections: ConnectionController | null = null;
-  let storageRecovering=false;
+  let storageRecovering=false;let recoveryAccepting=false;
   let recoveryLocked=false;
   let repositoryOpening: Promise<void> | null = null;
   const openRepository = (): Promise<void> => {
@@ -103,7 +103,7 @@ async function main(): Promise<void> {
   let engine: RuntimeSnapshot['engine'] = 'starting';
   const worker = utilityProcess.fork(resolve(__dirname, '../worker/index.js'), [epoch], { stdio: 'ignore', serviceName: 'sshOS connection engine' });
   const storageRecovery=new MainStorageRecovery(epoch,worker);
-  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked),message => worker.postMessage(message));
+  const receiptChannel=new MainReceiptChannel(epoch,() => receipts,() => Boolean(repository && !repository.store.faulted && (recoveryAccepting || !storageRecovering && !recoveryLocked)),message => worker.postMessage(message));
   let transfers:TransferController|null=null;
   let executions:ExecutionController|null=null;
   let terminals:TerminalController|null=null;
@@ -214,10 +214,10 @@ async function main(): Promise<void> {
     storageRecovering=true;let barrier:string|null=null;
     try {
       await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
-      await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();receipts=await ReceiptRepository.open(dataRoot);
-      await storageRecovery.reset(barrier);recoveryLocked=false;
+      await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();const liveExecutions=new Set([...executions!.storageContinuity(),...terminals!.storageContinuity()]);receipts=await ReceiptRepository.open(dataRoot,{epoch,executionIds:liveExecutions});if([...liveExecutions].some(id=>!receipts!.get(id)))throw new Error('STORAGE_FAILED');
+      recoveryAccepting=true;await storageRecovery.reset(barrier,receipts.snapshots().filter(row=>liveExecutions.has(row.taskId) && (row.kind === 'gui_exec' || row.kind === 'pty') && row.recoveryUncertain).map(row=>({taskId:row.taskId,fromPhase:row.recoveredFromPhase})));recoveryLocked=false;
     } catch (error) {if (barrier || faulted || !(error instanceof Error) || error.message !== 'REQUEST_BUSY') recoveryLocked=true;throw new Error(error instanceof Error && error.message === 'REQUEST_BUSY' ? 'REQUEST_BUSY' : 'STORAGE_FAILED');}
-    finally {storageRecovering=false;}
+    finally {recoveryAccepting=false;storageRecovering=false;}
 
   });
   ipcMain.handle('lifecycle:getSnapshot', (event, payload: unknown) => {

@@ -25,7 +25,7 @@ export class ReceiptRepository {
   get faulted():boolean { return this.fault || [...this.stores.values()].some(store => store.faulted); }
   markFault():void {this.fault=true;}
   async settled():Promise<void> { await this.tail; await Promise.all([...this.stores.values()].map(store => store.settled())); }
-  static async open(dataRoot:string):Promise<ReceiptRepository> {
+  static async open(dataRoot:string,continuity?:{epoch:string;executionIds:ReadonlySet<string>}):Promise<ReceiptRepository> {
     const root=resolve(dataRoot,'receipts');
     try { const stat=await lstat(root); if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('STORAGE_FAILED'); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; await mkdir(root,{mode:0o700}); }
@@ -42,10 +42,11 @@ export class ReceiptRepository {
       let loaded:Awaited<ReturnType<typeof store.load>>;
       try { loaded=await store.load(); if (loaded.value.taskId !== id) throw new Error('STORAGE_FAILED'); }
       catch { repo.damaged.add(id); continue; }
-      const recovered=loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : loaded.value.kind === 'file_transfer' ? recoverTransfer(loaded.value,loaded.recovered) : recoverExecution(loaded.value,loaded.recovered); repo.stores.set(id,store);
+      const keepExecution=!loaded.recovered && continuity?.epoch === loaded.value.backendEpoch && continuity.executionIds.has(id) && (loaded.value.kind === 'gui_exec' || loaded.value.kind === 'pty');
+      const recovered=keepExecution ? loaded.value : loaded.value.kind === 'file_mutation' ? recoverMutation(loaded.value,loaded.recovered) : loaded.value.kind === 'file_transfer' ? recoverTransfer(loaded.value,loaded.recovered) : recoverExecution(loaded.value,loaded.recovered); repo.stores.set(id,store);
       if (recovered !== loaded.value) { try { await store.save(recovered); } catch { repo.fault=true; } }
     }
-    await repo.prune(); return repo;
+    await repo.prune(continuity?.executionIds); return repo;
   }
   private newStore(id:string):AtomicJSONStore<FileReceipt> {
     return new AtomicJSONStore(resolve(this.root,`${id}.json`),fileReceiptSchema,65536);
@@ -89,8 +90,8 @@ export class ReceiptRepository {
     if (!this.damaged.has(id) && (!row || !terminal(row) || unresolved(row))) throw new Error('INPUT_INVALID');
     await this.remove(id);
   }
-  private async prune():Promise<void> {
-    const eligible=this.snapshots().filter(row => terminal(row) && !unresolved(row));
+  private async prune(preserved:ReadonlySet<string>=new Set()):Promise<void> {
+    const eligible=this.snapshots().filter(row => terminal(row) && !unresolved(row) && !preserved.has(row.taskId));
     for (const [index,row] of eligible.entries()) if (index>=1000 || Date.now()-Date.parse(row.updatedAt)>30*86400000) await this.remove(row.taskId);
   }
 }

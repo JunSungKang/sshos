@@ -36,7 +36,7 @@ let transferSequence=0;
 transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
 executions=new GUIExecutions(epoch,sessions,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'execution',backendEpoch:epoch,sequence:++executionSequence,snapshot}));
 terminals=new TerminalSessions(epoch,executions.channels,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'pty',backendEpoch:epoch,sequence:++terminalSequence,snapshot}));
-const recovery=new WorkerStorageRecovery(epoch,receiptWriter,transfers,message=>process.parentPort?.postMessage(message));
+const recovery=new WorkerStorageRecovery(epoch,receiptWriter,transfers,message=>process.parentPort?.postMessage(message),[executions,terminals]);
 const transferInspector=new TransferInspector((serverId,generation) => sessions.control(serverId,generation,true));
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
 const inFlight = new Map<string, Promise<EngineEvent>>();
