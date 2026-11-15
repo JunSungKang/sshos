@@ -37,3 +37,9 @@ UTF-8 strict decode/BOM1개 처리/CRLF·LF/100,000 scalar 행 제한/2MiB 제�
 ssh2 1.17.0의 public sftp callback은 subsystem/INIT 완료를 기다리므로 초기 대기 중인 해당 채널을 캡처하는 버전 고정 adapter를 추가했다. 늦게 열린 채널은 subsystem 요청 전에 닫고, shared SSH socket은 유지하며 close 관측까지 읽기 슬롯을 보존한다. 네 개 전체/서버별 두 개 FIFO pool을 구현했다. 실제 TCP/SSH fixture에서 정상 close 뒤 다른 채널 사용, 지연 open 취소, subsystem timeout의 SSH 유지와 슬롯 순서를 검사했다. 총83개 단위 검사, 타입/build, 파일 GUI 회귀 검사가 통과했다. 아직 viewer 스트리밍/디코드 Worker/창 연결을 수행 중이다.
 
 구조 확인 근거: [W3C PNG3](https://www.w3.org/TR/png-3/), [ITU-T T.81 원문](https://www.w3.org/Graphics/JPEG/itu-t81.pdf), [CIPA Exif2.3 orientation/IFD](https://www.cipa.jp/std/documents/e/DC-008-2012_E.pdf), [RFC9649 WebP](https://www.rfc-editor.org/rfc/rfc9649.html). 전체 Exif3.1 호환성 검증은 미실행이다.
+
+## 뷰어 제한 읽기 엔진 구현
+
+뷰어별32KiB SFTP 요청으로 최대64KiB 청크를 반환하고 renderer가 다음 sequence를 요청할 때 이전 청크 소비 ACK로 처리한다. 재요청은 저장한 한 청크를 반환하며 범용 RPC 완료 캐시에 파일 byte를 넣지 않는다. probe는4KiB만 읽고 전체 파일 size metadata를 보존한다. 실제 byte 수 제한·EOF·처음/끝 fstat 비교·파일 handle close ACK를 확인하고, 읽기15초/전체30초 기한과 취소는 해당 채널에만 적용한다. 대기 슬롯 시간은30초 기한에서 제외한다. 취소/연결 해제 뒤 늦은 결과는 화면 데이터로 승격하지 않는다.
+
+90개 단위 검사, 타입/build와 Electron 기반 회귀 smoke가 통과했다. short read·중복 sequence·소비 전 읽기 없음·허위 size metadata·읽는 중 파일 변경·timeout·세대 오인 방지를 검사했다. evidence/d06-reader에 실제 출력을 저장했다. 다음 작업은 main의 viewer/probe capability, preload, renderer 소비 ACK 및 decode Worker와 내부 뷰어 창을 연결하는 것이다. 사용자 파일 열기 기능의 완료를 선언하는 기록이 아니다.

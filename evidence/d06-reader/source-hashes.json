@@ -1,0 +1,8 @@
+{
+  "src/shared/viewers/reader.ts": "25a2917ed038fdd319ac811410bdbe238787f4f5cddc8a1855de6aca59cb9753",
+  "src/worker/viewers/reader.ts": "fa0464a5f9f05545fb5d5da3c7116c1e3bc910b75d43c052f5548274a338f9e0",
+  "src/shared/engine-protocol.ts": "877712acc31165520210d95700b1836f713c02c2acde656ded5907accbdd4a41",
+  "src/worker/index.ts": "6d019815317535842704ef6acf9d2e79c207a686e18f5841a66107f4d2927d91",
+  "src/worker/connection/session-manager.ts": "c43d928fe798d4781cd0804111f8d938e0b7924969a2ed39ce17269ffc995ab9",
+  "tests/unit/viewer-reader.test.ts": "6cba284bb1231bde230751bba3b546385a12867745453898b261a3083071236f"
+}

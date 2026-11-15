@@ -5,6 +5,7 @@ import { engineRequestSchema, type EngineRequest, type EngineEvent } from '../sh
 import { FileBrowser } from './files/browser';
 import { FileMutations } from './files/mutations';
 import { PathLocks } from './files/path-locks';
+import { ViewerReader } from './viewers/reader';
 
 const epoch = z.uuid().parse(process.argv[2]);
 if (!process.parentPort) throw new Error('Utility process parent port required');
@@ -12,7 +13,12 @@ if (!process.parentPort) throw new Error('Utility process parent port required')
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
 process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary: 'ssh2' });
 let sequence = 0;
-const sessions = new SessionManager(snapshot => process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot }));
+let readers:ViewerReader|null=null;
+const sessions = new SessionManager(snapshot => {
+  readers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
+  process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot });
+});
+readers=new ViewerReader((serverId,generation) => sessions.readClient(serverId,generation));
 const files = new FileBrowser((serverId, generation) => sessions.control(serverId, generation));
 const locks=new PathLocks();
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
@@ -31,7 +37,10 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'mutation:inspect') result=await mutations.inspect(request.serverId,request.generation,request.spec);
     else if (request.action === 'mutation:prepare') result=await mutations.prepare(request.serverId,request.generation,request.taskId,request.spec,request.expected);
     else if (request.action === 'mutation:step') result=await mutations.step(request.serverId,request.generation,request.taskId,request.stage);
-    else mutations.finish(request.taskId,request.keepRestriction);
+    else if (request.action === 'mutation:finish') mutations.finish(request.taskId,request.keepRestriction);
+    else if (request.action === 'viewer:open') readers!.open(request);
+    else if (request.action === 'viewer:next') result=await readers!.next(request.serverId,request.generation,request.viewerId,request.readGeneration,request.sequence);
+    else readers!.close(request.serverId,request.generation,request.viewerId,request.readGeneration);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: true, result };
   } catch (error) {
     const errorCode = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';
@@ -49,7 +58,10 @@ process.parentPort.on('message', (event: { data: unknown }) => {
     if (inFlight.size >= 32) { process.parentPort?.postMessage({ type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: false, errorCode: 'REQUEST_BUSY' }); return; }
     work = execute(request); inFlight.set(request.requestId, work);
     void work.then(result => {
-      inFlight.delete(request.requestId); completed.set(request.requestId, result);
+      inFlight.delete(request.requestId);
+      // Viewer bytes have their own one-chunk sequence replay buffer. Never put
+      // file content into the generic RPC completion/snapshot cache.
+      if (request.action !== 'viewer:next') completed.set(request.requestId, result);
       while (completed.size > 200) completed.delete(completed.keys().next().value!);
     });
   }

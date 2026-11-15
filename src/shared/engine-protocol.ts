@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
 import { remotePathSchema } from './files';
 import { mutationSpecSchema, initialStatSchema } from './mutations';
+import { viewerReadKindSchema } from './viewers/reader';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action: z.literal('session:connect'), payload: connectInputSchema }).strict(),
@@ -14,7 +15,10 @@ export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action:z.literal('mutation:inspect'), spec:mutationSpecSchema }).strict(),
   z.object({ ...identity, action:z.literal('mutation:prepare'), taskId:z.uuid(), spec:mutationSpecSchema, expected:initialStatSchema.nullable() }).strict(),
   z.object({ ...identity, action:z.literal('mutation:step'), taskId:z.uuid(), stage:z.enum(['first','remove_source']) }).strict(),
-  z.object({ ...identity, action:z.literal('mutation:finish'), taskId:z.uuid(), keepRestriction:z.boolean() }).strict()
+  z.object({ ...identity, action:z.literal('mutation:finish'), taskId:z.uuid(), keepRestriction:z.boolean() }).strict(),
+  z.object({ ...identity, action:z.literal('viewer:open'), viewerId:z.uuid(), readGeneration:z.int().min(1), path:remotePathSchema, parent:remotePathSchema, kind:viewerReadKindSchema }).strict(),
+  z.object({ ...identity, action:z.literal('viewer:next'), viewerId:z.uuid(), readGeneration:z.int().min(1), sequence:z.int().nonnegative() }).strict(),
+  z.object({ ...identity, action:z.literal('viewer:cancel'), viewerId:z.uuid(), readGeneration:z.int().min(1) }).strict()
 ]);
 export type EngineRequest = z.infer<typeof engineRequestSchema>;
 export type EngineCommand = EngineRequest extends infer T ? T extends EngineRequest ? Omit<T, 'requestId' | 'backendEpoch'> : never : never;
