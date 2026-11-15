@@ -3,6 +3,7 @@ import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
 import { remotePathSchema } from './files';
 import { mutationSpecSchema, initialStatSchema } from './mutations';
 import { viewerReadKindSchema } from './viewers/reader';
+import { stagedTransferSchema,transferRuntimeSchema } from './transfer-protocol';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action: z.literal('session:connect'), payload: connectInputSchema }).strict(),
@@ -18,12 +19,20 @@ export const engineRequestSchema = z.discriminatedUnion('action', [
   z.object({ ...identity, action:z.literal('mutation:finish'), taskId:z.uuid(), keepRestriction:z.boolean() }).strict(),
   z.object({ ...identity, action:z.literal('viewer:open'), viewerId:z.uuid(), readGeneration:z.int().min(1), path:remotePathSchema, parent:remotePathSchema, kind:viewerReadKindSchema }).strict(),
   z.object({ ...identity, action:z.literal('viewer:next'), viewerId:z.uuid(), readGeneration:z.int().min(1), sequence:z.int().nonnegative() }).strict(),
-  z.object({ ...identity, action:z.literal('viewer:cancel'), viewerId:z.uuid(), readGeneration:z.int().min(1) }).strict()
+  z.object({ ...identity, action:z.literal('viewer:cancel'), viewerId:z.uuid(), readGeneration:z.int().min(1) }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:reserve'), reservationToken:z.uuid(),count:z.int().min(1).max(100) }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:stage'), reservationToken:z.uuid(),index:z.int().min(0).max(99),spec:stagedTransferSchema }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:commit'), reservationToken:z.uuid() }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:release'), reservationToken:z.uuid() }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:cancel'), taskId:z.uuid() }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:snapshot'), offset:z.int().min(0).max(10000) }).strict(),
+  z.object({ ...identity, action:z.literal('transfer:acknowledge'), taskId:z.uuid() }).strict()
 ]);
 export type EngineRequest = z.infer<typeof engineRequestSchema>;
 export type EngineCommand = EngineRequest extends infer T ? T extends EngineRequest ? Omit<T, 'requestId' | 'backendEpoch'> : never : never;
 export const engineEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('session'), backendEpoch: z.uuid(), sequence: z.int().positive(), snapshot: sessionSnapshotSchema }).strict(),
+  z.object({type:z.literal('transfer'),backendEpoch:z.uuid(),sequence:z.int().positive(),snapshot:transferRuntimeSchema}).strict(),
   z.object({ type: z.literal('response'), ...identity, ok: z.boolean(), result: z.unknown().optional(), errorCode: z.string().max(64).optional() }).strict()
 ]);
 export type EngineEvent = z.infer<typeof engineEventSchema>;

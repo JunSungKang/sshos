@@ -7,22 +7,27 @@ import { FileMutations } from './files/mutations';
 import { PathLocks } from './files/path-locks';
 import { ViewerReader } from './viewers/reader';
 import { WorkerReceiptWriter } from './receipt-writer';
+import { TransferCoordinator } from './transfers/coordinator';
 
 const epoch = z.uuid().parse(process.argv[2]);
 if (!process.parentPort) throw new Error('Utility process parent port required');
 // Loading the SSH implementation proves runtime linkage without connecting anywhere.
 if (typeof Client !== 'function') throw new Error('SSH implementation unavailable');
 process.parentPort.postMessage({ type: 'ready', backendEpoch: epoch, sshLibrary: 'ssh2' });
-const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message));
+let transfers:TransferCoordinator|null=null;
+const receiptWriter=new WorkerReceiptWriter(epoch,message => process.parentPort?.postMessage(message),() => transfers?.storageFault());
 let sequence = 0;
 let readers:ViewerReader|null=null;
 const sessions = new SessionManager(snapshot => {
+  transfers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   readers?.sessionChanged(snapshot.serverId,snapshot.generation,snapshot.status === 'connected');
   process.parentPort?.postMessage({ type: 'session', backendEpoch: epoch, sequence: ++sequence, snapshot });
 });
 readers=new ViewerReader((serverId,generation) => sessions.readClient(serverId,generation));
 const files = new FileBrowser((serverId, generation) => sessions.control(serverId, generation));
 const locks=new PathLocks();
+let transferSequence=0;
+transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
 const mutations=new FileMutations((serverId,generation) => sessions.control(serverId,generation,true),locks);
 const inFlight = new Map<string, Promise<EngineEvent>>();
 const completed = new Map<string, EngineEvent>();
@@ -42,7 +47,14 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === 'mutation:finish') mutations.finish(request.taskId,request.keepRestriction);
     else if (request.action === 'viewer:open') readers!.open(request);
     else if (request.action === 'viewer:next') result=await readers!.next(request.serverId,request.generation,request.viewerId,request.readGeneration,request.sequence);
-    else readers!.close(request.serverId,request.generation,request.viewerId,request.readGeneration);
+    else if (request.action === 'viewer:cancel') readers!.close(request.serverId,request.generation,request.viewerId,request.readGeneration);
+    else if (request.action === 'transfer:reserve') transfers!.reserve(request.serverId,request.generation,request.reservationToken,request.count);
+    else if (request.action === 'transfer:stage') transfers!.stage(request.serverId,request.generation,request.reservationToken,request.index,request.spec);
+    else if (request.action === 'transfer:commit') result=transfers!.commit(request.serverId,request.generation,request.reservationToken);
+    else if (request.action === 'transfer:release') transfers!.release(request.serverId,request.generation,request.reservationToken);
+    else if (request.action === 'transfer:cancel') result=await transfers!.cancel(request.serverId,request.generation,request.taskId);
+    else if (request.action === 'transfer:snapshot') result=transfers!.snapshot(request.serverId,request.generation,request.offset);
+    else transfers!.acknowledge(request.serverId,request.generation,request.taskId);
     return { type: 'response', requestId: request.requestId, backendEpoch: epoch, serverId: request.serverId, generation: request.generation, ok: true, result };
   } catch (error) {
     const errorCode = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'INTERNAL_ERROR';
