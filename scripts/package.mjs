@@ -8,6 +8,7 @@ import { listPackage,extractFile } from '@electron/asar';
 import { root,runtimeEnvironment,localPath } from './environment.mjs';
 import { inspectPackage } from './inspect-package.mjs';
 import { prepareLicenses } from './prepare-licenses.mjs';
+import { checkPackagedSSH } from './package-ssh-smoke.mjs';
 const target=process.argv[2];if(!['win','mac'].includes(target) || process.argv.length!==3)throw new Error('Use package:win or package:mac; this command makes development packages only.');
 if(target==='mac' && process.platform!=='darwin')throw new Error('macOS packaging requires a macOS build host.');
 const git=(args)=>{const run=spawnSync('git',args,{cwd:root,encoding:'utf8'});if(run.status!==0)throw new Error('Source revision unavailable');return run.stdout.trim();};
@@ -27,11 +28,13 @@ const packageChecks=[];
 for(const [folder,arch]of target==='win'?[['win-unpacked','x64']]:[['mac-arm64','arm64'],['mac','x64']]){
  const directory=join(output,folder),application=target==='win'?join(directory,'sshOS.exe'):join(directory,'sshOS.app'),resourceRoot=target==='win'?join(directory,'resources'):join(application,'Contents/Resources'),archive=join(resourceRoot,'app.asar');const wire=await getCurrentFuseWire(application);for(const [key,value]of expected)if(wire[key]!==value)throw new Error(`Fuse mismatch: ${key}`);
  const entries=listPackage(archive);if(entries.some(name=>/\.(node|exe|dll|so|dylib)$|[/\\]tests?[/\\]|cpu-features|[/\\]nan[/\\]|buildcheck/u.test(name)))throw new Error('Production archive contains a native accelerator or test fixture');
+ for(const path of ['node_modules/ssh2/lib/protocol/crypto.js','node_modules/ssh2/lib/protocol/crypto/poly1305.js'])if(!entries.includes('/'+path))throw new Error('Production archive is missing required SSH cryptography');
  const packaged=JSON.parse(extractFile(archive,'package.json').toString());if(packaged.version!==packageData.version)throw new Error('Packaged version mismatch');const notices=JSON.parse(await readFile(join(resourceRoot,'licenses/index.json'),'utf8'));for(const row of notices.entries){const bytes=await readFile(join(resourceRoot,'licenses',row.file));if(bytes.length!==row.bytes || createHash('sha256').update(bytes).digest('hex')!==row.sha256)throw new Error('Packaged notice mismatch');}
  if(target==='win'){const source=await readFile(join(resourceRoot,'third-party-source',windowsTools.sourceArchive));if(createHash('sha256').update(source).digest('hex')!==windowsTools.sourceArchiveSHA256)throw new Error('Packaged corresponding source hash mismatch');}
  if(target==='mac'){const result=spawnSync('/usr/bin/codesign',['--verify','--deep','--strict',application],{cwd:root,env,encoding:'utf8'});if(result.status!==0)throw new Error(`Ad-hoc signature verification failed: ${result.stderr}`);}
  const integrity=await inspectPackage(target==='mac'?application:directory,target);
- packageChecks.push({...integrity,architecture:arch,fuses:'pass',testFixturesAbsent:true,nativeAcceleratorsAbsent:true,noticesVerified:notices.entries.length,publisherSignature:target==='mac'?'ad-hoc only':'unsigned',nativeLaunch:'untested'});
+ const archivedSSH=await checkPackagedSSH(archive);
+ packageChecks.push({...integrity,architecture:arch,archivedSSH,fuses:'pass',testFixturesAbsent:true,nativeAcceleratorsAbsent:true,noticesVerified:notices.entries.length,publisherSignature:target==='mac'?'ad-hoc only':'unsigned',nativeLaunch:'untested'});
 }
 const hashFile=async path=>{const hash=createHash('sha256');for await(const bytes of createReadStream(path))hash.update(bytes);return hash.digest('hex');};
 const artifacts=[];for(const name of await readdir(output)){if(!/\.(exe|zip)$/u.test(name))continue;const path=join(output,name),info=await stat(path);artifacts.push({name,bytes:info.size,sha256:await hashFile(path),compressedSizeWithin250MiB:info.size<=250*1024*1024});}
