@@ -29,23 +29,24 @@
 
 .error-panel{padding:12px;border:1px solid #c36c64;border-radius:6px;background:#371f27;color:#fff1ef;margin:10px 0;overflow-wrap:anywhere}.error-panel dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;margin:8px 0}.error-panel dd{margin:0;white-space:pre-wrap}.error-panel ul{padding-left:20px}.error-panel details{margin-top:8px}.error-panel summary{cursor:pointer}.error-panel code{white-space:pre-wrap}
 /* Shared chocolate theme for all app-owned surfaces. */
-:root{--background:#211A16;--sidebar:#1B1512;--surface:#2B221D;--raised:#352A23;--hover:#403228;--selected:#4B3B23;--accent:#B99A45;--text:#E8DFD2;--secondary:#C0B3A2;--boundary:#927C61;--focus:#D2B66C;color:var(--text);background:var(--background);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.5;color-scheme:dark}
+:root{--background:#211A16;--sidebar:#1B1512;--surface:#2B221D;--raised:#342A23;--hover:#40342A;--selected:#463823;--accent:#B99A45;--accent-text:#DDC27A;--text:#E8DFD2;--secondary:#C0B3A2;--boundary:#41352C;--control-boundary:#74685C;--focus:#D2B66C;color:var(--text);background:var(--background);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.5;color-scheme:dark}
 #root .desktop{display:block;background:var(--background);padding-left:184px;min-width:1120px;min-height:760px;height:100vh}
 #root header{position:fixed;top:0;left:184px;right:0;height:48px;padding:0 20px;background:var(--sidebar);border-bottom:1px solid var(--boundary);z-index:200000;gap:20px}
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:184px;padding:16px 12px;background:var(--sidebar);border-right:1px solid var(--boundary);display:flex;flex-direction:column;z-index:200000}.brand{display:flex;align-items:center;gap:10px;height:64px}.brand img{width:52px;height:52px}.brand strong{font-size:20px}.brand small{display:block;margin:0;color:var(--secondary);font-size:13px}.sidebar nav{margin-top:20px;display:flex;flex-direction:column;gap:6px}.sidebar nav button{text-align:left;height:44px;padding-left:16px}.sidebar-status{margin-top:auto;min-height:88px;display:flex;flex-direction:column;gap:5px;overflow-wrap:anywhere;font-size:13px}.sidebar-status .probe-status{white-space:normal}.mode-switch{margin-left:auto;display:flex;gap:4px}
-#root button,#root input,#root select,#root textarea{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--boundary);border-radius:5px;accent-color:var(--accent)}
-#root button{cursor:pointer;padding:6px 10px}#root button:hover:not(:disabled){background:var(--hover)}#root button:disabled{opacity:1;color:#AA9B89;cursor:default}#root button[aria-pressed=true],#root button.active{background:var(--selected);box-shadow:inset 3px 0 var(--accent)}
+#root button,#root input,#root select,#root textarea{font:inherit;color:var(--text);background:var(--raised);border:1px solid transparent;border-radius:7px;accent-color:var(--accent)}
+#root button{cursor:pointer;padding:8px 14px;min-height:36px;line-height:1.4}#root button:hover:not(:disabled){background:var(--hover)}#root button:disabled{opacity:1;color:#AA9B89;cursor:default}#root button[aria-pressed=true],#root button.active{background:var(--selected);color:var(--accent-text);box-shadow:none}
 #root :is(button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 #root :is(.profile-manager,.profile-list,.internal-window,.connection-dialog,.task-manager,.viewer-pane,.execution-pane,.terminal-pane,.app-content,.settings-pane,.window-menu,.window-menu button,.server-picker,.terminal-context,.window-list-dialog){color:var(--text);background:var(--surface);border-color:var(--boundary)}
 #root :is(p,small,.help,.file-location,.viewer-location,.viewer-status,.viewer-metadata,.file-status,.execution-status,.terminal-notice,.probe-status){color:var(--secondary)}
 #root :is(.window-title,.file-toolbar,.file-location,.file-tree,.file-columns,.file-status,.viewer-toolbar,.viewer-location,.viewer-status,.viewer-metadata,.execution-toolbar,.execution-location,.terminal-toolbar,.terminal-location,.terminal-notice,.task-manager article,.connection-dialog code,.terminal-paste-dialog pre,.diagnostics-dialog pre){background:var(--raised);color:var(--secondary);border-color:var(--boundary)}
 #root :is(.profile-manager input,.profile-manager select,.connection-dialog input,.execution-dialog select,.file-toolbar input){background:var(--background);color:var(--text);border-color:var(--boundary)}
-#root :is(.file-row,.file-tree button,.window-title button,.profile-manager button,.task-manager button,.connection-dialog button,.viewer-toolbar button,.viewer-toolbar select,.execution-toolbar button,.terminal-toolbar button){color:var(--text);background:var(--surface);border-color:var(--boundary)}
-#root :is(.file-row.selected,.file-row:focus,.taskbar button.active){background:var(--selected);box-shadow:inset 3px 0 var(--accent)}
+#root :is(.profile-manager button,.task-manager button,.connection-dialog button,.viewer-toolbar button,.execution-toolbar button,.terminal-toolbar button){color:var(--text);background:var(--raised);border-color:transparent}
+#root :is(.file-row,.file-tree button,.window-title button){color:var(--text);background:transparent;border-color:transparent}
+#root :is(.file-row.selected,.file-row:focus,.taskbar button.active){background:var(--selected);box-shadow:none}
 #root :is(.file-row span,.file-tree button,.profile-list p,.profile-list article span,.profile-manager p,.task-manager p,.task-manager small,.viewer-pane p){color:var(--secondary)}
 #root :is(.viewer-viewport,.viewer-text,.execution-lines,.terminal-host){background:var(--background);color:var(--text);font-size:14px}#root .virtual-text-line>span{background:var(--raised);color:var(--secondary)}#root .viewer-text.all-selected pre{background:var(--selected)}
-#root :is(.file-warning,.desktop-notice,.storage-error,.error-panel){background:#3C2622;color:#E5A098;border-color:#E5A098}#root .execution-line.stderr code{color:#E5A098}#root .error-panel p{color:inherit}#root .session-state{color:#9CB89D!important}
-#root .profile-manager button.primary{background:var(--accent);color:var(--background);border-color:var(--accent)}
+#root :is(.file-warning,.desktop-notice,.storage-error,.error-panel){background:#3C2622;color:#E5A098;border-color:#744C43}#root .execution-line.stderr code{color:#E5A098}#root .error-panel p{color:inherit}#root .session-state{color:#9CB89D!important}
+#root .profile-manager button.primary{background:var(--accent);color:var(--background);border-color:transparent}
 #root .desktop-area{position:fixed;left:184px;top:48px;right:0;bottom:108px;overflow:hidden}.desktop-home{height:100%;width:100%;overflow:hidden}.console-workspace{position:fixed;left:184px;top:48px;right:0;bottom:60px}.console-workspace .terminal-pane{height:100%}
 #root [hidden]{display:none!important}.navigation-window{left:200px!important;top:60px!important;width:calc(100vw - 216px)!important;height:calc(100vh - 136px)!important;z-index:100000!important}.navigation-window .window-title button:nth-last-child(2),.navigation-window .window-title button:nth-last-child(3),.navigation-window .window-resize{display:none}
 #root .transfers{position:fixed;bottom:0;left:184px;right:0;height:60px;padding:0 16px;background:var(--sidebar);color:var(--text);border-color:var(--boundary);z-index:200000}#root .transfer-progress progress{accent-color:var(--accent)}#root .transfers button{color:var(--text)}#root .transfers :is(span,strong,.transfer-progress){font-size:13px}
@@ -57,3 +58,45 @@
 #root .file-row:not(.desktop-entry) .entry-folder{width:17px;height:12px;margin:0 7px 0 0;vertical-align:middle}.file-row:not(.desktop-entry) .entry-folder:before{height:4px;top:-3px;width:8px}.file-row:not(.desktop-entry) .entry-folder:after{inset:3px 0 0}#root .file-row:not(.desktop-entry) .entry-file{width:15px;height:18px;font-size:13px;margin-right:7px;vertical-align:middle}.workspace-empty{padding:35px}.directory-empty{padding:20px}.engine-state{bottom:8px;font-size:13px}#root .shutdown-overlay{background:#211A16ed;color:var(--text)}
 .console-workspace{display:flex;flex-direction:column}.console-workspace .terminal-pane{flex:1;min-height:0}.console-tabs{height:42px;display:flex;gap:5px;flex-shrink:0;align-items:center;padding:4px 8px;background:var(--raised)}.console-tabs button{font-size:13px!important}
 #root :is(.execution-line,.execution-line>span,.profile-manager label,.profile-manager .help,.key-picker,.settings-record,.viewer-toolbar strong,.viewer-empty,.engine-state output,.storage-notice){font-size:13px}.execution-line{line-height:20px}#root .profile-manager label{font-weight:500}#root .window-title strong{font-size:13px}.sidebar .brand img{object-fit:contain}
+
+/* Quiet separators and generous control insets; yellow marks state and actions. */
+#root :is(input:not([type=checkbox],[type=radio]),select,textarea:not(.xterm-helper-textarea)){
+  min-height:42px;height:auto;padding:10px 12px;line-height:1.4;
+  background:var(--background);border-color:var(--control-boundary);
+}
+#root select{padding-right:32px}
+#root :is(input,textarea)::placeholder{color:#AA9B89;opacity:1}
+#root input[type=checkbox],#root input[type=radio]{width:16px;height:16px;margin:0;flex-shrink:0}
+#root .profile-manager label{gap:9px;margin-bottom:18px}
+#root .internal-window .profile-manager form,#root .internal-window .profile-list{padding:24px}
+#root .profile-actions{gap:8px;flex-wrap:wrap}
+#root .profile-manager button.primary:hover:not(:disabled){background:#C5A54F}
+#root :is(.profile-list article,.settings-record,.transfer-candidates,.transfer-candidates article,.window-list-dialog li){border-color:var(--boundary)}
+#root .settings-pane>label{display:flex;align-items:center;gap:10px;padding:8px 0}
+#root .settings-pane h2{margin-top:0}
+#root .settings-pane h3{margin-top:28px;margin-bottom:12px}
+#root .internal-window{border-color:var(--boundary);box-shadow:0 16px 44px #100B0880}
+#root .internal-window.focused{border-color:#5B4A3C;box-shadow:0 20px 56px #100B0899}
+#root .window-title{height:48px;min-height:48px;gap:8px;padding:6px 12px}
+#root .window-title button{width:32px;height:32px;min-height:32px;padding:0;border:0;display:inline-grid;place-items:center;flex-shrink:0}
+#root .window-title button:last-child:hover{background:#713D34;color:#FFF1E8}
+#root .window-title strong{line-height:1.5;padding:0 4px}
+#root :is(.file-toolbar,.viewer-toolbar,.execution-toolbar,.terminal-toolbar){gap:10px;padding:12px 14px}
+#root .file-toolbar>input{min-height:38px;padding:8px 12px}
+#root .file-row:not(.desktop-entry){padding:0 14px;min-height:0;border:0;border-radius:0}
+#root .file-tree button{min-height:0;height:28px;padding:3px 10px;border:0;border-radius:4px}
+#root .file-tree button:hover:not(:disabled){background:var(--hover)}
+#root .desktop-entry{border-color:transparent;border-radius:10px}
+#root .sidebar nav button{background:transparent;border:0;border-radius:8px;padding:10px 16px}
+#root .sidebar nav button[aria-pressed=true]{background:var(--selected);color:var(--accent-text)}
+#root .sidebar nav button:hover:not(:disabled):not([aria-pressed=true]){background:var(--surface)}
+#root .mode-switch{padding:3px;background:var(--surface);border-radius:9px}
+#root .mode-switch button{min-height:32px;padding:5px 14px;line-height:20px;background:transparent;border:0}
+#root .mode-switch button[aria-pressed=true]{background:var(--selected);color:var(--accent-text)}
+#root .mode-switch button:hover:not(:disabled):not([aria-pressed=true]){background:var(--hover)}
+#root .console-tabs{height:46px;padding:5px 12px;gap:8px}
+#root .console-tabs button{min-height:34px;padding:6px 12px}
+#root dialog{padding:28px;border:1px solid var(--boundary);border-radius:12px;background:var(--surface);color:var(--text);box-shadow:0 24px 80px #100B08AA}
+#root dialog::backdrop{background:#120E0BAA}
+#root .window-menu,#root .terminal-context{padding:8px;border-color:var(--boundary);box-shadow:0 12px 30px #100B0880}
+#root .engine-state output{color:var(--secondary)}
