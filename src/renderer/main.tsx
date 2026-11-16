@@ -4,10 +4,12 @@ import { createRoot } from 'react-dom/client';
 import { runtimeSnapshotSchema, type DesktopBridge, type RuntimeSnapshot } from '../shared/contracts';
 import './style.css';
 import { DesktopShell } from './DesktopShell';
+import {useAppearance} from './appearance';
 
 declare global { interface Window { sshOS: DesktopBridge } }
 
 function App() {
+  useAppearance();
   const acknowledged=useRef<string|null>(null);
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const [error, setError] = useState(false);

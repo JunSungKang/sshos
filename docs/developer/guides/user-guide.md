@@ -48,6 +48,32 @@ After a timeout/disconnect, inspect Tasks for the last confirmed phase. `result_
 
 ## Settings and Exit
 
+Open Settings and use the `테마` selector under `테마와 색상`. The default is dark chocolate. The following presets are available:
+
+| Preset | Appearance |
+| --- | --- |
+| 다크초코 · 기본 | Dark chocolate and warm gold |
+| 아톰 | Graphite and blue |
+| 우분투 | Aubergine and orange |
+| CentOS | Purple and lime |
+| Kali Linux | Navy and blue |
+| 윈도우11 | Pale gray and blue |
+| 윈도우98 | Gray, navy title bars and square controls |
+| 윈도우XP | Blue title bars and green actions |
+| 고스트 | Misty white and lavender |
+| 도시 | Slate and teal |
+| 시골 | Linen and olive |
+| 리그오브레전드 | Deep blue and aged gold |
+| 스타크래프트 | Metal charcoal and green |
+| 드래곤볼 | Cream and orange |
+| 도라에몽 | Pale sky blue and blue |
+| 자연(강) | Dark river teal |
+| 자연(하늘) | Bright white and sky blue |
+| 자연(산) | Forest green and earth tones |
+| 자연(무인도) | Sand and sea green |
+
+These are original built-in visual interpretations. They require no theme downloads, external images or fonts. A successful save applies the palette to app-owned surfaces and open terminals without closing their SSH channels, then preserves the choice for the next launch. A failed save keeps the last acknowledged theme. Remote programs can still choose their own terminal colors, and native OS dialogs retain OS appearance.
+
 Settings manages saved trust and saved credential removal, redacted diagnostics and offline license notices. Review an export before sharing it. Local task records contain endpoint/path information and are not anonymous.
 
 Disconnect and app exit list affected transfers/executions/terminals and offer an explicit keep-or-stop choice. Closing the app is not a hidden tray-background mode. Reopening the app does not replay old work.

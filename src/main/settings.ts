@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { settingsViewSchema,type SettingsView } from '../shared/settings';
+import {themeIdSchema} from '../shared/themes';
 import { endpointFor,type StateRepository } from './persistence/state-repository';
 type Confirmation={kind:'trust'|'secret';endpoint:string;fingerprint?:string;name?:string;username?:string};
 /** The operation lock also gates connect, trust approval and profile edits in main. */
@@ -14,6 +15,7 @@ export class SettingsController {
   if(this.locked)throw new Error('REQUEST_BUSY');const repo=this.repository();this.locked=true;
   try {
    if(action==='settings:setHidden'){const value=z.boolean().parse(payload);await repo.store.update(state=>{this.repository();if(!state)throw new Error('STORAGE_FAILED');return {...state,settings:{...state.settings,showHiddenFiles:value}};});return;}
+   if(action==='settings:setTheme'){const theme=themeIdSchema.parse(payload);await repo.store.update(state=>{this.repository();if(!state)throw new Error('STORAGE_FAILED');return {...state,settings:{...state.settings,theme}};});return;}
    if(action==='settings:update'){const settings=z.object({language:z.literal('ko'),saveSecrets:z.boolean()}).strict().parse(payload);await repo.store.update(state=>{this.repository();if(!state)throw new Error('STORAGE_FAILED');return {...state,settings:{...state.settings,...settings}};});return;}
    if(action==='settings:removeTrust'){
     const endpoint=z.string().min(1).max(300).parse(payload),old=repo.snapshot().hostTrust.find(row=>row.endpoint===endpoint);if(!old)throw new Error('INPUT_INVALID');

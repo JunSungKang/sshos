@@ -26,8 +26,14 @@ Read-only text/image viewers and explicit execution-output windows use the exist
 
 ## Appearance and accessibility
 
-The app uses dark chocolate surfaces, dark yellow accents and warm light text. The original bow SVG is stored in src/renderer/assets; a local PNG is served through the restricted app protocol. ICO/ICNS resources are in build/icons. Native file dialogs follow OS appearance and source image pixels retain their original colors.
+Dark chocolate is the default. The Settings theme selector exposes eighteen additional original palettes, including light and dark options. The original bow SVG is stored in src/renderer/assets; a local PNG is served through the restricted app protocol. ICO/ICNS resources are in build/icons. Native file dialogs follow OS appearance and source image pixels retain their original colors.
 
-Routine buttons use filled surfaces without accent outlines. Subdued brown separators define panes, while neutral input outlines identify editable fields. Yellow is reserved for primary actions, selected labels, file icons, progress and keyboard focus. Text controls and window titles have explicit inner padding; virtual file-row heights and the xterm input geometry remain independently owned.
+The shared spacing rhythm is 8/12/16/24/32/40 px. Controls use 12–16 px gaps; sections use 24–32 px padding and separation. Settings groups appearance, file display, saved trust, saved credentials and diagnostics into separate sections. Desktop uses 144 px cells containing 120 px icon targets, leaving 24 px between neighboring targets. Explorer rows use 42 px and tree rows use 36 px; virtualization calculations and DOM geometry use the same dimensions.
+
+Routine buttons use filled surfaces without accent outlines. Quiet separators define panes, while neutral input outlines identify editable fields. The selected palette's accent marks primary actions, selected labels, file icons, progress and keyboard focus. The Windows 98 preset deliberately adds classic beveled controls. Text controls and window titles have explicit inner padding; xterm input geometry remains independently owned.
+
+`src/shared/themes.ts` owns the finite theme IDs, trusted color definitions, derived readable foregrounds and terminal palettes. Main validates `settings:setTheme`, serializes the preference through the existing JSON writer and broadcasts `settings:changed` only after success. Missing legacy IDs default to chocolate; invalid saved or requested IDs are rejected. Renderer applies only the trusted palette for the acknowledged ID. The shared preference revision prevents an older initial GET from overwriting a later update.
+
+Existing xterm instances receive `options.theme` changes. They retain their channels, input queues, output and restore barriers. A current-theme ref also supplies explicitly recreated displays, so an intentional display reset does not revert to the initial palette. Theme switching introduces no SSH command, network request, database, additional runtime or downloaded theme package.
 
 App controls retain visible keyboard focus, labels, reduced-motion behavior and distinct text/icon status. Automated contrast and fixture screenshots are separate from target screen-reader, IME and display-scaling acceptance. Native Windows/macOS and real Ubuntu/OpenSSH checks must be reported as untested when not performed.
