@@ -1,4 +1,6 @@
 import { errorCodeOf } from '../../shared/errors';
+import {createHash,type Hash} from 'node:crypto';
+import {textBaselineSchema,type TextBaseline} from '../../shared/viewers/editor';
 import { posix } from 'node:path';
 import type { Client, Stats } from 'ssh2';
 import { remotePathSchema } from '../../shared/files';
@@ -15,6 +17,7 @@ type RecordEntry=ReadSpec & {
   channel:ReadChannel|null;control:ControlAccess|null;handle:Buffer|null;lease:{release():void}|null;
   timer:ReturnType<typeof setTimeout>|null;abortListeners:Set<(error:Error)=>void>;
   busy:boolean;lastSequence:number;lastFrame:ViewerFrame|null;offset:number;
+  hash:Hash;sha256:string|null;stat:Stats|null;
 };
 const fixedError=errorCodeOf;
 export class ViewerReader {
@@ -26,7 +29,7 @@ export class ViewerReader {
     const previous=this.entries.get(spec.viewerId);
     if (previous && (previous.serverId !== spec.serverId || previous.generation !== spec.generation || previous.readGeneration>=spec.readGeneration)) throw new Error('TOKEN_EXPIRED');
     if (!previous && this.entries.size>=10) throw new Error('VIEW_LIMIT');if (previous) this.cancel(spec.viewerId,previous.readGeneration);
-    const entry:RecordEntry={...spec,state:'queued',errorCode:null,metadata:null,channel:null,control:null,handle:null,lease:null,timer:null,abortListeners:new Set(),busy:false,lastSequence:-1,lastFrame:null,offset:0};
+    const entry:RecordEntry={...spec,state:'queued',errorCode:null,metadata:null,channel:null,control:null,handle:null,lease:null,timer:null,abortListeners:new Set(),busy:false,lastSequence:-1,lastFrame:null,offset:0,hash:createHash('sha256'),sha256:null,stat:null};
     this.entries.set(spec.viewerId,entry);void this.prepare(entry).catch(error => this.fail(entry,fixedError(error)));
   }
   private identity(entry:RecordEntry,sequence:number) {return {viewerId:entry.viewerId,readGeneration:entry.readGeneration,sequence};}
@@ -65,7 +68,7 @@ export class ViewerReader {
       if (!stat.isFile() || !Number.isSafeInteger(stat.size) || stat.size<0 || !Number.isSafeInteger(stat.mtime) || stat.mtime<0) throw new Error('PATH_UNSUPPORTED');
       const limit=entry.kind === 'text' ? TEXT_LIMIT : IMAGE_LIMIT;
       if (entry.kind !== 'probe' && stat.size>limit) throw new Error('VIEW_LIMIT');
-      entry.metadata={path:entry.path,size:stat.size,mtime:stat.mtime,readAt:null};entry.state='reading';
+      entry.stat=stat;entry.metadata={path:entry.path,size:stat.size,mtime:stat.mtime,readAt:null};entry.state='reading';
     } catch (error) {if (!entry.channel) {lease.release();entry.lease=null;}throw error;}
   }
   private entry(serverId:string,generation:number,viewerId:string,readGeneration:number):RecordEntry {
@@ -107,15 +110,21 @@ export class ViewerReader {
     const [first,second]=await this.observed(entry,Promise.all([range(0,firstLength),range(firstLength,secondLength)]));
     if (first<firstLength && second>0) throw new Error('SOURCE_CHANGED');
     const filled=first+second;entry.offset+=filled;if (entry.offset>limit) throw new Error('VIEW_LIMIT');
+    entry.hash.update(bytes.subarray(0,filled));
     const eof=first<firstLength || second<secondLength || entry.kind === 'probe' && entry.offset === limit;
     if (eof) {
       const final=await this.observed(entry,controlCall<Stats>(control,done => sftp.fstat(handle,done)));
       if (!final.isFile() || final.size !== metadata.size || final.mtime !== metadata.mtime || entry.offset !== Math.min(metadata.size,entry.kind === 'probe' ? 4096 : metadata.size)) throw new Error('SOURCE_CHANGED');
       await this.observed(entry,controlCall<void>(control,done => sftp.close(handle,error => done(error,undefined))));entry.handle=null;
-      entry.metadata={...metadata,readAt:new Date().toISOString()};entry.state='completed';this.clearDeadline(entry);entry.channel?.cancel();
+      entry.sha256=entry.hash.digest('hex');entry.metadata={...metadata,readAt:new Date().toISOString()};entry.state='completed';this.clearDeadline(entry);entry.channel?.cancel();
     }
     const identity=this.identity(entry,sequence);
     return filled ? {...identity,status:'chunk',metadata:entry.metadata!,bytes:new Uint8Array(bytes.buffer,bytes.byteOffset,filled)} : {...identity,status:'end',metadata:entry.metadata!};
+  }
+  baseline(serverId:string,generation:number,viewerId:string,readGeneration:number):TextBaseline {
+    const entry=this.entry(serverId,generation,viewerId,readGeneration);
+    if(entry.kind!=='text' || entry.state!=='completed' || !entry.sha256 || !entry.stat)throw new Error('TOKEN_EXPIRED');
+    return textBaselineSchema.parse({path:entry.path,parent:entry.parent,sha256:entry.sha256,size:entry.stat.size,mtime:entry.stat.mtime,mode:entry.stat.mode,uid:entry.stat.uid,gid:entry.stat.gid});
   }
   cancel(viewerId:string,readGeneration:number):void {
     const entry=this.entries.get(viewerId);if (!entry || entry.readGeneration !== readGeneration) return;

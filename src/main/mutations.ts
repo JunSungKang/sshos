@@ -142,8 +142,8 @@ export class MutationController {
       if (!input || input.deadline<performance.now()) throw new Error('TOKEN_EXPIRED'); const row=this.snapshots().find(row => row.taskId === input.id);
       if ((row?.updatedAt ?? null) !== input.updatedAt || this.isActive(input.id) || this.otherActive(input.id)) throw new Error('TOKEN_EXPIRED');
       const repo=this.repository();
-      if (input.action === 'forget') {if(row && row.kind !== 'file_mutation')await this.closeOtherRecord(row);await repo.forget(input.id);}
-      else { await repo.acknowledge(input.id); if (row?.kind === 'file_mutation') await this.gateway.request({action:'mutation:finish',serverId:row.serverId,generation:row.generation,taskId:input.id,keepRestriction:false}).catch(() => {});else if (row) await this.closeOtherRecord(row); }
+      if (input.action === 'forget') {if(row && (row.kind !== 'file_mutation' || row.operation==='edit'))await this.closeOtherRecord(row);await repo.forget(input.id);}
+      else { await repo.acknowledge(input.id); if (row?.kind === 'file_mutation' && row.operation!=='edit') await this.gateway.request({action:'mutation:finish',serverId:row.serverId,generation:row.generation,taskId:input.id,keepRestriction:false}).catch(() => {});else if (row) await this.closeOtherRecord(row); }
       this.current.delete(input.id); return;
     }
     throw new Error('INPUT_INVALID');

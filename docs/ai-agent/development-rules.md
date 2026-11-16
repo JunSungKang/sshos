@@ -16,7 +16,7 @@ Last updated: 2026-11-15
 - Keep named preload APIs, strict schemas, sender validation, resource capabilities and generation/epoch identity. No generic local exec/fs/net bridge.
 - Verify the pinned host key on every control, transfer and execution socket before authentication. Do not fall back to another authentication method.
 - Persist intent before remote mutation or exec/PTY creation. Treat dispatch uncertainty conservatively and never replay a previous operation automatically.
-- Preserve read-back verification, exclusive hardlink finalization, file/path locks and finalization cancellation barriers.
+- Preserve read-back verification, exclusive hardlink finalization, file/path locks and finalization cancellation barriers for existing mutations/transfers. Explicit text Save is a separate authorized replacement: bind the completed read digest and viewer generation, durably record intent before temporary creation/publication, verify content and POSIX owner/mode, use the advertised OpenSSH POSIX rename extension only, and retain uncertain outcomes without replay. No draft text belongs in JSON records or logs.
 - A window, SSH channel, SSH socket and remote process have separate lifetimes. A local close is not proof of remote termination.
 - Profile identity/auth changes and deletion must remain blocked by live connections or unresolved work; recheck inside serialized writes and reserve new authentication through storage ACK.
 - Historical logs and receipts are not anonymous. Do not copy endpoint/path information into default diagnostics.

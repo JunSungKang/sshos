@@ -65,7 +65,7 @@ export class ReceiptRepository {
     if(this.pendingRevision!==this.version){this.pendingRows=[...this.stores.values()].map(store=>store.snapshot()).filter(unresolved);this.pendingRevision=this.version;}
     const pending=this.pendingRows;
     if (pending.length>=100) throw new Error('UNRESOLVED_LIMIT');
-    if (pending.some(row => (row.kind === 'file_transfer' || row.kind === 'file_mutation') && row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
+    if (pending.some(row => (row.kind === 'file_transfer' || row.kind === 'file_mutation') && row.serverId === serverId && claimsConflict(claims,[...new Set((row.kind === 'file_mutation' ? [row.source,row.destination,row.tempPath ?? null] : row.direction === 'upload' ? [row.destination,row.tempPath] : [row.source]).filter((path):path is string => path !== null))].map(path => ({path,mode:'write'}))))) throw new Error('RESULT_UNKNOWN');
     if (localClaims.length && pending.some(row => row.kind === 'file_transfer' && claimsConflict(localClaims,transferClaims(row).local))) throw new Error('RESULT_UNKNOWN');
   }
   async save(receipt:FileReceipt):Promise<void> {
@@ -73,7 +73,7 @@ export class ReceiptRepository {
       if (this.faulted) throw new Error('STORAGE_FAILED');
       const parsed=fileReceiptSchema.parse(receipt);if (parsed.kind === 'file_transfer' && parsed.phase === 'finalize_intent_pending') throw new Error('INPUT_INVALID');let store=this.stores.get(receipt.taskId);
       if (store) {
-        const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.createdAt] : row.kind === 'file_transfer' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.executionId,row.terminalId,row.source,row.cwd,row.createdAt];
+        const previous=store.snapshot();const immutable=(row:FileReceipt) => row.kind === 'file_mutation' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.operation,row.source,row.destination,row.parent,row.sourceInitialStat,row.tempPath,row.createdAt] : row.kind === 'file_transfer' ? [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.direction,row.source,row.destination,row.tempPath,row.remoteParent,row.localParent,row.sourceInitialStat,row.totalBytes,row.createdAt] : [row.kind,row.taskId,row.serverId,row.generation,row.backendEpoch,row.endpointSnapshot,row.hostKeyFingerprint,row.executionId,row.terminalId,row.source,row.cwd,row.createdAt];
         if (JSON.stringify(immutable(previous)) !== JSON.stringify(immutable(parsed))) throw new Error('INPUT_INVALID');
         if (terminal(previous) && previous.phase !== parsed.phase) throw new Error('INPUT_INVALID');
       }

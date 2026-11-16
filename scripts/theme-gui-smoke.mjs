@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import {join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {themes} from '../dist/shared/themes.js';
+import {themes,contrastRatio} from '../dist/shared/themes.js';
 import {root,localPath,runtimeEnvironment,closeTestApplication} from './environment.mjs';
 import {startSSHFixture} from './fixtures/ssh-server.mjs';
 
@@ -32,6 +32,7 @@ try{
   await page.getByRole('button',{name:'Settings',exact:true}).click();const select=page.getByLabel('테마',{exact:true});await expect(select.locator('option')).toHaveCount(themes.length);await select.selectOption(theme.id);
   await expect(page.locator('html')).toHaveAttribute('data-theme',theme.id);await expect(page.locator('html')).toHaveAttribute('data-color-mode',theme.scheme);assert.equal((await page.evaluate(()=>window.sshOS.settings.get())).theme,theme.id);
   assert.equal(await page.locator('.desktop').evaluate(node=>getComputedStyle(node).backgroundColor),rgb(theme.colors.background));
+  const tabColors=await page.locator('.console-workspace:visible .console-tab[data-active=true] .console-tab-close').evaluate(node=>({text:getComputedStyle(node).color,background:getComputedStyle(node.parentElement).backgroundColor}));const hex=value=>'#'+value.match(/\d+/g).slice(0,3).map(x=>Number(x).toString(16).padStart(2,'0')).join('');assert.ok(contrastRatio(hex(tabColors.text),hex(tabColors.background))>=4.5);
   await page.screenshot({path:join(pictures,`${theme.id}-settings.png`)});
   const wallpaper=await page.locator('.desktop').evaluate(node=>getComputedStyle(node).backgroundImage);assert.ok(wallpaper.includes(`/assets/${theme.id}-`));assert.equal(await page.locator('.theme-preview-scene').evaluate(node=>getComputedStyle(node).backgroundImage),wallpaper);
   assert.equal(await page.evaluate(async image=>{const source=new Image();source.src=image.slice(5,-2);try{await source.decode();return source.naturalWidth===1600 && source.naturalHeight===1000;}catch{return false;}},wallpaper),true);

@@ -8,7 +8,7 @@ import type { FileController } from './files';
 import type { DesktopController } from './desktop';
 import type { EngineGateway } from './engine-gateway';
 
-type Resource={token:string;viewerId:string;serverId:string;generation:number;epoch:string;sessionToken:string;path:string;parent:string;name:string;serverName:string;endpoint:string;kind:'probe'|'text'|'image';windowId:string|null;ownerWindowId:string|null;readGeneration:number;nextSequence:number;pending:boolean;restarting:boolean;readState:ViewerDescriptor['readState'];lastReadAt:string|null;errorCode:string|null};
+type Resource={token:string;viewerId:string;serverId:string;generation:number;epoch:string;sessionToken:string;path:string;parent:string;name:string;serverName:string;endpoint:string;kind:'probe'|'text'|'image';windowId:string|null;ownerWindowId:string|null;readGeneration:number;nextSequence:number;pending:boolean;restarting:boolean;readState:ViewerDescriptor['readState'];lastReadAt:string|null;errorCode:string|null;editing?:boolean};
 export class ViewerController {
   private readonly resources=new Map<string,Resource>();
   constructor(private readonly files:FileController,private readonly connections:ConnectionController,private readonly desktop:DesktopController,private readonly gateway:EngineGateway) {
@@ -17,6 +17,11 @@ export class ViewerController {
     });
   }
   private resource(token:string):Resource {const resource=this.resources.get(token);if (!resource) throw new Error('TOKEN_EXPIRED');return resource;}
+  windowForToken(token:string){return this.resource(token).windowId;}
+  editTarget(token:string,readGeneration:number){const row=this.resource(token);if(row.kind!=='text' || !row.editing || row.readGeneration!==readGeneration || row.readState!=='complete' || !row.windowId)throw new Error('TOKEN_EXPIRED');this.desktop.requireWindow(row.windowId,'text');return row;}
+  get editingCount(){return [...this.resources.values()].filter(row=>row.editing).length;}
+  isEditingWindow(id:string){return [...this.resources.values()].some(row=>row.windowId===id && row.editing);}
+  discardEditing(id:string){this.desktop.requireWindow(id,'text');const row=[...this.resources.values()].find(value=>value.windowId===id);if(!row || row.kind!=='text')throw new Error('TOKEN_EXPIRED');row.editing=false;}
   private selected(entryToken:string,kind:Resource['kind']):Resource {
     const entry=this.files.resolveEntry(entryToken);if (entry.type !== 'file') throw new Error('PATH_UNSUPPORTED');
     const {serverId,generation,sessionToken,windowId}=entry.browser;const identity=this.connections.sessionIdentity(serverId,generation);
@@ -37,6 +42,7 @@ export class ViewerController {
   }
   interruptRenderer():void {
     for (const row of this.resources.values()) {
+      row.editing=false;
       if (row.kind === 'probe') this.resources.delete(row.token);
       else if (row.readState === 'pending') {row.readState='interrupted';row.errorCode='REQUEST_CANCELLED';}
       void this.stop(row);
@@ -61,6 +67,7 @@ export class ViewerController {
     } finally {if (resource.readGeneration === readGeneration) resource.pending=false;}
   }
   async handle(action:string,payload:unknown):Promise<unknown> {
+    if(action==='viewer:setEditing'){const input=z.object({token:z.uuid(),readGeneration:z.int().positive(),active:z.boolean()}).strict().parse(payload),row=this.resource(input.token);if(row.kind!=='text' || row.readGeneration!==input.readGeneration || row.readState!=='complete')throw new Error('TOKEN_EXPIRED');if(input.active)this.connections.sessionCapability(row.sessionToken);row.editing=input.active;return;}
     if (action === 'viewer:probe') {
       if ([...this.resources.values()].filter(row => row.kind === 'probe').length>=6) throw new Error('VIEW_LIMIT');
       const resource=this.selected(z.uuid().parse(payload),'probe');this.resources.set(resource.token,resource);
@@ -81,6 +88,7 @@ export class ViewerController {
     if (action === 'viewer:next') {const input=z.object({token:z.uuid(),readGeneration:z.int().min(1),sequence:z.int().nonnegative()}).strict().parse(payload);return this.next(input.token,input.readGeneration,input.sequence);}
     if (action === 'viewer:reread') {
       const resource=this.resource(z.uuid().parse(payload));if (resource.kind === 'probe') throw new Error('INPUT_INVALID');
+      if(resource.editing)throw new Error('TEXT_UNSAVED');
       const capability=this.connections.sessionCapability(resource.sessionToken);if (capability.serverId !== resource.serverId || capability.generation !== resource.generation || resource.epoch !== this.gateway.epoch) throw new Error('TOKEN_EXPIRED');
       if (resource.restarting) throw new Error('REQUEST_BUSY');resource.restarting=true;resource.readState='interrupted';
       try {await this.stop(resource);if (this.resources.get(resource.token) !== resource) throw new Error('TOKEN_EXPIRED');this.connections.sessionCapability(resource.sessionToken);resource.readGeneration++;resource.nextSequence=0;resource.pending=false;resource.readState='pending';resource.errorCode=null;await this.start(resource);return this.descriptor(resource);}

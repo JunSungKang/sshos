@@ -16,6 +16,7 @@ import { TerminalSessions } from './terminal/sessions';
 import { GUIExecutions } from './execution/gui';
 import { WorkerStorageRecovery } from './storage-recovery';
 import { TransferInspector } from './transfers/inspect';
+import {TextWriter} from './viewers/text-writer';
 
 const epoch = z.uuid().parse(process.argv[2]);
 // A user action gets one resolver-selected address, never silent family retries.
@@ -41,6 +42,7 @@ probes=new SSHProbe(epoch,(serverId,generation)=>sessions.probeAccess(serverId,g
 readers=new ViewerReader((serverId,generation) => sessions.readClient(serverId,generation));
 const files = new FileBrowser((serverId, generation) => sessions.control(serverId, generation));
 const locks=new PathLocks();
+const textWriter=new TextWriter((serverId,generation)=>sessions.control(serverId,generation,true),locks,receiptWriter);
 let transferSequence=0;
 transfers=new TransferCoordinator(epoch,sessions,locks,receiptWriter,snapshot => process.parentPort?.postMessage({type:'transfer',backendEpoch:epoch,sequence:++transferSequence,snapshot}));
 executions=new GUIExecutions(epoch,sessions,receiptWriter,snapshot=>process.parentPort?.postMessage({type:'execution',backendEpoch:epoch,sequence:++executionSequence,snapshot}));
@@ -53,7 +55,10 @@ const completed = new Map<string, EngineEvent>();
 async function execute(request: EngineRequest): Promise<EngineEvent> {
   try {
     let result: unknown;
-    if(request.action==='probe:run')result=await probes!.run({serverId:request.serverId,sessionGeneration:request.generation,backendEpoch:epoch,probeEpoch:request.probeEpoch,probeId:request.probeId,transferActive:request.transferActive});
+    if(request.action==='editor:prepare'){const baseline=readers!.baseline(request.serverId,request.generation,request.viewerId,request.readGeneration);result=await sessions.withMetadata(request.serverId,request.generation,()=>textWriter.prepare(request.serverId,request.generation,request.taskId,baseline,request.tempPath));}
+    else if(request.action==='editor:save'){try{result=await sessions.withMetadata(request.serverId,request.generation,()=>textWriter.save(request.serverId,request.generation,request.receipt,request.bytes));}finally{request.bytes.fill(0);}}
+    else if(request.action==='editor:finish')textWriter.finish(request.serverId,request.generation,request.taskId,request.keepRestriction);
+    else if(request.action==='probe:run')result=await probes!.run({serverId:request.serverId,sessionGeneration:request.generation,backendEpoch:epoch,probeEpoch:request.probeEpoch,probeId:request.probeId,transferActive:request.transferActive});
     else if(request.action==='probe:invalidate')probes!.invalidate(request.serverId,request.generation,request.probeEpoch);
     else if(request.action === 'pty:start') {if(request.receipt.serverId !== request.serverId || request.receipt.generation !== request.generation)throw new Error('INPUT_INVALID');result=terminals!.start(request.receipt);}
     else if(request.action === 'pty:freeze')result=terminals!.freeze(request.serverId,request.generation,request.terminalId,request.restoreToken,request.clear);

@@ -33,7 +33,7 @@ Renderer cannot import main or worker internals. Shared modules cannot acquire O
 - Every operation binds its serverId, sessionGeneration, backendEpoch and resource identity. Current focus never retargets existing work.
 - Every SSH socket verifies host trust and uses the selected authentication method once. RSA authentication never signs SHA-1.
 - Main owns local capabilities and JSON persistence. No renderer- or worker-owned state-file writer.
-- No overwrite, shell fallback for file mutations, automatic permission elevation or implicit execution on file open.
+- Ordinary file mutations and transfers never overwrite. Explicit text Save alone may replace its bound regular UTF-8 file using durable intent, a verified same-directory temporary file, optimistic content/stat conflict checks and OpenSSH POSIX rename. Never use shell fallback, automatic permission elevation or implicit execution on file open. SFTP does not provide atomic compare-and-swap against external writers.
 - No automatic reconnect, resume, cleanup scan or replay after a timeout/crash. Preserve `result_unknown`, partial results and cleanup uncertainty.
 - No automatic remote GUI, search, AI, telemetry, crash upload or updater. The product's automatic network activity is selected SSH endpoints and DNS resolution.
 - GUI exec and PTY share bounded channel ownership; release reservations only after actual channel/socket closure.
