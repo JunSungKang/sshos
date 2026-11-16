@@ -1,3 +1,4 @@
+import {HOME_COMMAND} from '../../src/worker/connection/home';
 import { afterEach,describe,expect,it } from 'vitest';
 import { mkdtemp,mkdir,rm,writeFile,readFile,lstat,symlink } from 'node:fs/promises';
 import { resolve,join } from 'node:path';
@@ -36,7 +37,7 @@ describe('actual loopback SFTP and workspace-local filesystem transfer ports',()
       expect(await readFile(record.finalPath)).toEqual(bytes);expect((await lstat(record.finalPath)).mode&0o777).toBe(0o600);await expect(lstat(record.tempPath)).rejects.toMatchObject({code:'ENOENT'});expect(record.result.snapshot.streamSha256).toBe(createHash('sha256').update(bytes).digest('hex'));
       expect(f.sessions.snapshots()[0]?.status).toBe('connected');expect(f.repo.snapshots().find(row => row.taskId === record.row.taskId)?.phase).toBe('completed');
     }
-    expect(f.remote.metrics.authenticationRequests).toBe(5);expect(f.remote.metrics.commands).toEqual([]);
+    expect(f.remote.metrics.authenticationRequests).toBe(5);expect(f.remote.metrics.commands.filter((command:string)=>command!==HOME_COMMAND)).toEqual([]);
   });
   it('preserves uploaded temp and control connection if hardlink is unsupported',async () => {
     const f=await fixture();const record=await f.run('upload','unsupported.bin',Buffer.from('original'));

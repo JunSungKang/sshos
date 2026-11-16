@@ -41,7 +41,7 @@ export class FileBrowser {
   close(browserId: string): void { this.snapshots.delete(browserId); if (this.reading.has(browserId)) this.cancelled.add(browserId); }
   async list(serverId: string, generation: number, browserId: string, path: string): Promise<FilePage> {
     if (this.reading.has(browserId)) throw new Error('REQUEST_BUSY');
-    if (!this.snapshots.has(browserId) && this.snapshots.size + this.reading.size >= 6) throw new Error('WINDOW_LIMIT');
+    if (!this.snapshots.has(browserId) && this.snapshots.size + this.reading.size >= 9) throw new Error('WINDOW_LIMIT');
     const control = this.control(serverId, generation);
     this.reading.add(browserId); this.cancelled.delete(browserId);
     let handle: Buffer | undefined;

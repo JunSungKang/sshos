@@ -1,3 +1,4 @@
+import {resolveAccountHome} from './home';
 import { errorCodeOf } from '../../shared/errors';
 import { Client, type SFTPWrapper } from 'ssh2';
 import { MetadataQueue } from './metadata-queue';
@@ -146,6 +147,7 @@ export class SessionManager {
       this.changed(entry, { os: identifyOS(bytes.subarray(0, offset)) });
     } catch (error) { if (error instanceof Error && error.message === 'IO_TIMEOUT') throw error; this.changed(entry, { os: 'unknown' }); }
     finally { if (handle) await this.timed<void>(done => sftp.close(handle!, error => done(error, undefined))); }
+    if(entry.snapshot.os==='supported'){try{const home=await resolveAccountHome(entry.client);const canonical=await this.timed<string>(done=>sftp.realpath(home,done));const stat=await this.timed<import('ssh2').Stats>(done=>sftp.lstat(canonical,done));if(!stat.isDirectory() || stat.isSymbolicLink())throw new Error('PATH_UNSUPPORTED');this.changed(entry,{homePath:canonical});}catch{this.changed(entry,{homePath:null});}}
   }
   confirmOS(serverId: string, generation: number): void {
     const entry = this.entries.get(serverId);

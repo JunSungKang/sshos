@@ -11,12 +11,14 @@ type Directory = { browser: Browser; path: string };
 export type EntryCapability = Directory & { rawName: string; type: 'file' | 'directory'; listedAt: string };
 export class FileController {
   private readonly browsers = new Map<string, Browser>();
+  private readonly initialDirectories=new Map<string,string>();
   private readonly directories = new Map<string, Directory>();
   private readonly entries = new Map<string, EntryCapability>();
   private readonly pages = new Map<string, Directory & { snapshotId: string; nextOffset: number | null; busy: boolean }>();
   constructor(private readonly desktop: DesktopController, private readonly connections: ConnectionController, private readonly gateway: EngineGateway) {}
+  private fileWindow(id:string){const row=this.desktop.findWindow(id);if(!row || !['files','home'].includes(row.kind))throw new Error('TOKEN_EXPIRED');return row;}
   private check(browser: Browser, requireConnection = true): void {
-    const window = this.desktop.requireWindow(browser.windowId, 'files');
+    const window = this.fileWindow(browser.windowId);
     if (window.serverId !== browser.serverId || window.sessionGeneration !== browser.generation) throw new Error('TOKEN_EXPIRED');
     if (requireConnection) { const session = this.connections.sessionCapability(browser.sessionToken); if (session.serverId !== browser.serverId || session.generation !== browser.generation) throw new Error('TOKEN_EXPIRED'); }
   }
@@ -36,7 +38,7 @@ export class FileController {
     const { browser, path } = directory; this.check(browser);
     const response = filePageSchema.parse(await this.gateway.request({ action: 'file:list', serverId: browser.serverId, generation: browser.generation, browserId: browser.browserId, path }));
     this.check(browser);
-    browser.cached.clear(); browser.cached.set(0, response);
+    browser.cached.clear(); browser.cached.set(0, response);if(this.fileWindow(browser.windowId).kind==='files')this.initialDirectories.set(browser.windowId,response.path);
     return this.publish(browser, response);
   }
   private publish(browser: Browser, response: FilePage): DirectoryPage {
@@ -58,20 +60,26 @@ export class FileController {
   }
   async closeWindow(id: string): Promise<void> {
     const browser = this.browsers.get(id); if (!browser) return;
-    this.browsers.delete(id);
+    this.browsers.delete(id);this.initialDirectories.delete(id);
     for (const map of [this.directories, this.entries, this.pages]) for (const [token, value] of map) if (value.browser === browser) map.delete(token);
     await this.gateway.request({ action: 'file:close', browserId: browser.browserId, serverId: browser.serverId, generation: browser.generation });
   }
   async handle(action: string, payload: unknown): Promise<unknown> {
+    if(action==='file:openFolder'){
+      const directory=this.resolveDirectory(z.uuid().parse(payload));
+      for(const [id,path] of this.initialDirectories){const row=this.desktop.findWindow(id);if(path===directory.path && row?.serverId===directory.browser.serverId && row.sessionGeneration===directory.browser.generation)return row;}
+      const row=this.desktop.handle('desktop:registerWindow',{kind:'files',resourceToken:directory.browser.sessionToken}) as import('../shared/windows').WindowModel;
+      this.initialDirectories.set(row.windowId,directory.path);return row;
+    }
     if (action === 'file:open') {
-      const id = z.uuid().parse(payload); const window = this.desktop.requireWindow(id, 'files');
+      const input=typeof payload==='string'?{id:z.uuid().parse(payload),start:false}:z.object({id:z.uuid(),start:z.literal(true)}).strict().parse(payload);const id=input.id; const window = this.fileWindow(id);
       const existing = this.browsers.get(id); const cached = existing?.cached.get(0);
       if (existing && cached) { this.check(existing, false); return this.publish(existing, cached); }
       const session = this.connections.views().find(row => row.serverId === window.serverId && row.generation === window.sessionGeneration);
       if (!session?.sessionToken || !session.initialPath || session.sftp !== 'available') throw new Error('SFTP_UNAVAILABLE');
       let browser = this.browsers.get(id);
       if (!browser) { browser = { windowId: id, browserId: window.resourceId!, serverId: session.serverId, generation: session.generation, sessionToken: session.sessionToken, activePage: null, cached: new Map() }; this.browsers.set(id, browser); }
-      return this.list({ browser, path: session.initialPath });
+      const path=this.initialDirectories.get(id) ?? (window.kind==='home' && !input.start ? session.homePath:session.initialPath);if(!path)throw new Error('PATH_UNSUPPORTED');return this.list({ browser, path });
     }
     if (action === 'file:list') { const value = this.directories.get(z.uuid().parse(payload)); if (!value) throw new Error('TOKEN_EXPIRED'); return this.list(value); }
     if (action === 'file:enter') {

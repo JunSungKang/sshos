@@ -18,7 +18,7 @@ try {
   await page.getByTestId('engine-state').filter({hasText:'연결 엔진 준비됨'}).waitFor();
   const profileId=await page.evaluate(async port=>{const profile=await window.sshOS.profile.create({name:'전송 GUI 검사',host:'127.0.0.1',port,username:'fixture',authentication:'password'});await window.sshOS.session.connect(profile.id,{password:'test-only',saveSecret:false});return profile.id;},fixture.port);
   await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();await expect.poll(()=>page.evaluate(async()=>(await window.sshOS.session.list()).sessions.some(row=>row.sessionToken !== null && row.os==='supported' && row.sftp==='available'))).toBe(true);
-  await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();const explorer=page.getByRole('region',{name:'파일 · 전송 GUI 검사',exact:true});await explorer.getByRole('listitem').filter({hasText:'conflict.txt'}).waitFor();
+  await page.getByRole('button',{name:'sFTP',exact:true}).click();const explorer=page.getByRole('region',{name:'파일 · 전송 GUI 검사',exact:true});await explorer.getByRole('listitem').filter({hasText:'conflict.txt'}).waitFor();
   // Replace the OS picker only in this test main process; production has no test API.
   await application.evaluate(({dialog},paths)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:paths});},[first,second]);
   await explorer.getByRole('button',{name:'업로드',exact:true}).click();let modal=page.getByRole('dialog',{name:'파일 전송 확인'});
@@ -35,7 +35,7 @@ try {
   await expect.poll(()=>page.evaluate(async()=>(await window.sshOS.transfer.shelf()).active.length)).toBe(0);await page.evaluate(()=>window.sshOS.settings.retryStorage());
   const rows=await page.evaluate(()=>window.sshOS.task.list(0));assert.equal(JSON.stringify(rows).includes(nativeRoot),false);assert.equal(fixture.metrics.authenticationRequests,3);
   const uploadTask=tasks.locator('article').filter({hasText:'/home/fixture/upload.bin'});await uploadTask.getByRole('button',{name:'상세',exact:true}).click();const detail=page.getByRole('dialog',{name:'작업 상세'});await detail.getByText('내용 확인 4194321 / 4194321 byte',{exact:false}).waitFor();assert.equal((await detail.textContent()).includes(nativeRoot),false);await detail.getByRole('button',{name:'닫기',exact:true}).click();
-  await page.getByRole('button',{name:'작업 닫기',exact:true}).click();await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();await explorer.getByRole('listitem').filter({hasText:'upload.bin'}).waitFor();
+  await page.getByRole('button',{name:'작업 닫기',exact:true}).click();await page.getByRole('button',{name:'sFTP',exact:true}).click();await explorer.getByRole('button',{name:'새로고침',exact:true}).click();await explorer.getByRole('listitem').filter({hasText:'upload.bin'}).waitFor();
   await explorer.getByRole('listitem').filter({hasText:'upload.bin'}).click();await explorer.getByRole('listitem').filter({hasText:'alternate.txt'}).click({modifiers:[process.platform==='darwin' ? 'Meta' : 'Control']});
   assert.equal(await explorer.locator('.file-row.selected').count(),2);
   await application.evaluate(({dialog},paths)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:paths});},[join(nativeRoot,'downloads')]);
