@@ -28,4 +28,6 @@ Read-only text/image viewers and explicit execution-output windows use the exist
 
 The app uses dark chocolate surfaces, dark yellow accents and warm light text. The original bow SVG is stored in src/renderer/assets; a local PNG is served through the restricted app protocol. ICO/ICNS resources are in build/icons. Native file dialogs follow OS appearance and source image pixels retain their original colors.
 
+Routine buttons use filled surfaces without accent outlines. Subdued brown separators define panes, while neutral input outlines identify editable fields. Yellow is reserved for primary actions, selected labels, file icons, progress and keyboard focus. Text controls and window titles have explicit inner padding; virtual file-row heights and the xterm input geometry remain independently owned.
+
 App controls retain visible keyboard focus, labels, reduced-motion behavior and distinct text/icon status. Automated contrast and fixture screenshots are separate from target screen-reader, IME and display-scaling acceptance. Native Windows/macOS and real Ubuntu/OpenSSH checks must be reported as untested when not performed.
