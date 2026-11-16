@@ -8,12 +8,14 @@ import {decodeText,TEXT_LIMIT,type DecodedText} from '../../shared/viewers/text'
 import {controlCall,verifyDirectory,type ControlAccess} from '../files/browser';
 import type {PathLocks} from '../files/path-locks';
 import type {WorkerReceiptWriter} from '../receipt-writer';
-type Prepared={serverId:string;generation:number;baseline:TextBaseline;tempPath:string;format:DecodedText;busy:boolean};
+type Prepared={serverId:string;generation:number;baseline:TextBaseline;tempPath:string;format:DecodedText;busy:boolean;finishAfter?:boolean};
+type Preparation={serverId:string;generation:number;cancelled:boolean};
 const hash=(bytes:Uint8Array)=>createHash('sha256').update(bytes).digest('hex');
 const attributes=(s:Stats)=>[s.size,s.mtime,s.mode,s.uid,s.gid];
 export class TextWriter {
  private readonly tasks=new Map<string,Prepared>();
- constructor(private readonly control:(serverId:string,generation:number)=>ControlAccess,private readonly locks:PathLocks,private readonly writer:WorkerReceiptWriter){}
+ private readonly preparations=new Map<string,Preparation>();
+ constructor(private readonly control:(serverId:string,generation:number)=>ControlAccess,private readonly locks:PathLocks,private readonly writer:WorkerReceiptWriter,private readonly withMetadata:<T>(serverId:string,generation:number,action:()=>Promise<T>)=>Promise<T>=(_serverId,_generation,action)=>action()){}
  private async read(control:ControlAccess,path:string):Promise<{bytes:Buffer;stat:Stats}> {
   const sftp=control.sftp,before=await controlCall<Stats>(control,done=>sftp.lstat(path,done));
   if(!before.isFile() || before.isSymbolicLink() || before.size>TEXT_LIMIT || before.size<0)throw new Error('PATH_UNSUPPORTED');
@@ -30,18 +32,23 @@ export class TextWriter {
   if(hash(value.bytes)!==baseline.sha256 || JSON.stringify(attributes(value.stat))!==JSON.stringify([baseline.size,baseline.mtime,baseline.mode,baseline.uid,baseline.gid]))throw new Error('SOURCE_CHANGED');
  }
  async prepare(serverId:string,generation:number,taskId:string,baseline:TextBaseline,tempPath:string){
-  if(this.tasks.has(taskId) || this.tasks.size>=100)throw new Error('REQUEST_BUSY');
+  if(this.tasks.has(taskId) || this.preparations.has(taskId) || this.tasks.size+this.preparations.size>=100)throw new Error('REQUEST_BUSY');
   if(posix.dirname(baseline.path)!==baseline.parent || tempPath!==posix.join(baseline.parent,`.sshos-edit-${taskId}.tmp`))throw new Error('PATH_UNSUPPORTED');
-  if(!this.locks.acquire(taskId,serverId,[{path:baseline.parent,mode:'keep'},{path:baseline.path,mode:'write'},{path:tempPath,mode:'write'}]))throw new Error('REQUEST_BUSY');
+  const preparation:Preparation={serverId,generation,cancelled:false};this.preparations.set(taskId,preparation);let acquired=false,installed=false;
   try{
+   return await this.withMetadata(serverId,generation,async()=>{
+   if(preparation.cancelled)throw new Error('REQUEST_CANCELLED');
+   acquired=this.locks.acquire(taskId,serverId,[{path:baseline.parent,mode:'keep'},{path:baseline.path,mode:'write'},{path:tempPath,mode:'write'}]);if(!acquired)throw new Error('REQUEST_BUSY');
    const control=this.control(serverId,generation);await verifyDirectory(control,baseline.parent);
    const original=await this.read(control,baseline.path);this.unchanged(original,baseline);
+   if(preparation.cancelled)throw new Error('REQUEST_CANCELLED');
    if(original.stat.mode&0o7000)throw new Error('PATH_UNSUPPORTED');
    const format=decodeText(original.bytes);if(format.lineEnding==='mixed')throw new Error('TEXT_EDIT_UNSUPPORTED');
    // Keep format metadata only; original file contents are not an edit cache.
-   this.tasks.set(taskId,{serverId,generation,baseline,tempPath,format:{...format,text:'',lineStarts:new Uint32Array(0)},busy:false});
+   this.tasks.set(taskId,{serverId,generation,baseline,tempPath,format:{...format,text:'',lineStarts:new Uint32Array(0)},busy:false});installed=true;
    return {stat:{type:'file' as const,size:baseline.size,mtime:baseline.mtime,mode:baseline.mode}};
-  }catch(error){this.locks.release(taskId);throw error;}
+   });
+  }finally{this.preparations.delete(taskId);if(acquired && !installed)this.locks.release(taskId);}
  }
  async save(serverId:string,generation:number,initial:MutationReceipt,raw:Uint8Array){
   const row=mutationReceiptSchema.parse(initial),task=this.tasks.get(row.taskId);
@@ -50,7 +57,7 @@ export class TextWriter {
   const deadline=performance.now()+60000;let native:ControlAccess;try{native=this.control(serverId,generation);}catch(error){task.busy=false;throw error;}const control:ControlAccess={...native,check:()=>{native.check();if(performance.now()>deadline)throw new Error('IO_TIMEOUT');}};
   const persist=async(change:Partial<MutationReceipt>)=>{receipt={...receipt,...change,updatedAt:new Date().toISOString()};await this.writer.persist(receipt);if(change.phase!=='completed')control.check();};
   try{
-   const decoded=decodeText(raw),bytes=encodeEditedText(decoded.text,task.format),expected=hash(bytes),sftp=control.sftp;
+   decodeText(raw);const draft=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(raw),bytes=encodeEditedText(draft,task.format),expected=hash(bytes),sftp=control.sftp;
    await verifyDirectory(control,task.baseline.parent);this.unchanged(await this.read(control,task.baseline.path),task.baseline);
    await persist({phase:'dispatched',stage:'text_temp_intent'});
    const handle=await controlCall<Buffer>(control,done=>sftp.open(task.tempPath,'wx',0o600,done));created=true;
@@ -74,11 +81,11 @@ export class TextWriter {
    const uncertain=publishSent || receipt.stage==='text_temp_intent' && !created && typeof (error as {code?:unknown}).code!=='number';
    receipt={...receipt,phase:uncertain?'result_unknown':created?'partial':'failed',stage:receipt.stage,errorCode:uncertain?'RESULT_UNKNOWN':errorCodeOf(error),updatedAt:new Date().toISOString()};
    try{await this.writer.persist(receipt);}catch{recordError=true;}
-  }finally{raw.fill(0);task.busy=false;}
+  }finally{raw.fill(0);task.busy=false;if(task.finishAfter!==undefined){this.tasks.delete(row.taskId);if(!task.finishAfter)this.locks.release(row.taskId);}}
   return {receipt,recordError};
  }
  finish(serverId:string,generation:number,taskId:string,keepRestriction:boolean):void {
-  const task=this.tasks.get(taskId);if(!task){if(!keepRestriction)this.locks.release(taskId);return;}if(task.serverId!==serverId || task.generation!==generation)throw new Error('TOKEN_EXPIRED');if(task.busy)throw new Error('REQUEST_BUSY');
+  const task=this.tasks.get(taskId);if(!task){const preparation=this.preparations.get(taskId);if(preparation){if(preparation.serverId!==serverId || preparation.generation!==generation)throw new Error('TOKEN_EXPIRED');preparation.cancelled=true;return;}if(!keepRestriction)this.locks.release(taskId);return;}if(task.serverId!==serverId || task.generation!==generation)throw new Error('TOKEN_EXPIRED');if(task.busy){task.finishAfter=task.finishAfter===undefined?keepRestriction:task.finishAfter && keepRestriction;return;}
   this.tasks.delete(taskId);if(!keepRestriction)this.locks.release(taskId);
  }
 }

@@ -259,4 +259,4 @@
 #root .console-tab-close{width:28px;min-height:28px;height:28px;padding:0;background:transparent;color:var(--secondary);font-size:18px;flex-shrink:0}
 #root .console-tab[data-active=true] .console-tab-close{color:var(--accent-text)}
 #root .console-tab-close:hover:not(:disabled){background:var(--danger-background);color:var(--danger-text)}
-#root .text-editor{display:block;resize:none;width:100%;height:100%;min-height:120px;border:0;outline-offset:-3px;border-radius:0;background:var(--background);color:var(--text);padding:16px 20px;font:14px/1.6 ui-monospace,monospace;tab-size:4;white-space:pre;overflow:auto}
+#root .viewer-viewport>textarea.text-editor{display:block;resize:none;width:100%;height:100%;min-height:120px;border:0;outline-offset:-3px;border-radius:0;background:var(--background);color:var(--text);padding:16px 20px;font:14px/1.6 ui-monospace,monospace;tab-size:4;white-space:pre;overflow:auto}
