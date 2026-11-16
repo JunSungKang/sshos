@@ -48,13 +48,13 @@
 #root :is(.file-warning,.desktop-notice,.storage-error,.error-panel){background:#3C2622;color:#E5A098;border-color:#744C43}#root .execution-line.stderr code{color:#E5A098}#root .error-panel p{color:inherit}#root .session-state{color:#9CB89D!important}
 #root .profile-manager button.primary{background:var(--accent);color:var(--background);border-color:transparent}
 #root .desktop-area{position:fixed;left:184px;top:48px;right:0;bottom:108px;overflow:hidden}.desktop-home{height:100%;width:100%;overflow:hidden}.console-workspace{position:fixed;left:184px;top:48px;right:0;bottom:60px}.console-workspace .terminal-pane{height:100%}
-#root [hidden]{display:none!important}.navigation-window{left:200px!important;top:60px!important;width:calc(100vw - 216px)!important;height:calc(100vh - 136px)!important;z-index:100000!important}.navigation-window .window-title button:nth-last-child(2),.navigation-window .window-title button:nth-last-child(3),.navigation-window .window-resize{display:none}
+#root [hidden]{display:none!important}.navigation-window{left:200px!important;top:60px!important;width:calc(100vw - 216px)!important;height:calc(100vh - 168px)!important;z-index:100000!important}.navigation-window .window-title button:nth-last-child(2),.navigation-window .window-title button:nth-last-child(3),.navigation-window .window-resize{display:none}
 #root .transfers{position:fixed;bottom:0;left:184px;right:0;height:60px;padding:0 16px;background:var(--sidebar);color:var(--text);border-color:var(--boundary);z-index:200000}#root .transfer-progress progress{accent-color:var(--accent)}#root .transfers button{color:var(--text)}#root .transfers :is(span,strong,.transfer-progress){font-size:13px}
 #root .taskbar{position:fixed;left:184px;right:0;bottom:60px;height:48px;padding:4px 12px;gap:8px;background:var(--sidebar);z-index:200000}#root .taskbar button{font-size:13px;color:var(--text);background:var(--surface)}
 #root :is(.file-explorer,.viewer-pane,.task-manager,.execution-pane,.terminal-pane){font-size:14px}#root :is(.file-columns,.file-row span:nth-child(3),.file-status,.viewer-status,.viewer-location code,.execution-status){font-size:13px}#root .file-row b{font-weight:400}#root .file-row i{font-style:normal}
 #root .home-desktop{padding:16px;background:var(--background)}#root .home-desktop .file-toolbar{background:transparent;padding:0 0 12px}#root .home-desktop .file-toolbar>input{max-width:220px;min-width:120px}.home-desktop .file-toolbar button:nth-of-type(4),.home-desktop .file-toolbar button:nth-of-type(8){display:none}#root .home-desktop .file-location{background:transparent;padding:0 0 12px}#root .home-desktop .file-status{background:transparent}.home-desktop .file-rows{padding-top:12px}
 #root .desktop-entry{display:block;text-align:center;background:transparent;border:1px solid transparent;padding:8px 6px}.desktop-entry>span{display:flex;flex-direction:column;align-items:center;gap:7px}.desktop-entry b{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow:hidden;overflow-wrap:anywhere;font-size:14px;line-height:18px;color:var(--text)}
-.entry-folder{display:inline-block;width:44px;height:31px;border-radius:3px;background:var(--accent);position:relative;margin-top:10px}.entry-folder:before{content:'';position:absolute;left:0;top:-7px;width:20px;height:10px;background:var(--accent);border-radius:3px}.entry-folder:after{content:'';position:absolute;inset:5px 0 0;background:#CDB169;border-radius:3px}.entry-file{display:inline-grid;place-items:center;width:35px;height:43px;background:var(--surface);border:2px solid var(--accent);border-radius:3px;color:var(--accent);font-size:26px;line-height:1}
+.entry-folder{display:inline-block;width:44px;height:31px;border-radius:3px;background:var(--accent);position:relative;margin-top:10px}.entry-folder:before{content:'';position:absolute;left:0;top:-7px;width:20px;height:10px;background:var(--accent);border-radius:3px}.entry-folder:after{content:'';position:absolute;inset:5px 0 0;background:var(--folder-front,#CDB169);border-radius:3px}.entry-file{display:inline-grid;place-items:center;width:35px;height:43px;background:var(--surface);border:2px solid var(--accent);border-radius:3px;color:var(--accent);font-size:26px;line-height:1}
 #root .file-row:not(.desktop-entry) .entry-folder{width:17px;height:12px;margin:0 7px 0 0;vertical-align:middle}.file-row:not(.desktop-entry) .entry-folder:before{height:4px;top:-3px;width:8px}.file-row:not(.desktop-entry) .entry-folder:after{inset:3px 0 0}#root .file-row:not(.desktop-entry) .entry-file{width:15px;height:18px;font-size:13px;margin-right:7px;vertical-align:middle}.workspace-empty{padding:35px}.directory-empty{padding:20px}.engine-state{bottom:8px;font-size:13px}#root .shutdown-overlay{background:#211A16ed;color:var(--text)}
 .console-workspace{display:flex;flex-direction:column}.console-workspace .terminal-pane{flex:1;min-height:0}.console-tabs{height:42px;display:flex;gap:5px;flex-shrink:0;align-items:center;padding:4px 8px;background:var(--raised)}.console-tabs button{font-size:13px!important}
 #root :is(.execution-line,.execution-line>span,.profile-manager label,.profile-manager .help,.key-picker,.settings-record,.viewer-toolbar strong,.viewer-empty,.engine-state output,.storage-notice){font-size:13px}.execution-line{line-height:20px}#root .profile-manager label{font-weight:500}#root .window-title strong{font-size:13px}.sidebar .brand img{object-fit:contain}
@@ -100,3 +100,140 @@
 #root dialog::backdrop{background:#120E0BAA}
 #root .window-menu,#root .terminal-context{padding:8px;border-color:var(--boundary);box-shadow:0 12px 30px #100B0880}
 #root .engine-state output{color:var(--secondary)}
+
+/* Shared spacing rhythm and theme-aware surfaces. */
+:root{
+  --space-1:8px;--space-2:12px;--space-3:16px;--space-4:24px;--space-5:32px;--space-6:40px;
+  --control-radius:8px;--window-radius:12px;--desktop-art:none;
+  --on-accent:#101010;--disabled:#AA9B89;--success:#A8CDA7;
+  --danger-background:#3C2628;--danger-text:#F0B0A8;--danger-border:#744C43;
+}
+#root .desktop{background-image:var(--desktop-art);background-attachment:fixed}
+#root .home-desktop{background:transparent;padding:var(--space-4)}
+#root header{padding-inline:var(--space-4);gap:var(--space-4)}
+#root .sidebar{padding:var(--space-4) var(--space-3)}
+#root .sidebar nav{gap:var(--space-2);margin-top:var(--space-5)}
+#root .sidebar nav button{height:48px}
+#root .sidebar-status{gap:var(--space-1);min-height:104px;padding-top:var(--space-4)}
+#root button{padding:10px 16px;min-height:40px;border-radius:var(--control-radius)}
+#root button:disabled{color:var(--disabled)}
+#root :is(input,textarea)::placeholder{color:var(--disabled)}
+#root :is(input:not([type=checkbox],[type=radio]),select,textarea:not(.xterm-helper-textarea)){min-height:44px;padding:12px 14px;border-radius:var(--control-radius)}
+#root select{padding-right:34px}
+#root .profile-manager{gap:0}
+#root .internal-window .profile-manager form,#root .internal-window .profile-list{padding:var(--space-5)}
+#root .profile-manager h2{margin-bottom:var(--space-5)}
+#root .profile-manager label{gap:var(--space-2);margin-bottom:var(--space-4)}
+#root .field-row{gap:var(--space-4)}
+#root .profile-actions{gap:var(--space-2);margin-top:var(--space-3);flex-wrap:wrap}
+#root .profile-list article{padding:var(--space-4) 0}
+#root .key-picker{gap:var(--space-3);flex-wrap:wrap;margin-bottom:var(--space-3)}
+#root .profile-manager button.primary{color:var(--on-accent);margin-top:var(--space-1)}
+#root .profile-manager button.primary:hover:not(:disabled){background:var(--accent);filter:brightness(1.06)}
+#root .internal-window{border-radius:var(--window-radius)}
+#root .internal-window.focused{border-color:var(--control-boundary)}
+#root .window-title{padding:6px var(--space-3);gap:var(--space-2)}
+#root .window-title button{width:32px;height:32px;min-height:32px;padding:0;line-height:32px}
+#root .window-title button:last-child:hover{background:var(--danger-background);color:var(--danger-text)}
+#root :is(.file-toolbar,.viewer-toolbar,.execution-toolbar,.terminal-toolbar){column-gap:var(--space-3);row-gap:var(--space-2);padding:var(--space-3);flex-wrap:wrap}
+#root .home-desktop .file-toolbar{padding:0 0 var(--space-3);gap:var(--space-3)}
+#root .file-toolbar>input{min-height:40px;padding:10px 14px}
+#root .file-location,#root .viewer-location{gap:var(--space-3);padding:var(--space-2) var(--space-3);line-height:1.6}
+#root .home-desktop .file-location{padding:0 0 var(--space-3)}
+#root .file-tree{width:212px;padding:var(--space-2) 0}
+#root .file-tree button{height:32px;min-height:0;padding:4px 10px}
+#root .file-columns{height:42px;min-height:42px;padding-inline:var(--space-3)}
+#root .file-row:not(.desktop-entry){padding:0 var(--space-3);min-height:0}
+#root .desktop-entry{padding:var(--space-2);border-radius:var(--window-radius)}
+#root .desktop-entry>span{gap:var(--space-2)}
+#root .desktop-entry b{line-height:20px}
+#root .file-row:is(.selected,:focus),#root .file-row:is(.selected,:focus) :is(span,b){color:var(--accent-text)}
+#root .file-row:is(.selected,:focus) .entry-file{border-color:var(--accent-text);color:var(--accent-text)}
+#root .file-row:is(.selected,:focus) .entry-folder,#root .file-row:is(.selected,:focus) .entry-folder:before,#root .file-row:is(.selected,:focus) .entry-folder:after{background:var(--accent-text)}
+#root :is(.file-status,.viewer-status,.viewer-metadata){padding:10px var(--space-3);line-height:1.6}
+#root .settings-pane{padding:var(--space-5);scroll-padding:var(--space-5)}
+#root .settings-intro{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-4);max-width:1120px;margin:0 auto var(--space-5)}
+#root .settings-intro h2{margin:0 0 var(--space-1);font-size:23px;letter-spacing:-.02em}
+#root .settings-intro p{margin:0}
+#root .settings-section{max-width:1120px;margin:0 auto var(--space-4);padding:var(--space-5);background:var(--raised);border-radius:var(--window-radius)}
+#root .settings-section-heading{margin-bottom:var(--space-4)}
+#root .settings-section-heading h3{margin:0 0 var(--space-2);font-size:17px}
+#root .settings-section-heading p{margin:0;max-width:80ch}
+#root .settings-section>p{margin:0}
+#root .settings-toggle{display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-2) 0}
+#root .settings-toggle input{margin-top:4px}
+#root .settings-toggle strong,#root .settings-toggle small{display:block}
+#root .settings-toggle small{margin:var(--space-1) 0 0;color:var(--secondary);line-height:1.7}
+#root .settings-record{display:flex;flex-wrap:wrap;gap:var(--space-4);justify-content:space-between;align-items:center;padding:var(--space-4) 0}
+#root .settings-record code{margin-top:var(--space-1)}
+#root .settings-record p{margin:var(--space-2) 0 0}
+#root .settings-record:last-child{border-bottom:0;padding-bottom:0}
+#root .appearance-layout{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(240px,1fr);gap:var(--space-5);align-items:center}
+#root .appearance-choice{display:flex;flex-direction:column;gap:var(--space-2)}
+#root .appearance-choice label{font-weight:600}
+#root .appearance-choice select{width:100%}
+#root .appearance-choice p{margin:var(--space-1) 0 0}
+#root .appearance-choice small{margin:0;line-height:1.7;color:var(--secondary)}
+#root .theme-preview{border:1px solid;border-radius:var(--window-radius);overflow:hidden;min-width:0}
+#root .theme-preview-title{display:flex;align-items:center;justify-content:space-between;padding:var(--space-3) var(--space-4);gap:var(--space-3);font-size:13px}
+#root .theme-preview-content{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3);padding:var(--space-4)}
+#root .theme-preview-swatches{display:flex;gap:var(--space-2)}
+#root .theme-preview-swatches i{display:block;width:24px;height:24px;border:1px solid;border-radius:50%}
+#root .theme-preview-action{padding:8px 14px;border-radius:var(--control-radius);font-size:13px}
+#root .console-tabs{height:auto;min-height:52px;gap:var(--space-2);padding:var(--space-1) var(--space-3);flex-wrap:wrap}
+#root .console-tabs button{min-height:36px;padding:8px 14px}
+#root .mode-switch{gap:var(--space-1)}
+#root .mode-switch button{min-height:32px;padding:5px 14px}
+#root .terminal-host{padding:var(--space-3)}
+#root .terminal-context{gap:var(--space-2);flex-wrap:wrap}
+#root .taskbar{gap:var(--space-2);padding-inline:var(--space-3)}
+#root .taskbar button{min-height:36px;padding:8px 14px}
+#root .taskbar button.active{color:var(--accent-text)}
+#root .transfers{gap:var(--space-4);padding-inline:var(--space-4)}
+#root .transfers button{min-height:36px;padding:8px 14px}
+#root .task-manager{padding:var(--space-5)}
+#root .task-manager article{padding:var(--space-4);margin-bottom:var(--space-4)}
+#root .task-manager button,#root .connection-dialog button{margin:var(--space-1) var(--space-2) var(--space-1) 0}
+#root dialog{padding:var(--space-5);border-radius:var(--window-radius)}
+#root .connection-dialog label{gap:var(--space-2);margin:var(--space-4) 0}
+#root .dialog-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4)}
+#root .dialog-actions button{margin:0}
+#root .transfer-candidates article{padding:var(--space-4)}
+#root :is(.file-warning,.desktop-notice,.storage-error,.error-panel){background:var(--danger-background);color:var(--danger-text);border-color:var(--danger-border)}
+#root .execution-line.stderr code{color:var(--danger-text)}
+#root .execution-line>span{color:var(--secondary)}
+#root .session-state{color:var(--success)!important}
+#root .shutdown-overlay{background:var(--background)}
+#root .probe-status>span{color:var(--success)}
+#root .probe-status.delayed>span{color:var(--focus)}
+#root :is(.probe-status.unavailable,.probe-status.paused,.probe-status.waiting)>span{color:var(--secondary)}
+#root :is(.file-rows,.file-tree,.settings-pane,.viewer-viewport){scrollbar-color:var(--control-boundary) var(--surface)}
+@media(max-width:1250px){#root .appearance-layout{grid-template-columns:1fr}#root .theme-preview{max-width:480px}#root .settings-pane{padding:var(--space-4)}#root .settings-section{padding:var(--space-4)}}
+/* Each preset adds a restrained native-feeling character without external media. */
+:root[data-theme=atom]{--control-radius:6px;--window-radius:9px}
+:root[data-theme=windows11]{--control-radius:10px;--window-radius:16px;--desktop-art:radial-gradient(ellipse at 80% 10%,#D5E4FA88,transparent 65%)}
+:root[data-theme=windows98]{--control-radius:1px;--window-radius:2px;font-family:Tahoma,Arial,"Malgun Gothic",sans-serif}
+:root[data-theme=windows98] #root button{border-color:var(--control-boundary);box-shadow:inset 1px 1px #FFFFFF99,inset -1px -1px #00000033}
+:root[data-theme=windows98] #root .file-row,:root[data-theme=windows98] #root .file-tree button{border-color:transparent;box-shadow:none}
+:root[data-theme=windows98] #root .window-title,:root[data-theme=windows98] #root .window-title button{background:#173E70;color:#FFFFFF}
+:root[data-theme=windowsxp]{--control-radius:7px;--window-radius:11px;--desktop-art:radial-gradient(ellipse at 80% 0%,#BCD8F777,transparent 60%)}
+:root[data-theme=windowsxp] #root .window-title,:root[data-theme=windowsxp] #root .window-title button{background:#245CA9;color:#FFFFFF}
+:root:is([data-theme=windows98],[data-theme=windowsxp]) #root .window-title button:hover{background:#366CB7;color:#FFFFFF}
+:root[data-theme=ubuntu]{--desktop-art:radial-gradient(ellipse at 90% 10%,#6F345533,transparent 70%)}
+:root[data-theme=ghost]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 80% 20%,#DDD6F577,transparent 65%)}
+:root[data-theme=city]{--control-radius:5px;--window-radius:8px;--desktop-art:linear-gradient(140deg,#26394444,transparent 60%)}
+:root[data-theme=countryside]{--window-radius:14px;--desktop-art:radial-gradient(ellipse at 80% 10%,#D7DABB66,transparent 70%)}
+:root[data-theme=league]{--control-radius:4px;--window-radius:8px;--desktop-art:radial-gradient(ellipse at 85% 0%,#64745422,transparent 65%)}
+:root[data-theme=starcraft]{--control-radius:3px;--window-radius:6px;--desktop-art:repeating-linear-gradient(0deg,transparent 0 47px,#5272580A 47px 48px)}
+:root[data-theme=dragonball]{--window-radius:14px;--desktop-art:radial-gradient(ellipse at 85% 10%,#F4CA7B55,transparent 60%)}
+:root[data-theme=doraemon]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 85% 20%,#A7D9F733,transparent 65%)}
+:root[data-theme=river]{--desktop-art:linear-gradient(155deg,#2C596D33,transparent 55%)}
+:root[data-theme=sky]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 75% 0%,#FFFFFFCC,transparent 65%)}
+:root[data-theme=mountain]{--desktop-art:linear-gradient(145deg,#64734722,transparent 55%)}
+:root[data-theme=island]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 90% 10%,#B5DFD588,transparent 70%)}
+
+:root{--window-shadow:0 16px 44px #100B0880;--window-shadow-focused:0 20px 56px #100B0899;--dialog-shadow:0 24px 80px #100B08AA}
+:root[data-color-mode=light]{--window-shadow:0 12px 36px #182B3D1F;--window-shadow-focused:0 18px 48px #182B3D2B;--dialog-shadow:0 24px 64px #182B3D33}
+#root .internal-window{box-shadow:var(--window-shadow)}
+#root .internal-window.focused{box-shadow:var(--window-shadow-focused)}
+#root dialog{box-shadow:var(--dialog-shadow)}
