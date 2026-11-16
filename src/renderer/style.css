@@ -209,28 +209,42 @@
 #root :is(.probe-status.unavailable,.probe-status.paused,.probe-status.waiting)>span{color:var(--secondary)}
 #root :is(.file-rows,.file-tree,.settings-pane,.viewer-viewport){scrollbar-color:var(--control-boundary) var(--surface)}
 @media(max-width:1250px){#root .appearance-layout{grid-template-columns:1fr}#root .theme-preview{max-width:480px}#root .settings-pane{padding:var(--space-4)}#root .settings-section{padding:var(--space-4)}}
-/* Each preset adds a restrained native-feeling character without external media. */
-:root[data-theme=atom]{--control-radius:6px;--window-radius:9px}
-:root[data-theme=windows11]{--control-radius:10px;--window-radius:16px;--desktop-art:radial-gradient(ellipse at 80% 10%,#D5E4FA88,transparent 65%)}
-:root[data-theme=windows98]{--control-radius:1px;--window-radius:2px;font-family:Tahoma,Arial,"Malgun Gothic",sans-serif}
+/* Original bundled wallpaper identities. PNGs are inert image assets; SVG masters remain editable. */
+:root[data-theme=chocolate]{--desktop-art:url("./assets/themes/chocolate.png?no-inline");}
+:root[data-theme=atom]{--desktop-art:url("./assets/themes/atom.png?no-inline");--control-radius:6px;--window-radius:9px;}
+:root[data-theme=ubuntu]{--desktop-art:url("./assets/themes/ubuntu.png?no-inline");}
+:root[data-theme=centos]{--desktop-art:url("./assets/themes/centos.png?no-inline");}
+:root[data-theme=kali]{--desktop-art:url("./assets/themes/kali.png?no-inline");}
+:root[data-theme=windows11]{--desktop-art:url("./assets/themes/windows11.png?no-inline");--control-radius:10px;--window-radius:16px;}
+:root[data-theme=windows98]{--desktop-art:url("./assets/themes/windows98.png?no-inline");--control-radius:1px;--window-radius:2px;}
+:root[data-theme=windowsxp]{--desktop-art:url("./assets/themes/windowsxp.png?no-inline");--control-radius:7px;--window-radius:11px;}
+:root[data-theme=ghost]{--desktop-art:url("./assets/themes/ghost.png?no-inline");--control-radius:12px;--window-radius:18px;}
+:root[data-theme=city]{--desktop-art:url("./assets/themes/city.png?no-inline");--control-radius:5px;--window-radius:8px;}
+:root[data-theme=countryside]{--desktop-art:url("./assets/themes/countryside.png?no-inline");--control-radius:10px;--window-radius:14px;}
+:root[data-theme=fantasy]{--desktop-art:url("./assets/themes/fantasy.png?no-inline");--control-radius:4px;--window-radius:8px;}
+:root[data-theme=starcraft]{--desktop-art:url("./assets/themes/starcraft.png?no-inline");--control-radius:3px;--window-radius:6px;}
+:root[data-theme=river]{--desktop-art:url("./assets/themes/river.png?no-inline");}
+:root[data-theme=sky]{--desktop-art:url("./assets/themes/sky.png?no-inline");--control-radius:12px;--window-radius:16px;}
+:root[data-theme=mountain]{--desktop-art:url("./assets/themes/mountain.png?no-inline");}
+:root[data-theme=island]{--desktop-art:url("./assets/themes/island.png?no-inline");--control-radius:12px;--window-radius:16px;}
+#root .desktop{background-size:cover;background-position:center;background-repeat:no-repeat}
+#root .home-desktop .desktop-entry b{background:color-mix(in srgb,var(--background) 90%,transparent);padding:0 4px;border-radius:4px}
+#root .home-desktop .desktop-entry:is(.selected,:focus){background:var(--selected)}
+#root .home-desktop .desktop-entry:is(.selected,:focus) b{background:transparent}
+#root .theme-preview-scene{height:190px;position:relative;overflow:hidden;background-color:var(--background);background-image:var(--desktop-art);background-size:cover;background-position:center}
+#root .preview-folder{position:absolute;left:24px;top:50px;width:35px;height:27px;background:var(--folder-front);border-radius:3px 5px 5px 5px;box-shadow:0 -7px 0 -3px var(--folder-front)}
+#root .preview-window{position:absolute;left:24px;bottom:24px;width:45%;height:62px;background:var(--surface);border-radius:var(--control-radius);box-shadow:0 5px 18px #00000018;overflow:hidden;padding:22px 12px 8px}
+#root .preview-window>i{position:absolute;inset:0 0 auto;height:14px;background:var(--raised)}
+#root .preview-window>span{display:block;width:75%;height:4px;margin:0 0 7px;background:var(--secondary);opacity:.3;border-radius:2px}
+#root .preview-window>span:last-child{width:50%}
+#root .preview-dock{position:absolute;right:16px;bottom:14px;display:flex;gap:6px;padding:8px;background:var(--sidebar);border-radius:var(--control-radius)}
+#root .preview-dock i{width:9px;height:9px;border-radius:2px;background:var(--accent)}
+:root[data-theme=windows98]{font-family:Tahoma,Arial,"Malgun Gothic",sans-serif}
 :root[data-theme=windows98] #root button{border-color:var(--control-boundary);box-shadow:inset 1px 1px #FFFFFF99,inset -1px -1px #00000033}
 :root[data-theme=windows98] #root .file-row,:root[data-theme=windows98] #root .file-tree button{border-color:transparent;box-shadow:none}
 :root[data-theme=windows98] #root .window-title,:root[data-theme=windows98] #root .window-title button{background:#173E70;color:#FFFFFF}
-:root[data-theme=windowsxp]{--control-radius:7px;--window-radius:11px;--desktop-art:radial-gradient(ellipse at 80% 0%,#BCD8F777,transparent 60%)}
 :root[data-theme=windowsxp] #root .window-title,:root[data-theme=windowsxp] #root .window-title button{background:#245CA9;color:#FFFFFF}
 :root:is([data-theme=windows98],[data-theme=windowsxp]) #root .window-title button:hover{background:#366CB7;color:#FFFFFF}
-:root[data-theme=ubuntu]{--desktop-art:radial-gradient(ellipse at 90% 10%,#6F345533,transparent 70%)}
-:root[data-theme=ghost]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 80% 20%,#DDD6F577,transparent 65%)}
-:root[data-theme=city]{--control-radius:5px;--window-radius:8px;--desktop-art:linear-gradient(140deg,#26394444,transparent 60%)}
-:root[data-theme=countryside]{--window-radius:14px;--desktop-art:radial-gradient(ellipse at 80% 10%,#D7DABB66,transparent 70%)}
-:root[data-theme=league]{--control-radius:4px;--window-radius:8px;--desktop-art:radial-gradient(ellipse at 85% 0%,#64745422,transparent 65%)}
-:root[data-theme=starcraft]{--control-radius:3px;--window-radius:6px;--desktop-art:repeating-linear-gradient(0deg,transparent 0 47px,#5272580A 47px 48px)}
-:root[data-theme=dragonball]{--window-radius:14px;--desktop-art:radial-gradient(ellipse at 85% 10%,#F4CA7B55,transparent 60%)}
-:root[data-theme=doraemon]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 85% 20%,#A7D9F733,transparent 65%)}
-:root[data-theme=river]{--desktop-art:linear-gradient(155deg,#2C596D33,transparent 55%)}
-:root[data-theme=sky]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 75% 0%,#FFFFFFCC,transparent 65%)}
-:root[data-theme=mountain]{--desktop-art:linear-gradient(145deg,#64734722,transparent 55%)}
-:root[data-theme=island]{--window-radius:16px;--desktop-art:radial-gradient(ellipse at 90% 10%,#B5DFD588,transparent 70%)}
 
 :root{--window-shadow:0 16px 44px #100B0880;--window-shadow-focused:0 20px 56px #100B0899;--dialog-shadow:0 24px 80px #100B08AA}
 :root[data-color-mode=light]{--window-shadow:0 12px 36px #182B3D1F;--window-shadow-focused:0 18px 48px #182B3D2B;--dialog-shadow:0 24px 64px #182B3D33}

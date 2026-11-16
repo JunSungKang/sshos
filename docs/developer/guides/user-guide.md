@@ -52,27 +52,27 @@ Open Settings and use the `테마` selector under `테마와 색상`. The defaul
 
 | Preset | Appearance |
 | --- | --- |
-| 다크초코 · 기본 | Dark chocolate and warm gold |
-| 아톰 | Graphite and blue |
-| 우분투 | Aubergine and orange |
-| CentOS | Purple and lime |
-| Kali Linux | Navy and blue |
-| 윈도우11 | Pale gray and blue |
-| 윈도우98 | Gray, navy title bars and square controls |
-| 윈도우XP | Blue title bars and green actions |
-| 고스트 | Misty white and lavender |
-| 도시 | Slate and teal |
-| 시골 | Linen and olive |
-| 리그오브레전드 | Deep blue and aged gold |
-| 스타크래프트 | Metal charcoal and green |
-| 드래곤볼 | Cream and orange |
-| 도라에몽 | Pale sky blue and blue |
-| 자연(강) | Dark river teal |
-| 자연(하늘) | Bright white and sky blue |
-| 자연(산) | Forest green and earth tones |
-| 자연(무인도) | Sand and sea green |
+| 다크초코 · 기본 | Chocolate, warm gold and layered arches |
+| 아톰 | Graphite grid and blue atomic orbits |
+| 우분투 | Aubergine and folded orange polygons |
+| CentOS | Purple/lime diamond mosaic |
+| Kali Linux | Navy dotted grid and blue circuit traces |
+| 윈도우11 | Soft blue folded ribbons |
+| 윈도우98 | Pixel steps, gray bevels and navy title bars |
+| 윈도우XP | Original rolling hills, blue title bars and green actions |
+| 고스트 | Lavender mist, moon and translucent arches |
+| 도시 | Teal skyline and illuminated window pattern |
+| 시골 | Linen, curved fields and a small farmhouse |
+| 판타지 | Original rune circles, floating crystal and distant citadel |
+| 스타크래프트 | Original industrial panels and a green radar schematic |
+| 자연(강) | Teal flowing contour lines |
+| 자연(하늘) | Cloud banks and soft sunlight |
+| 자연(산) | Layered mountain ridges and conifers |
+| 자연(무인도) | Sand island, shoreline rings and palm silhouettes |
 
-These are original built-in visual interpretations. They require no theme downloads, external images or fonts. A successful save applies the palette to app-owned surfaces and open terminals without closing their SSH channels, then preserves the choice for the next launch. A failed save keeps the last acknowledged theme. Remote programs can still choose their own terminal colors, and native OS dialogs retain OS appearance.
+The 17 presets include original bundled artwork and a matching wallpaper scene in Settings. They require no theme downloads, external images or fonts. Desktop file labels have a quiet backing; terminal, editor and list surfaces remain opaque. A successful save applies the palette to app-owned surfaces and open terminals without closing their SSH channels, then preserves the choice for the next launch. A failed save keeps the last acknowledged theme. Remote programs can still choose their own terminal colors, and native OS dialogs retain OS appearance.
+
+Dragon Ball and Doraemon presets have been removed; a saved selection of either opens as default chocolate. The former League of Legends selection opens as the original fantasy preset. No game illustrations, characters, maps or logos are bundled. All other unknown stored IDs remain invalid; invalid requests do not silently choose another theme.
 
 Settings manages saved trust and saved credential removal, redacted diagnostics and offline license notices. Review an export before sharing it. Local task records contain endpoint/path information and are not anonymous.
 

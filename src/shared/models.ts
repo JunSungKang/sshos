@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import {themeIdSchema} from './themes';
+import {storedThemeIdSchema} from './themes';
 
 const bytes = (max: number) => z.string().refine(s => new TextEncoder().encode(s).length <= max, 'INPUT_INVALID');
 const scalarName = z.string().refine(s => Array.from(s).length >= 1 && Array.from(s).length <= 64 && !/[\u0000-\u001f\u007f]/u.test(s), 'INPUT_INVALID');
@@ -19,7 +19,7 @@ export const hostTrustSchema = z.object({ endpoint: bytes(300), publicKey: z.str
 export const secretSchema = z.object({ id: z.uuid(), profileId: z.uuid(), endpoint: bytes(300), username: bytes(256), ciphertext: z.string().min(1).max(16384) }).strict();
 export const stateSchema = z.object({
   profiles: z.array(profileSchema).max(10), hostTrust: z.array(hostTrustSchema).max(100),
-  encryptedSecrets: z.array(secretSchema).max(20), settings: z.object({ language: z.literal('ko'), saveSecrets: z.boolean(), showHiddenFiles: z.boolean().default(false),theme:themeIdSchema.default('chocolate') }).strict()
+  encryptedSecrets: z.array(secretSchema).max(20), settings: z.object({ language: z.literal('ko'), saveSecrets: z.boolean(), showHiddenFiles: z.boolean().default(false),theme:storedThemeIdSchema.default('chocolate') }).strict()
 }).strict();
 export type AppState = z.infer<typeof stateSchema>;
 export const initialState = (): AppState => ({ profiles: [], hostTrust: [], encryptedSecrets: [], settings: { language: 'ko', saveSecrets: false, showHiddenFiles: false,theme:'chocolate' } });

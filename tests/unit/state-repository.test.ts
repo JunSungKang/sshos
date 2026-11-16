@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it,vi } from 'vitest';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile,readFile } from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {canonicalJSON} from '../../src/main/persistence/store';
 import { resolve } from 'node:path';
 import { StateRepository, normalizeHost } from '../../src/main/persistence/state-repository';
 import { SecretVault } from '../../src/main/persistence/secrets';
@@ -8,6 +10,20 @@ afterEach(async () => {vi.restoreAllMocks(); for (const path of owned.splice(0))
 async function dataRoot() { await mkdir(resolve('.local/tmp'), { recursive: true }); const parent = await mkdtemp(resolve('.local/tmp/repo-')); owned.push(parent); return resolve(parent, 'data'); }
 const draft = { name: '운영 서버', host: 'EXAMPLE.COM.', port: 22, username: 'ubuntu', authentication: 'password' as const };
 describe('profile persistence and identity', () => {
+  it.each([['dragonball','chocolate'],['doraemon','chocolate'],['league','fantasy']])('loads checksummed retired theme %s as %s without losing connection records',async(old,current)=>{
+    const directory=await dataRoot(),repo=await StateRepository.open(directory),profile=await repo.create(draft),secretId=crypto.randomUUID();
+    await repo.trust('example.com:22',Buffer.from('fixture-public-key'),'SHA256:fixture');
+    await repo.store.update(state=>({...state!,profiles:[{...profile,secretId}],encryptedSecrets:[{id:secretId,profileId:profile.id,endpoint:'example.com:22',username:'fixture',ciphertext:'opaque-fixture'}],settings:{...state!.settings,showHiddenFiles:true}}));
+    const previous=repo.snapshot(),path=resolve(directory,'state.json'),envelope=JSON.parse(await readFile(path,'utf8')) as {payload:{settings:{theme:string}};payloadSha256:string};
+    envelope.payload.settings.theme=old!;envelope.payloadSha256=createHash('sha256').update(canonicalJSON(envelope.payload)).digest('hex');await writeFile(path,JSON.stringify(envelope));
+    const reopened=await StateRepository.open(directory);
+    expect(reopened.recovered).toBe(false);
+    expect(reopened.snapshot()).toEqual({...previous,settings:{...previous.settings,theme:current}});
+    await reopened.store.save(reopened.snapshot());
+    const persisted=JSON.parse(await readFile(path,'utf8')) as typeof envelope;
+    expect(persisted.payload.settings.theme).toBe(current);
+    expect(persisted.payloadSha256).toBe(createHash('sha256').update(canonicalJSON(persisted.payload)).digest('hex'));
+  });
   it.each(['clone','authentication','delete'])('rechecks profile busy state when a queued %s write actually executes',async operation=>{const repo=await StateRepository.open(await dataRoot()),profile=await repo.create(draft),native=repo.store.update.bind(repo.store);let busy=false,release!:()=>void;vi.spyOn(repo.store,'update').mockImplementationOnce(change=>new Promise<void>((resolve,reject)=>{release=()=>{void native(change).then(resolve,reject);};}));const pending=operation==='delete'?repo.remove(profile.id,()=>busy):repo.update(profile.id,operation==='clone'?{...draft,host:'other.test'}:{...draft,authentication:'key',keyPath:'/main-owned/key'},()=>busy),rejected=expect(pending).rejects.toThrow('PROFILE_BUSY');busy=true;release();await rejected;expect(repo.snapshot().profiles).toEqual([profile]);expect(repo.store.faulted).toBe(false);});
   it('normalizes DNS/IP and rejects URL/invalid hosts', () => {
     expect(normalizeHost(draft.host)).toBe('example.com'); expect(normalizeHost('[::1]')).toBe('::1');
