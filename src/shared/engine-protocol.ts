@@ -4,11 +4,15 @@ import { executionReceiptSchema,executionSpecSchema } from './executions';
 import { executionRuntimeSchema } from './execution-protocol';
 import { connectInputSchema, sessionSnapshotSchema } from './session-contracts';
 import { remotePathSchema } from './files';
-import { mutationSpecSchema, initialStatSchema,mutationObservationSchema } from './mutations';
+import { mutationSpecSchema, initialStatSchema,mutationObservationSchema,mutationReceiptSchema } from './mutations';
+import {TEXT_LIMIT} from './viewers/text';
 import { viewerReadKindSchema } from './viewers/reader';
 import { stagedTransferSchema,transferRuntimeSchema } from './transfer-protocol';
 const identity = { requestId: z.uuid(), backendEpoch: z.uuid(), serverId: z.uuid(), generation: z.int().min(1) };
 export const engineRequestSchema = z.discriminatedUnion('action', [
+  z.object({...identity,action:z.literal('editor:prepare'),taskId:z.uuid(),viewerId:z.uuid(),readGeneration:z.int().positive(),tempPath:remotePathSchema}).strict(),
+  z.object({...identity,action:z.literal('editor:save'),receipt:mutationReceiptSchema,bytes:z.instanceof(Uint8Array).refine(value=>value.length<=TEXT_LIMIT)}).strict(),
+  z.object({...identity,action:z.literal('editor:finish'),taskId:z.uuid(),keepRestriction:z.boolean()}).strict(),
   z.object({...identity,action:z.literal('probe:run'),probeEpoch:z.uuid(),probeId:z.uuid(),transferActive:z.boolean()}).strict(),
   z.object({...identity,action:z.literal('probe:invalidate'),probeEpoch:z.uuid()}).strict(),
   z.object({...identity,action:z.literal('pty:start'),receipt:executionReceiptSchema}).strict(),

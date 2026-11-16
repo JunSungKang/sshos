@@ -3,7 +3,7 @@ import { errorCodeOf } from '../shared/errors';
 import { useEffect, useRef, useState } from 'react';
 import type { SessionView } from '../shared/session-contracts';
 import type { ViewerDescriptor } from '../shared/viewers/reader';
-import type { DecodedText } from '../shared/viewers/text';
+import {TEXT_LIMIT,type DecodedText } from '../shared/viewers/text';
 import type { ImageHeader } from '../shared/viewers/image-header';
 import { ViewerDecoder } from './ViewerDecoder';
 import { scheduleViewerFrame } from './viewer-stream-scheduler';
@@ -15,6 +15,9 @@ export function ViewerPane({windowId,kind,session,onName}:{windowId:string;kind:
   const [displayed,setDisplayed]=useState<{bytes:number;readAt:string|null}|null>(null);
   const [status,setStatus]=useState('파일 정보 확인 중');const [error,setError]=useState('');
   const [progress,setProgress]=useState({read:0,total:0});const [restartPending,setRestartPending]=useState(false);
+  const [editing,setEditing]=useState(false),[draft,setDraft]=useState(''),[editBusy,setEditBusy]=useState(false),[discard,setDiscard]=useState(false);const discardDialog=useRef<HTMLDialogElement>(null);
+  const dirty=editing && draft!==text?.text;
+  useEffect(()=>{if(discard)discardDialog.current?.showModal();},[discard]);
   const [zoom,setZoom]=useState<'fit'|25|50|100|200>('fit');const [area,setArea]=useState({width:500,height:300});
   const viewport=useRef<HTMLDivElement>(null);const canvas=useRef<HTMLCanvasElement>(null);const decoder=useRef<ViewerDecoder|null>(null);
   const alive=useRef(true);const job=useRef(0);const nameCallback=useRef(onName);nameCallback.current=onName;
@@ -64,17 +67,21 @@ export function ViewerPane({windowId,kind,session,onName}:{windowId:string;kind:
     catch (failure) {if (alive.current) {setError(explain(failure));setStatus('읽기 중단');}}
     finally {if (alive.current) setRestartPending(false);}
   };
+  const beginEdit=async()=>{const value=descriptorRef.current;if(!value || !text || editBusy)return;setEditBusy(true);setError('');try{await window.sshOS.viewer.setEditing(value.viewerToken,value.readGeneration,true);if(alive.current){setDraft(text.text);setEditing(true);setStatus('편집 중 · 저장 전에는 원격 파일이 변경되지 않습니다.');}}catch(failure){if(alive.current)setError(explain(failure));}finally{if(alive.current)setEditBusy(false);}};
+  const cancelEdit=async()=>{const value=descriptorRef.current;if(!value || editBusy)return;setEditBusy(true);try{await window.sshOS.viewer.setEditing(value.viewerToken,value.readGeneration,false);if(alive.current){setEditing(false);setDraft('');setDiscard(false);setStatus('읽기 전용');}}catch(failure){if(alive.current)setError(explain(failure));}finally{if(alive.current)setEditBusy(false);}};
+  const save=async()=>{const value=descriptorRef.current;if(!value || editBusy || !dirty || !connected)return;setEditBusy(true);setError('');setStatus('원격 파일 저장 중');try{await window.sshOS.viewer.saveText(value.viewerToken,value.readGeneration,draft);await window.sshOS.viewer.setEditing(value.viewerToken,value.readGeneration,false);if(!alive.current)return;setEditing(false);setDraft('');await reread();}catch(failure){if(alive.current){setError(explain(failure));setStatus('저장 실패 · 편집 내용을 유지합니다.');}}finally{if(alive.current)setEditBusy(false);}};
   const scale=image ? zoom === 'fit' ? Math.max(0.001,Math.min(1,(area.width-32)/image.width,(area.height-32)/image.height)) : zoom/100 : 1;
   return <section className="viewer-pane" aria-label={kind === 'text' ? '텍스트 뷰어' : '이미지 뷰어'}>
-    <div className="viewer-toolbar"><button disabled={!connected || restartPending} onClick={() => {void reread();}}>다시 읽기</button><strong>읽기 전용</strong>{kind === 'image' && <label>배율<select aria-label="이미지 배율" value={zoom} onChange={event => setZoom(event.target.value === 'fit' ? 'fit' : Number(event.target.value) as 25|50|100|200)}><option value="fit">화면 맞춤</option>{[25,50,100,200].map(value => <option value={value} key={value}>{value}%</option>)}</select></label>}</div>
+    <div className="viewer-toolbar"><button disabled={!connected || restartPending || editing || editBusy} onClick={() => {void reread();}}>다시 읽기</button><strong>{editing?'편집 모드':'읽기 전용'}</strong>{kind==='text' && (editing?<><button disabled={!connected || editBusy || !dirty} onClick={()=>{void save();}}>저장</button><button disabled={editBusy} onClick={()=>{if(dirty)setDiscard(true);else void cancelEdit();}}>편집 취소</button>{dirty && <span>저장하지 않은 변경</span>}</>:<button disabled={!connected || !text || text.lineEnding==='mixed' || descriptor?.readState!=='complete' || editBusy || restartPending || session?.os!=='supported' && !session?.osConfirmed} onClick={()=>{void beginEdit();}}>편집</button>)}{kind === 'image' && <label>배율<select aria-label="이미지 배율" value={zoom} onChange={event => setZoom(event.target.value === 'fit' ? 'fit' : Number(event.target.value) as 25|50|100|200)}><option value="fit">화면 맞춤</option>{[25,50,100,200].map(value => <option value={value} key={value}>{value}%</option>)}</select></label>}</div>
     <div className="viewer-location">{descriptor?.endpoint}<code>{descriptor?.path}</code></div>
-    {descriptor && !connected && <p className="file-warning">연결 끊김 · 마지막 표시 내용을 읽기 전용으로 유지합니다.</p>}
+    {descriptor && !connected && <p className="file-warning">{editing?'연결 끊김 · 편집 내용은 유지하며 저장할 수 없습니다.':'연결 끊김 · 마지막 표시 내용을 읽기 전용으로 유지합니다.'}</p>}
     {error && <ErrorPanel error={error} phase={null} target={descriptor?.path ?? null}/>}
     <div className="viewer-viewport" ref={viewport}>
-      {kind === 'text' ? text ? <VirtualText value={text} /> : <p className="viewer-empty">{status}</p> : <div className="image-surface"><canvas ref={canvas} role="img" aria-label={descriptor ? `${descriptor.name} 이미지` : '이미지'} style={{width:image ? image.width*scale : 0,height:image ? image.height*scale : 0}} />{!image && <p className="viewer-empty">{status}</p>}</div>}
+      {kind === 'text' ? editing?<textarea className="text-editor" aria-label="텍스트 편집 내용" value={draft} readOnly={editBusy || !connected} spellCheck={false} maxLength={TEXT_LIMIT} onChange={event=>setDraft(event.currentTarget.value)} onKeyDown={event=>{if((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==='s'){event.preventDefault();void save();}}}/>:text ? <VirtualText value={text} /> : <p className="viewer-empty">{status}</p> : <div className="image-surface"><canvas ref={canvas} role="img" aria-label={descriptor ? `${descriptor.name} 이미지` : '이미지'} style={{width:image ? image.width*scale : 0,height:image ? image.height*scale : 0}} />{!image && <p className="viewer-empty">{status}</p>}</div>}
     </div>
     <output className="viewer-status" aria-live="polite" aria-label="뷰어 읽기 상태">{status}{status === '내용 읽는 중' ? ` · ${progress.read.toLocaleString()}/${progress.total.toLocaleString()} byte` : ''}</output>
-    <div className="viewer-metadata">{kind === 'text' && text ? 'UTF-8' : image ? `${image.format.toUpperCase()} · ${image.width}×${image.height}` : '텍스트2MiB · 이미지20MiB/40MP 한도'} · {displayed ? `${displayed.bytes.toLocaleString()} byte · 마지막 읽음 ${displayed.readAt ? new Date(displayed.readAt).toLocaleString() : '미확인'}` : '표시한 내용 없음'}</div>
+    <div className="viewer-metadata">{kind === 'text' && text ? `UTF-8${text.hasBOM?' BOM':''} · ${text.lineEnding==='mixed'?'혼합/CR 줄바꿈 · 편집 불가':text.lineEnding.toUpperCase()}` : image ? `${image.format.toUpperCase()} · ${image.width}×${image.height}` : '텍스트2MiB · PNG/JPG/JPEG/WebP 20MiB/40MP 한도'} · {displayed ? `${displayed.bytes.toLocaleString()} byte · 마지막 읽음 ${displayed.readAt ? new Date(displayed.readAt).toLocaleString() : '미확인'}` : '표시한 내용 없음'}</div>
+    {discard && <dialog ref={discardDialog} className="connection-dialog" aria-label="편집 취소 확인" onCancel={()=>setDiscard(false)}><h2>편집 내용을 버릴까요?</h2><p>원격 파일은 변경하지 않습니다.</p><button onClick={()=>setDiscard(false)}>계속 편집</button><button disabled={editBusy} onClick={()=>{void cancelEdit();}}>변경 버리기</button></dialog>}
   </section>;
 }
 

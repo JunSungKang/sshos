@@ -3,6 +3,7 @@ import type { Client, SFTPWrapper, Stats } from 'ssh2';
 import { ViewerReader } from '../../src/worker/viewers/reader';
 import type { ViewerFrame, ViewerReadKind } from '../../src/shared/viewers/reader';
 import { TEXT_LIMIT } from '../../src/shared/viewers/text';
+import {createHash} from 'node:crypto';
 function fixture(data:Buffer,options:{short?:number;declaredSize?:number;file?:boolean;symlink?:boolean;readCount?:number;factoryFailure?:boolean;readyFailure?:boolean}={}) {
   let mtime=1,reads=0,cancels=0,hang=false;let closed!:()=>void;const closure=new Promise<void>(resolve => {closed=resolve;});
   const stats=():Stats => ({size:options.declaredSize ?? data.length,mtime,mode:0o100600,uid:0,gid:0,atime:0,isFile:() => options.file ?? true,isDirectory:() => false,isSymbolicLink:() => options.symlink ?? false,isFIFO:() => false,isSocket:() => false,isBlockDevice:() => false,isCharacterDevice:() => false});
@@ -20,6 +21,7 @@ function fixture(data:Buffer,options:{short?:number;declaredSize?:number;file?:b
 }
 afterEach(() => vi.useRealTimers());
 describe('bounded viewer read and consumer ACK',() => {
+  it('exposes an edit baseline only after a complete identity-bound text read',async()=>{const bytes=Buffer.from('baseline\n'),f=fixture(bytes);f.open();expect(()=>f.service.baseline(f.serverId,1,f.viewerId,1)).toThrow('TOKEN_EXPIRED');await f.ready();await f.next(1);expect(f.service.baseline(f.serverId,1,f.viewerId,1)).toMatchObject({path:'/home/file',size:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex'),uid:0,gid:0});expect(()=>f.service.baseline(crypto.randomUUID(),1,f.viewerId,1)).toThrow('TOKEN_EXPIRED');f.cancel();const image=fixture(bytes);image.open('image');await image.ready();await image.next(1);expect(()=>image.service.baseline(image.serverId,1,image.viewerId,1)).toThrow('TOKEN_EXPIRED');image.cancel();});
   it.each([{file:false},{symlink:true},{declaredSize:-1},{declaredSize:0.5},{declaredSize:TEXT_LIMIT+1}])('refuses unsupported source metadata %j before reading bytes',async options=>{const f=fixture(Buffer.from('abc'),options);f.open();await expect(f.ready()).rejects.toThrow(options.declaredSize===TEXT_LIMIT+1?'VIEW_LIMIT':'PATH_UNSUPPORTED');expect(f.reads).toBe(0);f.cancel();});
   it.each([NaN,-1,32769])('refuses invalid SFTP read byte count %s and closes only its read channel',async readCount=>{const f=fixture(Buffer.alloc(100000),{readCount});f.open();await expect(f.ready()).rejects.toThrow('INTERNAL_ERROR');expect(f.cancels).toBe(1);f.cancel();});
   it.each([{factoryFailure:true},{readyFailure:true}])('releases failed preparations %j and preserves fixed failure codes',async options=>{const f=fixture(Buffer.from('abc'),options);f.open();await expect(f.ready()).rejects.toThrow('SFTP_UNAVAILABLE');f.cancel();});

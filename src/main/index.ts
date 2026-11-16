@@ -26,6 +26,7 @@ import { MainReceiptChannel } from './receipt-channel';
 import { NativeDialogGate } from './native-dialogs';
 import { MutationController } from './mutations';
 import { ViewerController } from './viewers';
+import {TextEditorController} from './text-editor';
 import { TransferSelections } from './transfer-selections';
 import { TransferPreviews } from './transfer-previews';
 import { TerminalController } from './terminals';
@@ -98,13 +99,14 @@ async function main(): Promise<void> {
   const desktop = new DesktopController(connections);
   const files = new FileController(desktop, connections, gateway);
   const viewers=new ViewerController(files,connections,desktop,gateway);
+  const textEditor=new TextEditorController(viewers,connections,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && receipts && !receipts.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition));
   const selections=new TransferSelections(dialogGate,() => win);
   const transferPreviews=new TransferPreviews(files,connections,gateway,selections,() => {if (!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked || lifecycleClosing || powerTransition) throw new Error('STORAGE_FAILED');});
   transfers=new TransferController(transferPreviews,selections,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),() => receiptChannel.settled());
   const executionPreviews=new ExecutionPreviews(files,connections,gateway,()=>{if(!repository || repository.store.faulted || !receipts || receipts.faulted || storageRecovering || recoveryLocked || lifecycleClosing || powerTransition)throw new Error('STORAGE_FAILED');});
   executions=new ExecutionController(executionPreviews,connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),()=>receiptChannel.settled());
   terminals=new TerminalController(connections,desktop,gateway,()=>receipts,()=>Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),()=>win,pasteGesture,()=>receiptChannel.settled());
-  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),id => transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id),async row => {if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if(row.kind === 'gui_exec')await executions!.releaseRecord(row);else if(row.kind === 'pty')await terminals!.releaseRecord(row);},() => [...transfers!.overlays(),...executions!.overlays(),...terminals!.overlays()],id => transfers!.taskState(id));
+  const mutations=new MutationController(files,connections,gateway,() => receipts,() => Boolean(repository && !repository.store.faulted && !storageRecovering && !recoveryLocked && !lifecycleClosing && !powerTransition),id => textEditor.isActive(id) || transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id),async row => {if(row.kind==='file_mutation' && row.operation==='edit')await textEditor.releaseRecord(row);else if(row.kind === 'file_transfer')await transfers!.acknowledge(row);else if(row.kind === 'gui_exec')await executions!.releaseRecord(row);else if(row.kind === 'pty')await terminals!.releaseRecord(row);},() => [...textEditor.overlays(),...transfers!.overlays(),...executions!.overlays(),...terminals!.overlays()],id => transfers!.taskState(id));
   responseProbe=new ResponseProbe(gateway,()=>connections!.views(),()=>Boolean(uiReady && win && !win.isDestroyed() && !win.isMinimized() && win.isFocused() && !lifecycleClosing && !powerTransition),id=>transfers!.overlays().some(row=>row.serverId===id && transfers!.isActive(row.taskId)));
   let engineStopping:Promise<void>=Promise.resolve(),engineRestarting=false;
   const observeEngine=(observed:Electron.UtilityProcess,observedEpoch:string):Promise<void>=>new Promise((resolveReady,rejectReady)=>{
@@ -113,7 +115,7 @@ async function main(): Promise<void> {
     observed.on('exit',()=>{clearTimeout(timer);if(!ready)rejectReady(new Error('ENGINE_STOPPED'));if(worker !== observed || epoch !== observedEpoch)return;engine='stopped';diagnosticLog?.record({to:'stopped',errorCode:'ENGINE_STOPPED'});const previous=connections!.views();connections!.engineStopped();responseProbe?.invalidate();for(const row of previous){executions!.sessionChanged(row.serverId,row.generation,false);terminals!.sessionChanged(row.serverId,row.generation,false);}viewers.interruptRenderer();transfers!.invalidateRenderer();executionPreviews.invalidate();profiles?.invalidate();engineStopping=Promise.allSettled([mutations.settled(),transfers!.engineStopped(),executions!.engineStopped(),terminals!.engineStopped()]).then(()=>{});});
   });
   void observeEngine(worker,epoch).catch(()=>{});
-  const activeOperation=(id:string)=>mutations.isActive(id) || transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id);
+  const activeOperation=(id:string)=>textEditor.isActive(id) || mutations.isActive(id) || transfers!.isActive(id) || executions!.isActive(id) || terminals!.isActive(id);
   profileHasWork=id=>hasBlockingProfileWork(id,mutations.snapshots(),activeOperation);
   const shutdown=async(scope:ShutdownScope,budgetMs=10000)=>{
     const targets=connections!.views().filter(row=>!scope || row.serverId===scope.serverId && row.generation===scope.generation);for(const row of targets)connections!.beginDisconnect(row.serverId,row.generation);
@@ -130,7 +132,7 @@ async function main(): Promise<void> {
   powerMonitor.on('suspend',invalidatePower);powerMonitor.on('resume',invalidatePower);
   const disconnectPrompts=new Set<string>();
   const confirmDisconnect=async(id:string)=>{const current=connections!.views().find(row=>row.serverId===id);if(!current || ['idle','disconnected'].includes(current.status))return;if(disconnectPrompts.has(id) || quitPrompt || lifecycleClosing)throw new Error('REQUEST_BUSY');disconnectPrompts.add(id);try{const owner=win;if(!owner || owner.isDestroyed())throw new Error('IPC_DENIED');const scope={serverId:id,generation:current.generation},answer=await dialog.showMessageBox(owner,{type:'question',title:'서버 연결 해제',message:`${current.serverName} 연결을 해제할까요?`,detail:`${current.username}@${current.host}:${current.port}\n${shutdownSummary(mutations.snapshots(),activeOperation,scope)}`,buttons:['연결 유지','작업 중단 후 연결 해제'],defaultId:0,cancelId:0,noLink:true});if(answer.response!==1)return;const latest=connections!.views().find(row=>row.serverId===id);if(!latest || latest.generation!==scope.generation)throw new Error('TOKEN_EXPIRED');const result=await shutdown(scope);if(result.timedOut)throw new Error('IO_TIMEOUT');}finally{disconnectPrompts.delete(id);}};
-  const requestQuit=async()=>{if(quitFinal || quitPrompt || lifecycleClosing)return;quitPrompt=true;try{const options:Electron.MessageBoxOptions={type:'question',title:'sshOS 종료',message:'작업을 중단하고 sshOS를 종료할까요?',detail:shutdownSummary(mutations.snapshots(),activeOperation,null),buttons:['계속 실행','작업 중단 후 종료'],defaultId:0,cancelId:0,noLink:true};const owner=win,answer=owner && !owner.isDestroyed() ? await dialog.showMessageBox(owner,options):await dialog.showMessageBox(options);if(answer.response!==1)return;lifecycleClosing=true;profiles?.invalidate();executionPreviews.invalidate();transfers!.invalidateRenderer();const hard=setTimeout(()=>{quitFinal=true;worker.kill();app.exit(0);},9500);try{await shutdown(null,9500);}finally{clearTimeout(hard);quitFinal=true;worker.kill();app.quit();}}catch{if(lifecycleClosing){quitFinal=true;worker.kill();app.exit(0);}}finally{quitPrompt=false;}};
+  const requestQuit=async()=>{if(quitFinal || quitPrompt || lifecycleClosing)return;quitPrompt=true;try{const options:Electron.MessageBoxOptions={type:'question',title:'sshOS 종료',message:'작업을 중단하고 sshOS를 종료할까요?',detail:(viewers.editingCount?`편집 중인 텍스트 ${viewers.editingCount}개 · 종료하면 저장하지 않은 편집은 사라집니다.\n`:'')+shutdownSummary(mutations.snapshots(),activeOperation,null),buttons:['계속 실행','작업 중단 후 종료'],defaultId:0,cancelId:0,noLink:true};const owner=win,answer=owner && !owner.isDestroyed() ? await dialog.showMessageBox(owner,options):await dialog.showMessageBox(options);if(answer.response!==1)return;lifecycleClosing=true;profiles?.invalidate();executionPreviews.invalidate();transfers!.invalidateRenderer();const hard=setTimeout(()=>{quitFinal=true;worker.kill();app.exit(0);},9500);try{await shutdown(null,9500);}finally{clearTimeout(hard);quitFinal=true;worker.kill();app.quit();}}catch{if(lifecycleClosing){quitFinal=true;worker.kill();app.exit(0);}}finally{quitPrompt=false;}};
   const budget = new RequestBudget();
   const terminalInputBudget=new RequestBudget(undefined,240,720);
   const viewerDataBudget=new RequestBudget(undefined,32,128);
@@ -175,6 +177,8 @@ async function main(): Promise<void> {
       validateSender(event);
       try {
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload)) > 65536) throw new Error('INPUT_INVALID');
+        if(action === 'desktop:closeWindow' && typeof payload === 'string' && textEditor.windowBusy(payload))throw new Error('REQUEST_BUSY');
+        if(action === 'desktop:closeWindow' && typeof payload === 'string' && viewers.isEditingWindow(payload))throw new Error('TEXT_UNSAVED');
         if(action === 'desktop:closeWindow' && typeof payload === 'string' && desktop.findWindow(payload)?.kind === 'execution' && executions!.needsCloseConfirmation(payload))throw new Error('CLOSE_CONFIRM_REQUIRED');
         if(action === 'desktop:closeWindow' && typeof payload === 'string' && desktop.findWindow(payload)?.kind === 'terminal' && terminals!.needsCloseConfirmation(payload))throw new Error('CLOSE_CONFIRM_REQUIRED');
         const result = desktop.handle(action, payload);
@@ -215,11 +219,14 @@ async function main(): Promise<void> {
   for(const action of ['terminal:open','terminal:pause','terminal:get','terminal:input','terminal:next','terminal:restore','terminal:restoreAck','terminal:resize','terminal:previewPaste','terminal:paste','terminal:releasePaste','terminal:requestPaste','terminal:previewClose','terminal:close']) {
     ipcMain.handle(action,async(event,payload:unknown)=>{validateSender(event,action === 'terminal:input' ? terminalInputBudget:action === 'terminal:next' ? viewerDataBudget:budget);try{validateTerminalEnvelope(action,payload);return await terminals!.handle(action,payload);}catch(error){throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message:'INPUT_INVALID');}});
   }
-  for (const action of ['viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
+  for (const action of ['viewer:setEditing','viewer:discardEditing','viewer:saveText','viewer:probe','viewer:next','viewer:releaseProbe','viewer:open','viewer:get','viewer:reread','viewer:stopRead']) {
     ipcMain.handle(action,async (event,payload:unknown) => {
       validateSender(event,action === 'viewer:next' ? viewerDataBudget : budget);
       try {
+        if(action==='viewer:saveText')return await textEditor.save(payload);
         if (payload !== undefined && Buffer.byteLength(JSON.stringify(payload))>(action === 'viewer:next' ? 256 : 65536)) throw new Error('INPUT_INVALID');
+        if(action==='viewer:discardEditing'){const id=z.uuid().parse(payload);if(textEditor.windowBusy(id))throw new Error('REQUEST_BUSY');viewers.discardEditing(id);return;}
+        if(action==='viewer:setEditing' && payload && typeof payload==='object' && 'token' in payload && typeof payload.token==='string' && textEditor.windowBusy(viewers.windowForToken(payload.token) ?? ''))throw new Error('REQUEST_BUSY');
         return await viewers.handle(action,payload);
       } catch (error) {throw new Error(error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message) ? error.message : 'INPUT_INVALID');}
     });
@@ -228,12 +235,12 @@ async function main(): Promise<void> {
     validateSender(event); if (payload !== undefined) throw new Error('INPUT_INVALID');
     if (storageRecovering || lifecycleClosing || powerTransition) throw new Error('REQUEST_BUSY');
     const faulted=!repository || repository.store.faulted || !receipts || receipts.faulted || recoveryLocked;
-    if (!faulted && (terminals!.hasActive || executions!.hasActive || mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
+    if (!faulted && (textEditor.hasActive || terminals!.hasActive || executions!.hasActive || mutations.hasRunning || transfers!.isRegistering || transfers!.overlays().some(row=>transfers!.isActive(row.taskId)))) throw new Error('REQUEST_BUSY');
     storageRecovering=true;let barrier:string|null=null;
     try {
-      await transfers!.settled();await mutations.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
+      await transfers!.settled();await mutations.settled();await textEditor.settled();barrier=await storageRecovery.barrier(faulted);recoveryLocked=true;
       await receiptChannel.settled();await receipts?.settled();await repository?.store.settled();await openRepository();const liveExecutions=new Set([...executions!.storageContinuity(),...terminals!.storageContinuity()]);receipts=await ReceiptRepository.open(dataRoot,{epoch,executionIds:liveExecutions},recordDirectorySyncUnavailable);if([...liveExecutions].some(id=>!receipts!.get(id)))throw new Error('STORAGE_FAILED');
-      await mutations.reconcileStorage(receipts);recoveryAccepting=true;await storageRecovery.reset(barrier,receipts.snapshots().filter(row=>liveExecutions.has(row.taskId) && (row.kind === 'gui_exec' || row.kind === 'pty') && row.recoveryUncertain).map(row=>({taskId:row.taskId,fromPhase:row.recoveredFromPhase})));recoveryLocked=false;
+      await mutations.reconcileStorage(receipts);await textEditor.reconcileStorage(receipts);recoveryAccepting=true;await storageRecovery.reset(barrier,receipts.snapshots().filter(row=>liveExecutions.has(row.taskId) && (row.kind === 'gui_exec' || row.kind === 'pty') && row.recoveryUncertain).map(row=>({taskId:row.taskId,fromPhase:row.recoveredFromPhase})));recoveryLocked=false;
     } catch (error) {if (barrier || faulted || !(error instanceof Error) || error.message !== 'REQUEST_BUSY') recoveryLocked=true;throw new Error(error instanceof Error && error.message === 'REQUEST_BUSY' ? 'REQUEST_BUSY' : 'STORAGE_FAILED');}
     finally {recoveryAccepting=false;storageRecovering=false;}
 

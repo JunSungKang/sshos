@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('sshOS', Object.freeze({
     shelf:() => ipcRenderer.invoke('transfer:shelf')
   }),
   viewer:Object.freeze({
+    setEditing:(token:string,readGeneration:number,active:boolean)=>ipcRenderer.invoke('viewer:setEditing',{token,readGeneration,active}),
+    discardEditing:(id:string)=>ipcRenderer.invoke('viewer:discardEditing',id),
+    saveText:(token:string,readGeneration:number,text:string)=>ipcRenderer.invoke('viewer:saveText',{token,readGeneration,text}),
     probe:(token:string) => ipcRenderer.invoke('viewer:probe',token),
     next:(token:string,readGeneration:number,sequence:number) => ipcRenderer.invoke('viewer:next',{token,readGeneration,sequence}),
     releaseProbe:(token:string) => ipcRenderer.invoke('viewer:releaseProbe',token),

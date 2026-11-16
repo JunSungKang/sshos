@@ -14,15 +14,15 @@ export const mutationObservationSchema=z.object({backendEpoch:z.uuid(),serverId:
 export type MutationObservation=z.infer<typeof mutationObservationSchema>;
 export const mutationReceiptSchema = z.object({
   kind:z.literal('file_mutation'), taskId:z.uuid(), serverId:z.uuid(), generation:z.int().min(1), backendEpoch:z.uuid(),
-  endpointSnapshot:endpointSnapshotSchema, hostKeyFingerprint:z.string().max(128), operation:z.enum(['mkdir','delete','rename']),
+  endpointSnapshot:endpointSnapshotSchema, hostKeyFingerprint:z.string().max(128), operation:z.enum(['mkdir','delete','rename','edit']),tempPath:remotePathSchema.optional(),
   source:remotePathSchema.nullable(), destination:remotePathSchema.nullable(), parent:remotePathSchema, sourceInitialStat:initialStatSchema.nullable(),
   phase:z.enum(['prepared','dispatched','completed','failed','partial','result_unknown']), stage:z.string().max(64), lastConfirmedPhase:z.string().max(64),
   destinationCreated:z.boolean(), sourceRemovalConfirmed:z.boolean(), errorCode:z.string().max(64).nullable(),
   lateObservations:z.array(mutationLateRecordSchema).max(2).optional(),
   recoveryUncertain:z.boolean(), recoveredFromPhase:z.string().max(64).nullable(), acknowledgedAt:z.iso.datetime().nullable(),
   createdAt:z.iso.datetime(), updatedAt:z.iso.datetime()
-}).strict();
+}).strict().refine(row=>row.operation==='edit' ? row.source!==null && row.source===row.destination && row.tempPath!==undefined && row.sourceInitialStat?.type==='file' : row.tempPath===undefined);
 export type MutationReceipt = z.infer<typeof mutationReceiptSchema>;
-export type TaskSummary = {taskId:string;kind:'file_mutation'|'file_transfer'|'gui_exec'|'pty';operation:'mkdir'|'delete'|'rename'|'upload'|'download'|'exec'|'pty';phase:string;lastConfirmedPhase:string;source:string|null;destination:string|null;errorCode:string|null;acknowledgedAt:string|null;updatedAt:string;serverName:string;recordError:boolean;unresolved:boolean;terminal:boolean;transferredBytes:number|null;verifiedBytes:number|null;totalBytes:number|null;cleanupState:string|null;cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean};
+export type TaskSummary = {taskId:string;kind:'file_mutation'|'file_transfer'|'gui_exec'|'pty';operation:'mkdir'|'delete'|'rename'|'edit'|'upload'|'download'|'exec'|'pty';phase:string;lastConfirmedPhase:string;source:string|null;destination:string|null;errorCode:string|null;acknowledgedAt:string|null;updatedAt:string;serverName:string;recordError:boolean;unresolved:boolean;terminal:boolean;transferredBytes:number|null;verifiedBytes:number|null;totalBytes:number|null;cleanupState:string|null;cancelable:boolean;registering:boolean;bytesPerSecond:number|null;cleanupPending:boolean};
 export type TaskPage = {rows:TaskSummary[];nextOffset:number|null;damagedIds:string[]};
 export type RecordActionPreview = {confirmationToken:string;taskId:string;action:'acknowledge'|'forget';source:string|null;destination:string|null;phase:string};

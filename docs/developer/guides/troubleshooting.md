@@ -8,6 +8,9 @@ Use the fixed error code, last confirmed phase and affected server/resource. A g
 | Source launch fails | Node 24.22.3, install completion and built dist | Run documented install/build/start from checkout; do not substitute raw Electron home profile |
 | HOST_TRUST_REQUIRED | Independently obtained fingerprint | Approve only after comparison, or cancel |
 | HOST_KEY_CHANGED | Saved versus observed key and legitimate server replacement | Stop; review out-of-band identity before explicitly removing old trust in Settings |
+| SOURCE_CHANGED during text Save | Completed-read content/stat versus current source | Preserve the draft, cancel editing and explicitly reread/reconcile; no automatic overwrite/retry |
+| ATOMIC_RENAME_UNSUPPORTED | Advertised OpenSSH POSIX rename extension | Keep the draft; use a server/location supporting safe replacement, with no truncation/shell fallback |
+| Partial/unknown text Save | Tasks stage and temporary path | Inspect current remote content and any temporary path before acknowledging; no automatic cleanup/replay |
 | AUTH_FAILED/KEY_INVALID | Selected method, supported key format/passphrase, size | Correct input or select a supported key; no hidden method fallback |
 | SECRET_UNAVAILABLE | OS vault availability, account/device/signing continuity | Re-enter without saving if needed; never plaintext fallback |
 | SFTP_UNAVAILABLE | Server subsystem/account restrictions | Use independently available terminal features; no SCP/helper workaround |

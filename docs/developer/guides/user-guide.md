@@ -77,3 +77,13 @@ Dragon Ball and Doraemon presets have been removed; a saved selection of either 
 Settings manages saved trust and saved credential removal, redacted diagnostics and offline license notices. Review an export before sharing it. Local task records contain endpoint/path information and are not anonymous.
 
 Disconnect and app exit list affected transfers/executions/terminals and offer an explicit keep-or-stop choice. Closing the app is not a hidden tray-background mode. Reopening the app does not replay old work.
+
+## Editing Text and Viewing Images
+
+Double-click a UTF-8 text file in Desktop or an explorer. It opens read-only. Choose `편집`, change the text, then choose `저장` (or Ctrl/Cmd+S). Typing, changing modes or minimizing the window does not save. Successful saving returns to read-only and rereads the file. `편집 취소` discards the draft only after confirmation when changed. Window close and app exit also warn about editing. Drafts stay in memory and are lost if the app/renderer crashes.
+
+Text is limited to 2 MiB, preserves an existing UTF-8 BOM and uniform LF/CRLF. Mixed or legacy CR line endings stay read-only. Saving requires a writable supported server session, permission to create a temporary file in the same directory, preservation of owner/group/mode, and OpenSSH POSIX rename support. An observed external change stops Save and retains the draft. SFTP cannot make the conflict check atomic with replacement, so avoid concurrent edits. Failed/uncertain Tasks may retain a hidden temporary path for explicit inspection; there is no automatic retry or cleanup. Replacement does not preserve hardlinks, ACLs or extended attributes.
+
+Double-click PNG, JPG/JPEG or static WebP to open the image viewer. Recognition uses file bytes, not only the extension. Use screen-fit or zoom without downloading the file again. Compressed files are limited to 20 MiB, 40 million pixels and 16384 pixels per dimension. GIF/BMP/TIFF/HEIC/SVG and animated formats are not supported by this viewer; download them for a suitable local application.
+
+In Console, use each tab's `×` button to close that specific terminal. An active terminal still asks for confirmation; closing its channel does not prove all remote child processes have terminated.
