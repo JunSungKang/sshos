@@ -1,8 +1,10 @@
 import {z} from 'zod';
 
-export const themeIds=['chocolate','atom','ubuntu','centos','kali','windows11','windows98','windowsxp','ghost','city','countryside','league','starcraft','dragonball','doraemon','river','sky','mountain','island'] as const;
+export const themeIds=['chocolate','atom','ubuntu','centos','kali','windows11','windows98','windowsxp','ghost','city','countryside','fantasy','starcraft','river','sky','mountain','island'] as const;
 export const themeIdSchema=z.enum(themeIds);
 export type ThemeId=z.infer<typeof themeIdSchema>;
+// Disk compatibility only. New UI/API requests must use themeIdSchema.
+export const storedThemeIdSchema=z.union([themeIdSchema,z.literal('dragonball'),z.literal('doraemon'),z.literal('league')]).transform((id):ThemeId=>id==='league'?'fantasy':id==='dragonball'||id==='doraemon'?'chocolate':id);
 type BaseColors={background:string;sidebar:string;surface:string;selected:string;accent:string;text:string};
 
 function rgb(value:string){return [1,3,5].map(offset=>parseInt(value.slice(offset,offset+2),16));}
@@ -25,27 +27,25 @@ function defineTheme(id:ThemeId,label:string,description:string,scheme:'dark'|'l
  return {id,label,description,scheme,colors};
 }
 
-/** Original offline palettes inspired by the requested names; no upstream assets. */
+/** Original offline palettes and artwork; no upstream game art or logos. */
 export const themes=[
- defineTheme('chocolate','다크초코 · 기본','짙은 초콜릿과 따뜻한 골드','dark',{background:'#211A16',sidebar:'#1B1512',surface:'#2B221D',selected:'#463823',accent:'#B99A45',text:'#E8DFD2'}),
- defineTheme('atom','아톰','흑연색 바탕과 차분한 블루','dark',{background:'#282C34',sidebar:'#21252B',surface:'#303640',selected:'#384A61',accent:'#61AFEF',text:'#E0E6EF'}),
- defineTheme('ubuntu','우분투','오베르진과 선명한 오렌지','dark',{background:'#241521',sidebar:'#1C101C',surface:'#341F32',selected:'#543144',accent:'#F28C62',text:'#F5E8EF'}),
- defineTheme('centos','CentOS','자주색과 라임의 균형','dark',{background:'#201B2D',sidebar:'#181421',surface:'#2D263E',selected:'#493A50',accent:'#BDD379',text:'#EEEAF5'}),
- defineTheme('kali','Kali Linux','짙은 네이비와 전기빛 블루','dark',{background:'#111B2A',sidebar:'#0D1521',surface:'#1A2940',selected:'#214269',accent:'#75B8FA',text:'#E2ECF8'}),
- defineTheme('windows11','윈도우11','밝은 회백색과 부드러운 블루','light',{background:'#EDF1F8',sidebar:'#E5EAF3',surface:'#FAFCFF',selected:'#D9E6FA',accent:'#245FB5',text:'#263447'}),
+ defineTheme('chocolate','다크초코 · 기본','짙은 초콜릿 위에 겹쳐진 골드 아치','dark',{background:'#211A16',sidebar:'#1B1512',surface:'#2B221D',selected:'#463823',accent:'#B99A45',text:'#E8DFD2'}),
+ defineTheme('atom','아톰','흑연 격자와 푸른 원자 궤도','dark',{background:'#282C34',sidebar:'#21252B',surface:'#303640',selected:'#384A61',accent:'#61AFEF',text:'#E0E6EF'}),
+ defineTheme('ubuntu','우분투','오베르진 바탕의 오렌지 종이접기','dark',{background:'#241521',sidebar:'#1C101C',surface:'#341F32',selected:'#543144',accent:'#F28C62',text:'#F5E8EF'}),
+ defineTheme('centos','CentOS','자주색과 라임으로 엮은 다이아몬드 모자이크','dark',{background:'#201B2D',sidebar:'#181421',surface:'#2D263E',selected:'#493A50',accent:'#BDD379',text:'#EEEAF5'}),
+ defineTheme('kali','Kali Linux','네이비 바탕에 이어지는 파란 회로','dark',{background:'#111B2A',sidebar:'#0D1521',surface:'#1A2940',selected:'#214269',accent:'#75B8FA',text:'#E2ECF8'}),
+ defineTheme('windows11','윈도우11','밝은 공간에 펼쳐지는 푸른 리본','light',{background:'#EDF1F8',sidebar:'#E5EAF3',surface:'#FAFCFF',selected:'#D9E6FA',accent:'#245FB5',text:'#263447'}),
  defineTheme('windows98','윈도우98','회색 입체감과 클래식 네이비','light',{background:'#D3D5D4',sidebar:'#C6CAC9',surface:'#E5E7E6',selected:'#173E70',accent:'#174F86',text:'#20272C'}),
- defineTheme('windowsxp','윈도우XP','맑은 파랑과 생동감 있는 초록','light',{background:'#EAF1E9',sidebar:'#E0EAF4',surface:'#F9FCF4',selected:'#D8E9FA',accent:'#357A2A',text:'#253545'}),
- defineTheme('ghost','고스트','안개빛 회백색과 은은한 보라','light',{background:'#F0EEF6',sidebar:'#E7E3EF',surface:'#FCFAFF',selected:'#E2DBF0',accent:'#6D4F9C',text:'#352D43'}),
- defineTheme('city','도시','슬레이트와 도시의 청록빛','dark',{background:'#172028',sidebar:'#111920',surface:'#222F39',selected:'#254950',accent:'#71C9CB',text:'#E1EAF0'}),
- defineTheme('countryside','시골','린넨과 올리브의 포근함','light',{background:'#F1EEE1',sidebar:'#E6E1CE',surface:'#FBF9EE',selected:'#E0E7CD',accent:'#566D36',text:'#343B2B'}),
- defineTheme('league','리그오브레전드','심해색과 오래된 금빛','dark',{background:'#101D29',sidebar:'#0B141E',surface:'#192A38',selected:'#3F3C2D',accent:'#C9AA62',text:'#EFE4CB'}),
- defineTheme('starcraft','스타크래프트','금속성 차콜과 신호등 같은 녹색','dark',{background:'#151D1C',sidebar:'#101615',surface:'#24302E',selected:'#304B3B',accent:'#9ACB87',text:'#DEE9DD'}),
- defineTheme('dragonball','드래곤볼','따뜻한 크림과 활기찬 오렌지','light',{background:'#F6EEDC',sidebar:'#E9E4D5',surface:'#FFFAED',selected:'#FFE4BC',accent:'#A94712',text:'#343B4C'}),
- defineTheme('doraemon','도라에몽','깨끗한 하늘색과 경쾌한 파랑','light',{background:'#E9F5FB',sidebar:'#D8EBF5',surface:'#FAFDFF',selected:'#D4EAF9',accent:'#186CA5',text:'#233D50'}),
- defineTheme('river','자연(강)','흐르는 물결의 청록과 푸른 회색','dark',{background:'#12272C',sidebar:'#0E1E22',surface:'#1D373E',selected:'#27545C',accent:'#8BD3D0',text:'#E0F0EE'}),
- defineTheme('sky','자연(하늘)','햇빛처럼 밝은 흰색과 맑은 파랑','light',{background:'#EAF4FC',sidebar:'#DAEAF6',surface:'#FBFDFF',selected:'#D7EAF8',accent:'#246997',text:'#283F54'}),
- defineTheme('mountain','자연(산)','침엽수의 녹색과 흙의 온기','dark',{background:'#18231D',sidebar:'#121B16',surface:'#27352B',selected:'#3D4C32',accent:'#C4C98A',text:'#E8EDDC'}),
- defineTheme('island','자연(무인도)','밝은 모래와 잔잔한 바다색','light',{background:'#F5F0DF',sidebar:'#E7EDDF',surface:'#FFFCF0',selected:'#D6EBE4',accent:'#236F6C',text:'#2B4643'})
+ defineTheme('windowsxp','윈도우XP','파란 하늘 아래 펼쳐진 초록 언덕','light',{background:'#EAF1E9',sidebar:'#E0EAF4',surface:'#F9FCF4',selected:'#D8E9FA',accent:'#357A2A',text:'#253545'}),
+ defineTheme('ghost','고스트','안개와 달빛이 스미는 보랏빛 아치','light',{background:'#F0EEF6',sidebar:'#E7E3EF',surface:'#FCFAFF',selected:'#E2DBF0',accent:'#6D4F9C',text:'#352D43'}),
+ defineTheme('city','도시','청록빛 창과 수직으로 이어진 도시 윤곽','dark',{background:'#172028',sidebar:'#111920',surface:'#222F39',selected:'#254950',accent:'#71C9CB',text:'#E1EAF0'}),
+ defineTheme('countryside','시골','린넨 위에 펼친 밭과 작은 시골집','light',{background:'#F1EEE1',sidebar:'#E6E1CE',surface:'#FBF9EE',selected:'#E0E7CD',accent:'#566D36',text:'#343B2B'}),
+ defineTheme('fantasy','판타지','룬의 원, 떠오른 수정과 안개 속 성채','dark',{background:'#101D29',sidebar:'#0B141E',surface:'#192A38',selected:'#3F3C2D',accent:'#C9AA62',text:'#EFE4CB'}),
+ defineTheme('starcraft','스타크래프트','산업용 금속 패널과 녹색 레이더','dark',{background:'#151D1C',sidebar:'#101615',surface:'#24302E',selected:'#304B3B',accent:'#9ACB87',text:'#DEE9DD'}),
+ defineTheme('river','자연(강)','청록빛 수면을 따라 겹쳐 흐르는 물결','dark',{background:'#12272C',sidebar:'#0E1E22',surface:'#1D373E',selected:'#27545C',accent:'#8BD3D0',text:'#E0F0EE'}),
+ defineTheme('sky','자연(하늘)','맑은 하늘을 가로지르는 구름과 햇살','light',{background:'#EAF4FC',sidebar:'#DAEAF6',surface:'#FBFDFF',selected:'#D7EAF8',accent:'#246997',text:'#283F54'}),
+ defineTheme('mountain','자연(산)','겹겹이 이어진 산 능선과 침엽수','dark',{background:'#18231D',sidebar:'#121B16',surface:'#27352B',selected:'#3D4C32',accent:'#C4C98A',text:'#E8EDDC'}),
+ defineTheme('island','자연(무인도)','모래섬과 야자수, 산호빛 해안선','light',{background:'#F5F0DF',sidebar:'#E7EDDF',surface:'#FFFCF0',selected:'#D6EBE4',accent:'#236F6C',text:'#2B4643'})
 ] as const;
 export type AppearanceTheme=(typeof themes)[number];
 const byId=Object.fromEntries(themes.map(theme=>[theme.id,theme])) as Record<ThemeId,AppearanceTheme>;
