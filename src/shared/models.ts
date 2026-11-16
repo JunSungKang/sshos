@@ -18,7 +18,7 @@ export const hostTrustSchema = z.object({ endpoint: bytes(300), publicKey: z.str
 export const secretSchema = z.object({ id: z.uuid(), profileId: z.uuid(), endpoint: bytes(300), username: bytes(256), ciphertext: z.string().min(1).max(16384) }).strict();
 export const stateSchema = z.object({
   profiles: z.array(profileSchema).max(10), hostTrust: z.array(hostTrustSchema).max(100),
-  encryptedSecrets: z.array(secretSchema).max(20), settings: z.object({ language: z.literal('ko'), saveSecrets: z.boolean() }).strict()
+  encryptedSecrets: z.array(secretSchema).max(20), settings: z.object({ language: z.literal('ko'), saveSecrets: z.boolean(), showHiddenFiles: z.boolean().default(false) }).strict()
 }).strict();
 export type AppState = z.infer<typeof stateSchema>;
-export const initialState = (): AppState => ({ profiles: [], hostTrust: [], encryptedSecrets: [], settings: { language: 'ko', saveSecrets: false } });
+export const initialState = (): AppState => ({ profiles: [], hostTrust: [], encryptedSecrets: [], settings: { language: 'ko', saveSecrets: false, showHiddenFiles: false } });

@@ -3,6 +3,7 @@ const status = z.enum(['idle', 'connecting', 'authenticating', 'connected', 'awa
 export const sessionSnapshotSchema = z.object({
   serverId: z.uuid(), generation: z.int().min(1), status,
   os: z.enum(['unknown', 'supported', 'unsupported']), osConfirmed: z.boolean(),
+  homePath:z.string().max(4096).nullable().optional(),
   sftp: z.enum(['unknown', 'available', 'unavailable']), initialPath: z.string().max(4096).nullable(), errorCode: z.string().max(64).nullable()
 }).strict();
 export type SessionSnapshot = z.infer<typeof sessionSnapshotSchema>;

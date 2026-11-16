@@ -4,6 +4,7 @@ import { boundsSchema, windowKindSchema, type WindowModel } from '../shared/wind
 import type { ConnectionController } from './connections';
 
 export class DesktopController {
+  private shell={mode:'desktop' as 'desktop'|'console',selectedServerId:null as string|null};
   private readonly windows = new Map<string, WindowModel>();
   private readonly resources=new Map<string,(token:string)=>{serverId:string;generation:number;resourceId:string}>();
   constructor(private readonly connections: ConnectionController) {}
@@ -15,6 +16,8 @@ export class DesktopController {
     return structuredClone(window);
   }
   handle(action: string, payload: unknown): unknown {
+    if(action==='desktop:getShellState'){if(payload!==undefined)throw new Error('INPUT_INVALID');return {...this.shell};}
+    if(action==='desktop:updateShellState'){this.shell=z.object({mode:z.enum(['desktop','console']),selectedServerId:z.uuid().nullable()}).strict().parse(payload);return;}
     if (action === 'desktop:getWindowSnapshot') { if (payload !== undefined) throw new Error('INPUT_INVALID'); return [...this.windows.values()].map(value => structuredClone(value)); }
     if (action === 'desktop:registerWindow') {
       const input = z.object({ kind: windowKindSchema, resourceToken: z.uuid().optional() }).strict().parse(payload);
@@ -24,9 +27,9 @@ export class DesktopController {
       const capability:{serverId:string;generation:number;resourceId?:string}|null = global ? null : input.resourceToken ? resolver ? resolver(input.resourceToken) : this.connections.sessionCapability(input.resourceToken) : null;
       if (!global && !capability) throw new Error('SESSION_UNAVAILABLE');
       const resourceId=capability?.resourceId ?? null;
-      const existing = [...this.windows.values()].find(row => row.kind === input.kind && (global || resourceId !== null && row.resourceId === resourceId && row.serverId === capability?.serverId && row.sessionGeneration === capability?.generation));
+      const existing = [...this.windows.values()].find(row => row.kind === input.kind && (global || input.kind==='home' && row.serverId===capability?.serverId && row.sessionGeneration===capability?.generation || resourceId !== null && row.resourceId === resourceId && row.serverId === capability?.serverId && row.sessionGeneration === capability?.generation));
       if (existing) return structuredClone(existing);
-      if (this.windows.size >= 12) throw new Error('WINDOW_LIMIT');
+      if ([...this.windows.values()].filter(row=>row.kind!=='home').length >= 12) throw new Error('WINDOW_LIMIT');
       if (input.kind === 'files' && [...this.windows.values()].filter(row => row.kind === 'files').length >= 6) throw new Error('WINDOW_LIMIT');
       if (['text','image'].includes(input.kind) && [...this.windows.values()].filter(row => ['text','image'].includes(row.kind)).length >= 4) throw new Error('WINDOW_LIMIT');
       const bounds = { x: 0, y: 44, width: 720, height: 440 };

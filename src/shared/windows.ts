@@ -1,5 +1,5 @@
 import { z } from 'zod';
-export const windowKindSchema = z.enum(['connections', 'files', 'text', 'image', 'execution', 'terminal', 'tasks', 'settings']);
+export const windowKindSchema = z.enum(['home', 'connections', 'files', 'text', 'image', 'execution', 'terminal', 'tasks', 'settings']);
 export type WindowKind = z.infer<typeof windowKindSchema>;
 export const boundsSchema = z.object({ x: z.number().finite(), y: z.number().finite(), width: z.number().finite().min(1).max(10000), height: z.number().finite().min(1).max(10000) }).strict();
 export type Bounds = z.infer<typeof boundsSchema>;
@@ -8,7 +8,7 @@ export const windowModelSchema = z.object({
   bounds: boundsSchema, restoreBounds: boundsSchema, mode: z.enum(['normal', 'maximized', 'minimized']), restoreMode: z.enum(['normal', 'maximized']), focused: z.boolean(), lastFocusedSequence: z.int().nonnegative()
 }).strict();
 export type WindowModel = z.infer<typeof windowModelSchema>;
-export const minimumWindow: Record<WindowKind, [number, number]> = { connections: [640,400], files: [640,360], text: [480,320], image: [480,320], execution: [560,320], terminal: [560,320], tasks: [640,360], settings: [560,360] };
+export const minimumWindow: Record<WindowKind, [number, number]> = { home:[640,360], connections: [640,400], files: [640,360], text: [480,320], image: [480,320], execution: [560,320], terminal: [560,320], tasks: [640,360], settings: [560,360] };
 
 export type ResizeEdge = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 export function resizeBounds(start: Bounds, edge: ResizeEdge, dx: number, dy: number, kind: WindowKind, area: Bounds): Bounds {
@@ -36,7 +36,7 @@ export class WindowManager {
     const singleton = ['connections', 'tasks', 'settings'].includes(kind);
     const previous = this.windows.find(row => (singleton && row.kind === kind) || (['text','image'].includes(kind) && row.kind === kind && row.serverId === serverId && row.sessionGeneration === generation && row.resourceId === resourceId));
     if (previous) { this.restore(previous.windowId); return this.snapshot().find(row => row.windowId === previous.windowId)!; }
-    if (this.windows.length >= 12 || (kind === 'files' && this.windows.filter(row => row.kind === 'files').length >= 6) || (['text','image'].includes(kind) && this.windows.filter(row => ['text','image'].includes(row.kind)).length >= 4)) throw new Error('WINDOW_LIMIT');
+    if (this.windows.filter(row=>row.kind!=='home').length >= 12 || (kind === 'files' && this.windows.filter(row => row.kind === 'files').length >= 6) || (['text','image'].includes(kind) && this.windows.filter(row => ['text','image'].includes(row.kind)).length >= 4)) throw new Error('WINDOW_LIMIT');
     const width = Math.min(this.area.width, kind === 'files' ? 940 : 720); const height = Math.min(this.area.height, kind === 'files' ? 596 : 440);
     const offset = this.windows.length * 24;
     const bounds = this.clamp(kind, { x: this.area.x + (this.area.width - width)/2 + offset, y: this.area.y + (this.area.height-height)/2 + offset, width, height });

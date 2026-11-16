@@ -28,19 +28,11 @@ try {
   await page.reload();
   assert.equal(await page.evaluate(async id => (await window.sshOS.profile.list()).some(row => row.id === id), savedId), true);
   await page.evaluate(id => window.sshOS.profile.delete(id), savedId);
-  await page.getByRole('navigation', { name: '앱 실행' }).getByRole('button', { name: '설정', exact: true }).dblclick();
-  const settingsWindow = page.getByRole('region', { name: '설정', exact: true });
-  await settingsWindow.waitFor();
-  const initial = await settingsWindow.boundingBox(); assert.ok(initial);
-  await page.mouse.move(initial.x + 180, initial.y + 20); await page.mouse.down(); await page.mouse.move(initial.x + 230, initial.y + 55, { steps: 5 }); await page.mouse.up();
-  const moved = await settingsWindow.boundingBox(); assert.ok(moved); assert.ok(moved.x > initial.x);
-  await page.getByRole('button', { name: '설정 최소화', exact: true }).click();
-  await expect(settingsWindow).toBeHidden();
-  await page.locator('.taskbar').getByRole('button', { name: '⚙ 설정', exact: true }).click();
-  await expect.poll(async()=>{const value=await settingsWindow.boundingBox();return value ? {x:value.x,y:value.y}:null;}).toEqual({x:moved.x,y:moved.y});
-  await page.getByRole('button', { name: '설정 최대화 또는 복원', exact: true }).click();
-  const maximized = await settingsWindow.boundingBox(); assert.ok(maximized); assert.equal(maximized.y, 44);
-  await page.getByRole('button', { name: '설정 닫기', exact: true }).click();
+  await page.getByRole('button',{name:'Settings',exact:true}).click();
+  const settingsWindow=page.getByRole('region',{name:'설정',exact:true});await settingsWindow.waitFor();
+  const bounds=await settingsWindow.boundingBox();assert.ok(bounds && bounds.x>=184 && bounds.y>=48);
+  await expect(page.getByRole('button',{name:'Desktop',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Console',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'설정 닫기',exact:true}).click();await expect(settingsWindow).toBeHidden();
   const settings = await application.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getLastWebPreferences());
   assert.equal(settings.nodeIntegration, false);
   assert.equal(settings.contextIsolation, true);
@@ -70,7 +62,7 @@ try {
   assert.equal(await page.locator('.xterm-screen').count(), 1);
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-eval-blocked'), 'true');
   assert.equal(await page.getByTestId('xterm-ready').getAttribute('data-security'), 'osc-rep-paste-pass');
-  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'userData runtime/crash/log paths configured before Session use', 'live Session spellchecker disabled and background networking/component update switches set by application without test-only flags', 'profile persistence across UI reload', 'desktop window drag, minimize, restore and maximize', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no packet capture, signing or Windows/Ubuntu result.' };
+  const report = { status: 'pass', platform: process.platform, architecture: process.arch, versions: snapshot.versions, assertions: ['main/preload/renderer/utilityProcess handshake', 'sandbox, contextIsolation and Node isolation', 'userData runtime/crash/log paths configured before Session use', 'live Session spellchecker disabled and background networking/component update switches set by application without test-only flags', 'profile persistence across UI reload', 'shared mode controls and Settings overlay retain protected shell bounds', 'renderer external fetch and eval denied', 'xterm DOM renderer and addon-fit under production CSP', 'public parser blocks OSC title/link/clipboard, rejects oversized REP and permits REP500', 'paste capture preserves exact CRLF/LF and prevents xterm automatic input'], limitation: 'Development executable on current machine only; no packet capture, signing or Windows/Ubuntu result.' };
   writeFileSync(`${localPath('evidence')}/d01-smoke.json`, JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify(report));
 } finally { await closeTestApplication(application); }

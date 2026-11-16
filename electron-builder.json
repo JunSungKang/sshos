@@ -29,7 +29,8 @@
       }
     ],
     "requestedExecutionLevel": "asInvoker",
-    "signExecutable": false
+    "signExecutable": false,
+    "icon": "build/icons/sshos.ico"
   },
   "mac": {
     "target": [
@@ -44,7 +45,8 @@
     "minimumSystemVersion": "14.0",
     "category": "public.app-category.developer-tools",
     "identity": "-",
-    "notarize": false
+    "notarize": false,
+    "icon": "build/icons/sshos.icns"
   },
   "npmRebuild": false,
   "electronFuses": {

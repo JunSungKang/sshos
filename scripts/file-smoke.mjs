@@ -22,7 +22,7 @@ try {
   await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();
   await expect.poll(() => page.evaluate(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.os === 'supported' && row.sftp === 'available' && row.sessionToken !== null)),{timeout:15000}).toBe(true);
   await page.evaluate(async ({id,port}) => {await window.sshOS.profile.update(id,{name:'SFTP 파일 검사',host:'127.0.0.1',port,username:'fixture',authentication:'password'});},{id:profileId,port:fixture.port});
-  await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();
+  await page.getByRole('button',{name:'sFTP',exact:true}).click();
   const explorer = page.getByRole('region',{name:'파일 · SFTP 파일 검사',exact:true});
   await explorer.getByRole('listitem').filter({hasText:'hello.txt'}).waitFor();
   await explorer.getByRole('button',{name:'새 폴더',exact:true}).click();
@@ -60,7 +60,7 @@ try {
   await expect.poll(() => page.evaluate(async () => (await window.sshOS.task.list(0)).rows.length),{timeout:15000}).toBe(2);
   assert.equal(fixture.metrics.mutations.length,mutationsBeforeForget);
   await page.getByRole('button',{name:'작업 닫기',exact:true}).click();
-  assert.equal(await explorer.getByRole('listitem').count(),6);
+  assert.equal(await explorer.getByRole('listitem').count(),5);assert.equal(await explorer.getByRole('listitem').filter({hasText:'.hidden'}).count(),0);
   assert.equal(await explorer.locator('script').count(),0);
   const link = explorer.getByRole('listitem').filter({hasText:'link.txt'}); await link.dblclick();
   assert.equal(fixture.metrics.openedPaths.includes('/home/fixture/link.txt'),false);

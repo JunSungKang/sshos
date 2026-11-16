@@ -8,3 +8,38 @@ coverage/
 
 # Repository-specific GitHub files are intentionally not tracked.
 /.github/
+
+# Private plans, sprint material and historical specifications stay local.
+/docs/developer/architecture/requirement-traceability.md
+/docs/developer/architecture/framework-decision.md
+/docs/developer/architecture/documentation-manifest.json
+/docs/developer/architecture/contract-index.json
+/docs/developer/architecture/desktop-v7-interaction.md
+/docs/developer/architecture/spec-v7.json
+/docs/developer/architecture/brand-v7.md
+/docs/developer/guides/desktop-v7-development-plan.md
+/docs/developer/guides/native-validation.md
+/docs/developer/guides/development-plan.md
+/docs/developer/guides/product-plan.md
+/docs/developer/guides/release-readiness.md
+/docs/developer/guides/usability-evaluation.md
+/docs/developer/guides/development-handoff.md
+/docs/developer/guides/desktop-v7-product-plan.md
+/docs/developer/guides/desktop-v7-acceptance.md
+/docs/developer/guides/research-and-positioning.md
+/docs/developer/guides/quality-security-checklist.md
+/docs/ai-agent/implementation-handoff.md
+/docs/developer/architecture/history/
+/docs/**/spec-*.json
+/docs/**/*plan*.md
+/docs/**/sprint*/
+/docs/**/governance/
+
+# Local design exploration and sprint assets.
+/design/brand/
+/design/mockups/
+
+/design/preview-prompt.txt
+
+# Development verification records stay local.
+/evidence/

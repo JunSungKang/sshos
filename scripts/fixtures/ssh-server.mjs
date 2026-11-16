@@ -28,7 +28,7 @@ export async function startSSHFixture(directory, options = {}) {
       session.on('pty',(acceptPTY,rejectPTY,info)=>{metrics.ptyRequests.push(info);if(options.shell)acceptPTY();else rejectPTY();});
       session.on('window-change',(acceptWindow,_rejectWindow,info)=>{metrics.windowChanges.push(info);acceptWindow?.();});
       session.on('shell',(acceptShell,rejectShell)=>{metrics.shells++;if(options.shell)options.shell({accept:acceptShell,reject:rejectShell,session});else rejectShell();});
-      session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
+      session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(info.command==="u=$(id -u) && printf '%s\\n' \"$u\" && getent passwd \"$u\"" && !options.denyHome){const stream=acceptExec();stream.write('1000\nfixture:x:1000:1000::/home/fixture:/bin/sh\n');stream.exit(0);stream.end();return;}if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
       session.on('sftp', acceptSFTP => {
         const stream = acceptSFTP(); const handles = new Map();
         if (options.hardlink) {

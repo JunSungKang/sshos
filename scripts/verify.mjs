@@ -4,7 +4,7 @@ import { mkdir,readFile,readdir,writeFile,rmdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { root,localPath,runtimeEnvironment } from './environment.mjs';
 const group=process.argv[2];
-const suites={integration:['session-smoke','file-smoke','viewer-smoke','transfer-engine-smoke','transfer-gui-smoke','execution-engine-smoke','execution-gui-smoke','terminal-engine-smoke','terminal-gui-smoke','execution-recovery-smoke','lifecycle-gui-smoke','shutdown-gui-smoke','power-gui-smoke','probe-gui-smoke','memory-gui-smoke','settings-gui-smoke','desktop-ui-smoke'],security:['electron-smoke']};
+const suites={integration:['session-smoke','file-smoke','viewer-smoke','transfer-engine-smoke','transfer-gui-smoke','execution-engine-smoke','execution-gui-smoke','terminal-engine-smoke','terminal-gui-smoke','execution-recovery-smoke','lifecycle-gui-smoke','shutdown-gui-smoke','power-gui-smoke','probe-gui-smoke','memory-gui-smoke','settings-gui-smoke','desktop-ui-smoke','v7-workspace-smoke'],security:['electron-smoke']};
 if(!Object.hasOwn(suites,group))throw new Error('Unknown verification group');
 const destination=localPath(`verification/${group}-${Date.now()}`);await mkdir(destination,{recursive:true});const env=runtimeEnvironment(`verify-${group}`),results=[];
 async function hashTree(dir){const result={};for(const entry of await readdir(join(root,dir),{withFileTypes:true})){const name=`${dir}/${entry.name}`;if(entry.isDirectory())Object.assign(result,await hashTree(name));else if(entry.isFile())result[name]=createHash('sha256').update(await readFile(join(root,name))).digest('hex');}return result;}

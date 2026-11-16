@@ -21,3 +21,22 @@ describe('main file capabilities and explicit cache',()=>{
  it('never accepts a late list after the session/window changes and cleanup revokes all old tokens',async()=>{const f=fixture(),first=await f.open();f.mismatch();await expect(f.controller.handle('file:list',first.directoryToken)).rejects.toThrow('TOKEN_EXPIRED');const g=fixture(),page=await g.open();await g.controller.closeWindow(g.window.windowId);expect(()=>g.controller.resolveEntry(page.entries[0]!.entryToken!)).toThrow('TOKEN_EXPIRED');await g.controller.closeWindow(g.window.windowId);expect(g.requests.filter((row:any)=>row.action==='file:close')).toHaveLength(1);const h=fixture();let deliver!:(value:FilePage)=>void;vi.mocked(h.gateway.request).mockImplementationOnce(()=>new Promise(resolve=>{deliver=resolve;}));const pending=h.open();h.desktop.handle('desktop:closeWindow',h.window.windowId);deliver(h.make());await expect(pending).rejects.toThrow('TOKEN_EXPIRED');});
  it('refuses unavailable SFTP, unknown tokens/actions, wrong window kinds and untrusted names',async()=>{const f=fixture();f.noSftp();await expect(f.open()).rejects.toThrow('SFTP_UNAVAILABLE');for(const action of ['file:list','file:enter'])await expect(f.controller.handle(action,crypto.randomUUID())).rejects.toThrow('TOKEN_EXPIRED');await expect(f.controller.handle('file:other',undefined)).rejects.toThrow('INPUT_INVALID');const g=fixture();vi.mocked(g.gateway.request).mockResolvedValue({...g.make(),entries:[{rawName:'bad/name',name:'bad/name',type:'file',operable:true,size:1,mtime:1,mode:0},{rawName:'special',name:'special',type:'special',operable:true,size:1,mtime:1,mode:0}]});const page=await g.open();expect(page.entries.every(row=>row.entryToken===null)).toBe(true);g.desktop.handle('desktop:closeWindow',g.window.windowId);await expect(g.open()).rejects.toThrow('TOKEN_EXPIRED');});
 });
+
+it('opens a folder in a correctly scoped reusable explorer and changes reuse identity after navigation',async()=>{
+ const f=fixture(),page=await f.open(),folder=page.entries[1]!.directoryToken!;
+ const opened=await f.controller.handle('file:openFolder',folder) as WindowModel;
+ expect(opened.serverId).toBe(f.window.serverId);expect(opened.windowId).not.toBe(f.window.windowId);
+ expect((await f.controller.handle('file:open',opened.windowId) as DirectoryPage).path).toBe('/home/u/folder');
+ expect((await f.controller.handle('file:openFolder',folder) as WindowModel).windowId).toBe(opened.windowId);
+ const current=await f.controller.handle('file:open',opened.windowId) as DirectoryPage;
+ await f.controller.handle('file:list',current.parentToken!);
+ expect((await f.controller.handle('file:openFolder',folder) as WindowModel).windowId).not.toBe(opened.windowId);
+ f.disconnect();await expect(f.controller.handle('file:openFolder',folder)).rejects.toThrow('SESSION_UNAVAILABLE');
+});
+it('refuses to invent an account home and allows only an explicit SFTP-start fallback',async()=>{
+ const f=fixture(),sessionToken=(f.controller as any).connections.views()[0].sessionToken;
+ const home=f.desktop.handle('desktop:registerWindow',{kind:'home',resourceToken:sessionToken}) as WindowModel;
+ await expect(f.controller.handle('file:open',home.windowId)).rejects.toThrow('PATH_UNSUPPORTED');
+ const page=await f.controller.handle('file:open',{id:home.windowId,start:true}) as DirectoryPage;expect(page.path).toBe('/home/u');
+ await expect(f.controller.handle('file:open',{id:home.windowId,start:false})).rejects.toThrow();
+});

@@ -28,7 +28,7 @@ try {
   const large=png(1024,1024,false,true);assert.ok(large.length>3*1024*1024);await fs.writeFile(join(fixtureRoot,'home/fixture/large.png'),large);
   const profileId=await page.evaluate(async port => {const profile=await window.sshOS.profile.create({name:'Viewer 검사',host:'127.0.0.1',port,username:'fixture',authentication:'password'});await window.sshOS.session.connect(profile.id,{password:'test-only',saveSecret:false});return profile.id;},fixture.port);
   await page.getByRole('button',{name:'지문을 확인하고 연결'}).click();await expect.poll(() => page.evaluate(async () => (await window.sshOS.session.list()).sessions.some(row => row.status === 'connected' && row.sftp === 'available' && row.sessionToken !== null)),{timeout:15000}).toBe(true);
-  await page.getByRole('navigation',{name:'앱 실행'}).getByRole('button',{name:'파일',exact:true}).dblclick();
+  await page.getByRole('button',{name:'sFTP',exact:true}).click();
   const explorer=page.getByRole('region',{name:'파일 · Viewer 검사',exact:true});
   await explorer.getByRole('listitem').filter({hasText:'notes.txt'}).dblclick();
   const textWindow=page.getByRole('region',{name:'텍스트 / notes.txt · Viewer 검사',exact:true});

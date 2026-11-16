@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import { errorCodeOf } from '../shared/errors';
 import { ErrorPanel } from './ErrorPanel';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -84,7 +85,7 @@ export function ProfileManager({ disabled }: { disabled: boolean }) {
       </fieldset>
       {error && <ErrorPanel error={error} phase={null} target={errorTarget}/>}
     </form>
-    {connecting && <ConnectionPrompt profile={connecting} close={() => setConnecting(null)} submit={credentials => attempt(connecting, credentials)} />}
-    {challenges[0] && <HostTrustPrompt key={challenges[0].challengeId} challenge={challenges[0]} busy={busy} approve={() => runTrust(challenges[0]!, true)} reject={() => runTrust(challenges[0]!, false)} />}
+    {connecting && createPortal(<ConnectionPrompt profile={connecting} close={() => setConnecting(null)} submit={credentials => attempt(connecting, credentials)} />,document.getElementById('root') ?? document.body)}
+    {challenges[0] && createPortal(<HostTrustPrompt key={challenges[0].challengeId} challenge={challenges[0]} busy={busy} approve={() => runTrust(challenges[0]!, true)} reject={() => runTrust(challenges[0]!, false)} />,document.getElementById('root') ?? document.body)}
   </section>;
 }
