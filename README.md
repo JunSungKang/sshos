@@ -21,7 +21,7 @@ A target in this table is an acceptance target, not a claim that native testing 
 
 - Desktop launchers, movable/resizable internal windows, taskbar and persistent transfer shelf.
 - Password or supported private-key authentication, explicit host-key trust and per-server session identity.
-- One file explorer with tree and list, manual refresh, read-only UTF-8 text and static PNG/JPEG/WebP viewers.
+- One file explorer with tree and list, manual refresh, UTF-8 text that opens read-only with explicit Edit/Save, and static PNG/JPEG/WebP image viewers.
 - Asynchronous upload/download with separate transfer and verification progress, full SHA-256 read-back and exclusive destination creation.
 - Explicit remote execution with stdout/stderr and observed exit information, plus an SSH PTY terminal for interactive programs such as an already-installed `vi`.
 - Active-server connection state and SSH command-completion response time; settings, redacted diagnostics and offline license notices.
