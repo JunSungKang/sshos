@@ -1,0 +1,492 @@
+/* Saved connections and workspace navigation share the acknowledged palette. */
+#root .connection-library {
+  container-type: inline-size;
+  width: 100%;
+  min-height: 100%;
+  padding: 32px;
+  background: var(--surface);
+  color: var(--text);
+}
+#root .connection-library-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+#root .connection-eyebrow {
+  color: var(--accent-text);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+}
+#root .connection-library h2 {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 8px;
+  font-size: 26px;
+  font-weight: 650;
+}
+#root .connection-library h2 > span {
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+}
+#root .connection-library h2 small {
+  color: var(--secondary);
+  font-weight: 400;
+}
+#root .connection-library-heading p {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 13px;
+}
+#root .connection-library-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 12px;
+}
+#root :is(.connection-library, .profile-editor) button.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+#root
+  :is(.connection-library, .profile-editor)
+  button.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+#root :is(.connection-library, .profile-editor) button.primary:disabled {
+  background: var(--surface);
+  color: var(--disabled);
+  filter: none;
+}
+#root .profile-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+@container (min-width: 1150px) {
+  #root .profile-card-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@container (min-width: 1550px) {
+  #root .profile-card-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+#root .profile-card {
+  min-width: 0;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--raised);
+  box-shadow: 0 6px 20px #00000014;
+  overflow-wrap: anywhere;
+}
+#root .profile-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+#root .profile-server-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--selected);
+  color: var(--accent-text);
+}
+#root
+  :is(.profile-server-icon, .workspace-server-icon, .workspace-context-icon)
+  svg {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+#root .connection-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  color: var(--secondary);
+  background: var(--surface);
+  font-size: 11px;
+}
+#root .connection-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+}
+#root [data-state="connected"] .connection-badge,
+#root .server-workspace[data-state="connected"] small {
+  color: var(--success);
+}
+#root [data-state="failed"] .connection-badge,
+#root .server-workspace[data-state="failed"] small {
+  color: var(--danger-text);
+}
+#root
+  :is(
+    [data-state="connecting"],
+    [data-state="authenticating"],
+    [data-state="awaiting_host_trust"]
+  )
+  .connection-badge {
+  color: var(--accent-text);
+}
+#root .profile-card h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+#root .profile-endpoint {
+  font:
+    12px/1.6 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  color: var(--secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#root .profile-account {
+  color: var(--secondary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+#root .profile-card-details {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--secondary);
+  font-size: 12px;
+}
+#root .profile-card-details span + span {
+  color: var(--secondary);
+}
+#root .profile-capabilities {
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
+#root .profile-card-error {
+  color: var(--danger-text);
+  font-size: 12px;
+  margin: 12px 0 0;
+}
+#root .profile-card-error-details {
+  font-size: 12px;
+  margin: 8px 0;
+}
+#root .profile-card-error-details summary {
+  cursor: pointer;
+  color: var(--secondary);
+}
+#root .profile-card-footer {
+  margin-top: auto;
+  padding-top: 24px;
+}
+#root .profile-card-connect {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  min-height: 42px;
+}
+#root .profile-card-tools {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+#root .profile-card-tools button {
+  background: transparent;
+  color: var(--secondary);
+  font-size: 12px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+#root .profile-card-tools .profile-card-delete:hover:not(:disabled) {
+  color: var(--danger-text);
+  background: var(--danger-background);
+}
+#root .connection-library-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  min-height: 350px;
+  padding: 40px;
+  text-align: center;
+  border-radius: 16px;
+  background: var(--raised);
+}
+#root .connection-library-empty > span {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--selected);
+  color: var(--accent-text);
+  font-size: 30px;
+}
+#root .connection-library-empty h3 {
+  margin: 24px 0 8px;
+  font-size: 20px;
+}
+#root .connection-library-empty p {
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0 0 24px;
+}
+#root .profile-editor {
+  width: min(560px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+#root .profile-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+#root .profile-editor-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+#root .profile-editor-heading h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+#root .profile-editor-heading p {
+  margin: 0;
+  font-size: 12px;
+}
+#root .profile-editor-heading > button {
+  flex-shrink: 0;
+  width: 32px;
+  min-height: 32px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font-size: 20px;
+}
+#root .profile-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+#root .profile-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 20px;
+  font-size: 13px;
+}
+#root .profile-editor .field-row {
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 20px;
+}
+#root .profile-editor :is(input, select) {
+  width: 100%;
+  min-width: 0;
+}
+#root .profile-editor .key-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#root .profile-editor .key-picker button {
+  margin: 0;
+  flex-shrink: 0;
+}
+#root .profile-editor .help,
+#root .profile-editor-note {
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0 0 20px;
+}
+#root .profile-editor .dialog-actions {
+  padding-top: 8px;
+}
+#root .server-workspaces {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  margin-top: 32px;
+  margin-bottom: 16px;
+}
+#root .server-workspaces-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 10px;
+  gap: 8px;
+}
+#root .server-workspaces-heading h2 {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+#root .server-workspaces-heading .workspace-clear {
+  min-height: 24px;
+  width: 24px;
+  padding: 0;
+  color: var(--secondary);
+  background: transparent;
+  font-size: 18px;
+}
+#root .server-workspaces-list {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 3px;
+  margin: -3px;
+}
+#root .server-workspace {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 10px;
+  text-align: left;
+  min-height: 64px;
+  background: transparent;
+}
+#root .server-workspace[aria-pressed="true"] {
+  background: var(--selected);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+#root .workspace-server-icon {
+  color: var(--secondary);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+#root .workspace-server-icon svg {
+  width: 24px;
+  height: 24px;
+}
+#root .server-workspace[aria-pressed="true"] .workspace-server-icon {
+  color: var(--accent-text);
+}
+#root .workspace-server-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+#root .workspace-server-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 550;
+}
+#root .workspace-server-copy small {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--secondary);
+}
+#root .workspace-list-empty {
+  padding: 6px 8px;
+  color: var(--secondary);
+  font-size: 12px;
+  line-height: 1.8;
+}
+#root .sidebar .brand,
+#root .sidebar nav,
+#root .sidebar-status {
+  flex-shrink: 0;
+}
+#root .sidebar-status > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#root .workspace-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+#root .workspace-context-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--accent-text);
+}
+#root .workspace-context-icon svg {
+  width: 24px;
+  height: 24px;
+}
+#root .workspace-context > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+#root .workspace-context strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#root .workspace-context small {
+  color: var(--secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#root .mode-switch {
+  flex-shrink: 0;
+}

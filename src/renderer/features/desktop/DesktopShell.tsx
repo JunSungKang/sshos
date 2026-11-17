@@ -23,6 +23,9 @@ import {
 import type { RuntimeSnapshot } from "../../../shared/contracts";
 import type { SessionView } from "../../../shared/session-contracts";
 import { ProfileManager } from "../connections/ProfileManager";
+import { ServerWorkspaces } from "../connections/ServerWorkspaces";
+import { ServerGlyph } from "../connections/ServerGlyph";
+import { connectionStatusLabel } from "../connections/connection-status";
 import { FileExplorer } from "../file-explorer/FileExplorer";
 import { ProbeStatus } from "../connections/ProbeStatus";
 import { TerminalPane } from "../console/TerminalPane";
@@ -441,6 +444,12 @@ export function DesktopShell({
     if (sessions.length) initialSessionBatch.current = false;
   }, [sessions]);
   const selected = sessions.find((row) => row.serverId === activeServer);
+  const selectServer = (id: string | null) => {
+    modeRequest.current++;
+    setPreferredTerminal(null);
+    setActiveServer(id);
+    setPanel(null);
+  };
   const currentConsole =
     windows.find(
       (row) =>
@@ -585,14 +594,15 @@ export function DesktopShell({
             </button>
           ))}
         </nav>
+        <ServerWorkspaces
+          sessions={sessions}
+          selectedId={activeServer}
+          select={selectServer}
+        />
         <div className="sidebar-status">
           <strong>{selected?.serverName ?? "서버 선택 안 됨"}</strong>
           <span>
-            {selected?.status === "connected"
-              ? "연결됨"
-              : selected?.status === "disconnected"
-                ? "연결 끊김"
-                : (selected?.status ?? "연결 대기")}
+            {selected ? connectionStatusLabel(selected.status) : "연결 대기"}
           </span>
           {selected?.status === "connected" && (
             <ProbeStatus
@@ -604,24 +614,25 @@ export function DesktopShell({
         </div>
       </aside>
       <header>
-        <select
-          className="active-server-select"
-          aria-label="활성 서버"
-          value={activeServer ?? ""}
-          onChange={(event) => {
-            modeRequest.current++;
-            setPreferredTerminal(null);
-            setActiveServer(event.target.value || null);
-            setPanel(null);
-          }}
-        >
-          <option value="">서버 선택</option>
-          {sessions.map((row) => (
-            <option key={row.serverId} value={row.serverId}>
-              {row.serverName}
-            </option>
-          ))}
-        </select>
+        <div className="workspace-context">
+          <span className="workspace-context-icon">
+            <ServerGlyph />
+          </span>
+          <div>
+            <strong>{selected?.serverName ?? "서버 작업 공간"}</strong>
+            <small
+              title={
+                selected
+                  ? `${selected.username}@${selected.host}:${selected.port}`
+                  : undefined
+              }
+            >
+              {selected
+                ? `${selected.username}@${selected.host}:${selected.port}`
+                : "좌측에서 작업할 서버를 선택하세요"}
+            </small>
+          </div>
+        </div>
         <nav className="mode-switch" aria-label="작업 모드">
           <button
             aria-pressed={displayMode === "desktop"}
@@ -888,6 +899,8 @@ export function DesktopShell({
                 />
               ) : row.kind === "connections" ? (
                 <ProfileManager
+                  selectServer={selectServer}
+                  visible={panel === "connections"}
                   disabled={
                     !snapshot || snapshot.storage.status === "unavailable"
                   }
