@@ -136,6 +136,7 @@ export function TaskManager({
           {row.errorCode && (
             <ErrorPanel
               error={row.errorCode}
+              download={row.operation === "download"}
               phase={row.lastConfirmedPhase}
               target={
                 row.source && row.destination
@@ -334,6 +335,9 @@ export function TaskManager({
           {detail.errorCode && (
             <ErrorPanel
               error={detail.errorCode}
+              download={
+                detail.kind === "file_transfer" && detail.direction === "download"
+              }
               phase={detail.lastConfirmedPhase}
               target={
                 detail.source && detail.destination

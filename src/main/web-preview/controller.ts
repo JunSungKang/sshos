@@ -115,6 +115,11 @@ export class WebPreviewController {
       cache: false,
     });
     row.session = ses;
+    const checkRevision = () => {
+      this.check(row);
+      if (row.session !== ses || row.revision !== revision)
+        throw new Error("TOKEN_EXPIRED");
+    };
     ses.setSpellCheckerEnabled(false);
     ses.setPermissionRequestHandler((_c, _p, done) => done(false));
     ses.setPermissionCheckHandler(() => false);
@@ -122,18 +127,15 @@ export class WebPreviewController {
     ses.webRequest.onBeforeRequest((details, done) => {
       let allowed = false;
       try {
-        this.check(row);
-        allowed =
-          details.url.startsWith(`sshos-web://${row.token}/`) &&
-          row.revision === revision;
+        checkRevision();
+        allowed = details.url.startsWith(`sshos-web://${row.token}/`);
       } catch {}
       done({ cancel: !allowed });
     });
     ses.protocol.handle("sshos-web", async (request) => {
       try {
-        this.check(row);
+        checkRevision();
         if (
-          row.revision !== revision ||
           !["GET", "HEAD"].includes(request.method) ||
           ++row.requests > 512
         )
@@ -145,12 +147,10 @@ export class WebPreviewController {
           row.generation,
           path,
           row.abort.signal,
-          () => {
-            this.check(row);
-            if (row.revision !== revision) throw new Error("TOKEN_EXPIRED");
-          },
+          checkRevision,
           readBudget,
         );
+        checkRevision();
         const csp = `default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src ${row.javascript ? "'self' 'unsafe-inline'" : "'none'"}; connect-src ${row.javascript ? "'self'" : "'none'"}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'none'`;
         return new Response(
           request.method === "HEAD" ? null : new Uint8Array(bytes),

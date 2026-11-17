@@ -38,4 +38,21 @@ describe("fixed structured error presentation", () => {
       "PARTIAL_RENAME",
     );
   });
+  it("uses download-specific messages while retaining the operation's error code", () => {
+    const cases = [
+      ["SOURCE_CHANGED", "원격 원본"],
+      ["VERIFY_MISMATCH", "로컬 임시 파일"],
+      ["NAME_CONFLICT", "같은 이름"],
+    ] as const;
+    for (const [code, text] of cases) {
+      const result = presentError(code, { download: true });
+      expect(result.code).toBe(code);
+      expect(result.userMessage).toContain(text);
+      expect(result.userMessage).not.toBe(errorMessages[code]);
+    }
+    expect(
+      presentError("VERIFY_MISMATCH", { download: true, outcome: "unknown" })
+        .userMessage,
+    ).toBe(errorMessages.RESULT_UNKNOWN);
+  });
 });
