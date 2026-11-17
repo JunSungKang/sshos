@@ -4,15 +4,18 @@ export function ErrorPanel({
   phase = null,
   target = null,
   outcome,
+  download = false,
 }: {
   error: unknown;
   phase?: string | null;
   target?: string | null;
   outcome?: "unknown" | "partial_rename";
+  download?: boolean;
 }) {
   const value = presentError(error, {
     confirmedPhase: phase,
     affectedTarget: target,
+    download,
     ...(outcome ? { outcome } : {}),
   });
   return (

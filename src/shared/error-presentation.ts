@@ -49,6 +49,11 @@ const actions: Partial<Record<ErrorCode, readonly string[]>> = {
   EXEC_PERMISSION: ["실행 방식에서 sh 또는 bash를 직접 선택하거나 취소하세요."],
   STOP_UNCONFIRMED: ["실행 출력과 작업 상세에서 종료 관측 여부를 확인하세요."],
 };
+const downloadMessages: Partial<Record<ErrorCode, string>> = {
+  SOURCE_CHANGED: "다운로드가 끝나기 전에 원격 원본의 변경이 확인됐습니다.",
+  VERIFY_MISMATCH: "다운로드한 내용과 로컬 임시 파일의 검증 결과가 일치하지 않습니다.",
+  NAME_CONFLICT: "로컬 저장 경로에 같은 이름의 항목이 이미 있습니다.",
+};
 export type ErrorPresentation = {
   code: ErrorCode;
   userMessage: string;
@@ -63,6 +68,7 @@ export function presentError(
     confirmedPhase?: string | null;
     affectedTarget?: string | null;
     outcome?: "unknown" | "partial_rename";
+    download?: boolean;
   } = {},
 ): ErrorPresentation {
   const code =
@@ -73,7 +79,9 @@ export function presentError(
         : errorCodeOf(value);
   return {
     code,
-    userMessage: errorMessages[code],
+    userMessage:
+      (context.download ? downloadMessages[code] : undefined) ??
+      errorMessages[code],
     confirmedPhase: context.confirmedPhase ?? null,
     affectedTarget: context.affectedTarget ?? null,
     actions: actions[code] ?? ["고정 오류 코드와 작업 상태를 확인하세요."],

@@ -6,7 +6,7 @@ sshOS is a client-only desktop workspace over existing SSH. Electron renders a R
 
 ## Stack and Directories
 
-The current manifest pins Node 24.22.3 for development, Electron 45.3.2, React 19.3.1, TypeScript 7.0.2, Vite 8.3.8, ssh2 1.17.0, xterm 6.0.0 and addon-fit 0.11.0. Exact versions and transitive dependencies belong to `package.json` and `package-lock.json`; the initial design baseline is not a substitute for the lockfile.
+The current manifest pins Node 24.22.3 for development, Electron 45.3.4, React 19.3.1, TypeScript 7.0.2, Vite 8.3.8, ssh2 1.17.0, xterm 6.0.0 and addon-fit 0.11.0. Electron 45.3.4 embeds Node 24.22.3 and Chromium 156.0.8078.100. See `package.json` and `package-lock.json` for exact dependency versions.
 
 - `src/main/index.ts`: pre-ready policy, paths, process composition and lifecycle.
 - `src/preload/index.ts`: named renderer bridge.

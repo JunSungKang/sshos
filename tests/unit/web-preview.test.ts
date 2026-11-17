@@ -844,15 +844,17 @@ it("rejects a late resource after revision change and restores prior configurati
   const deferred = Promise.withResolvers<Buffer>();
   vi.spyOn(WebContentReader.prototype, "read").mockImplementation(
     async (_s, _g, _p, _a, check) => {
-      await deferred.promise;
       check();
-      return Buffer.from("old");
+      // The reader can finish its final check before awaiting cleanup.
+      return deferred.promise;
     },
   );
   const old = ses.handler(new Request(url));
   await f.service.handle("web:reload", win.windowId);
   deferred.resolve(Buffer.from("old"));
-  expect((await old).status).toBe(403);
+  const response = await old;
+  expect(response.status).toBe(403);
+  expect(await response.text()).toBe("Remote resource unavailable");
   state.policyFailure = true;
   await expect(
     f.service.handle("web:configure", {
