@@ -14,12 +14,13 @@ import { fixtureKey } from "./fixtures/keys.mjs";
 
 const base = localPath(`fixtures/connect-cards-${randomUUID()}`);
 const env = runtimeEnvironment(`connect-cards-${randomUUID()}`);
-const pictures = localPath("evidence/connect-card-workspaces");
+const pictures = localPath("evidence/compact-server-cards");
 Object.assign(process.env, env);
 const { default: executablePath } = await import("electron");
 let application, fixture;
 const inputs = [];
 const layouts = [];
+let denyOS = false;
 try {
   await fs.mkdir(join(base, "etc"), { recursive: true });
   await fs.mkdir(join(base, "home/fixture"), { recursive: true });
@@ -34,6 +35,7 @@ try {
   const keyPath = join(base, "fixture-id_ed25519");
   await fs.writeFile(keyPath, fixtureKey().private, { mode: 0o600 });
   fixture = await startSSHFixture(base, {
+    denyRead: (path) => denyOS && path === "/etc/os-release",
     exec: ({ command, accept, reject }) => {
       if (command !== "/bin/true") return reject();
       const channel = accept();
@@ -185,11 +187,16 @@ try {
     (row) => row.name === "운영 서버",
   ).id;
 
-  const extraIds = await page.evaluate(async () => {
+  const extraIds = await page.evaluate(async (port) => {
     const ids = [];
     for (let index = 0; index < 7; index++) {
       const row = await window.sshOS.profile.create({
-        name: index === 0 ? "장".repeat(64) : `테스트 서버 ${index + 1}`,
+        name:
+          index === 0
+            ? "장".repeat(64)
+            : index === 1
+              ? "오류 확인 서버"
+              : `테스트 서버 ${index + 1}`,
         host:
           index === 0
             ? [
@@ -198,24 +205,26 @@ try {
                 "c".repeat(63),
                 "d".repeat(61),
               ].join(".")
-            : "example.invalid",
-        port: 22,
+            : index === 1
+              ? "127.0.0.1"
+              : "example.invalid",
+        port: index === 1 ? port : 22,
         username: index === 0 ? "u".repeat(256) : "fixture",
         authentication: "password",
       });
       ids.push(row.id);
     }
     return ids;
-  });
+  }, fixture.port);
   await library
     .getByRole("button", { name: "목록 새로고침", exact: true })
     .click();
   await expect(library.locator(".profile-card")).toHaveCount(10);
   await expect(add()).toBeDisabled();
   for (const [width, columns] of [
-    [1120, 3],
+    [1120, 4],
     [1600, 4],
-    [1920, 5],
+    [1920, 4],
   ]) {
     await page.setViewportSize({ width, height: 1000 });
     await expect
@@ -238,6 +247,7 @@ try {
             y: rect.y,
             right: rect.right,
             width: rect.width,
+            height: rect.height,
             client: node.clientWidth,
             scroll: node.scrollWidth,
           };
@@ -252,9 +262,38 @@ try {
         (row) => row.scroll <= row.client + 1 && row.right <= width + 1,
       ),
     );
-    assert.ok(geometry[1].x - geometry[0].right >= 19);
+    assert.ok(geometry[1].x - geometry[0].right >= 11);
+    assert.ok(geometry.every((row) => row.height >= 104 && row.height <= 112));
+    for (const control of [
+      ".profile-card-connect",
+      ".profile-card-icon",
+      ".profile-card-expand",
+    ]) {
+      assert.equal(
+        await library.locator(control).evaluateAll((nodes) =>
+          nodes.every((node) => {
+            const r = node.getBoundingClientRect(),
+              parent = node.closest(".profile-card").getBoundingClientRect();
+            return (
+              r.width >= 24 &&
+              r.height >= 24 &&
+              r.right <= parent.right &&
+              r.bottom <= parent.bottom
+            );
+          }),
+        ),
+        true,
+      );
+    }
     await page.screenshot({ path: join(pictures, `connect-${width}.png`) });
-    layouts.push({ width, columns, gapAtLeast: 19, longTextContained: true });
+    layouts.push({
+      width,
+      columns,
+      gapAtLeast: 11,
+      minHeight: Math.min(...geometry.map((r) => r.height)),
+      maxHeight: Math.max(...geometry.map((r) => r.height)),
+      longTextContained: true,
+    });
   }
   await card(extraIds.at(-1)).scrollIntoViewIfNeeded();
   await expect(card(extraIds.at(-1))).toBeInViewport({ ratio: 1 });
@@ -319,7 +358,42 @@ try {
     .poll(() => Buffer.concat(inputs).toString())
     .toBe("preserve-this-terminal");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
+  denyOS = true;
   await connect(secondId);
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await expect(card(secondId).locator(".profile-card-expand")).toHaveText(
+    "확인",
+  );
+  await card(secondId).locator(".profile-card-expand").click();
+  await expect(
+    card(secondId).getByRole("button", {
+      name: "Ubuntu 24.04 서버임을 확인",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(card(secondId).locator(".profile-card-details")).toContainText(
+    "비밀번호 인증",
+  );
+  await expect(
+    card(secondId).getByRole("button", { name: "연결 해제", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({ path: join(pictures, "compact-details.png") });
+  await card(secondId)
+    .getByRole("button", { name: "Ubuntu 24.04 서버임을 확인", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async (id) =>
+          (await window.sshOS.session.list()).sessions.find(
+            (row) => row.serverId === id,
+          ).osConfirmed,
+        secondId,
+      ),
+    )
+    .toBe(true);
+  await card(secondId).locator(".profile-card-expand").click();
+  assert.ok((await card(secondId).boundingBox()).height <= 112);
   assert.equal(fixture.metrics.shells, 1);
   const sent = Buffer.concat(inputs).toString();
   for (let i = 0; i < 5; i++) {
@@ -370,10 +444,37 @@ try {
   await page.screenshot({ path: join(pictures, "workspace-desktop.png") });
   assert.equal(fixture.metrics.shells, 1);
   assert.equal(Buffer.concat(inputs).toString(), sent);
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  const failedCard = card(extraIds[1]);
+  await failedCard.getByRole("button", { name: "연결", exact: true }).click();
+  const badPrompt = page
+    .locator("dialog[open]")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "오류 확인 서버 연결",
+        exact: true,
+      }),
+    });
+  await badPrompt
+    .getByLabel("비밀번호", { exact: true })
+    .fill("wrong-test-only");
+  await badPrompt.getByRole("button", { name: "연결", exact: true }).click();
+  await expect(failedCard.locator(".connection-badge")).toHaveText("연결 실패");
+  await expect(failedCard.locator(".profile-card-expand")).toHaveText("오류");
+  assert.ok((await failedCard.boundingBox()).height <= 112);
+  await failedCard.locator(".profile-card-expand").click();
+  await expect(failedCard.locator(".profile-card-error")).toBeVisible();
+  await failedCard.locator(".profile-card-error-details > summary").click();
+  await expect(failedCard.locator(".error-panel")).toBeVisible();
+  await failedCard.locator(".profile-card-expand").click();
+  assert.ok((await failedCard.boundingBox()).height <= 112);
+  await page.screenshot({ path: join(pictures, "compact-connected.png") });
   const report = {
     status: "pass",
     layouts,
     assertions: [
+      "fixed four columns and104–112px collapsed cards at all tested widths",
+      "keyboard-accessible detail toggle preserves OS confirmation,auth,error and disconnect information",
       "saved-profile cards and popup-only forms",
       "modal Escape/focus restoration and no-save cancellation",
       "real persistence ACK blocks close and duplicate submission",
