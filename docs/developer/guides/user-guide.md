@@ -14,11 +14,13 @@ The initial supported server is Ubuntu 24.04. If the OS cannot be read, a sessio
 
 Use Connect, sFTP and Settings in the left sidebar. Choose Desktop or Console at the top right. The bottom-left area identifies the selected server and its SSH response state. Select another server explicitly in the header; existing operations retain their original target.
 
-After authentication, Desktop shows the actual account home contents as icons. Double-click a folder or select it and press Enter to open an explorer window. Inside that explorer, activate a folder to navigate. Desktop remains at home. A denied or unmappable home lookup explains the failure and offers an explicit SFTP-start-directory fallback, labeled as such. Use the task strip to restore file/viewer/output windows. Minimizing a view does not cancel its operation.
+After authentication, Desktop shows the actual account home contents as icons. Double-click a folder or select it and press Enter to open an explorer window. Inside that explorer, activate a folder to navigate. Desktop remains at home. A denied or unmappable home lookup explains the failure and offers an explicit SSH-start-directory fallback, labeled as such. Use the task strip to restore file/viewer/output windows. Minimizing a view does not cancel its operation.
 
 Show hidden files defaults off. Change it in Settings to update Desktop and all explorers after the preference is saved. The preference survives restart; hiding an item clears its selection without stopping accepted work. A failed save retains the previous setting.
 
-The file explorer combines tree and list. Open folders to navigate; double-clicking a regular file opens a supported read-only viewer or a format choice. It never runs the file. Text is UTF-8, at most 2 MiB; static PNG/JPEG/WebP images are at most 20 MiB compressed and 40,000,000 pixels with each edge at most 16,384 pixels. There is no GUI Save action.
+The file explorer combines tree and list. Open folders to navigate; double-clicking a regular file opens a supported read-only viewer or a format choice. It never runs the file. Text is UTF-8, at most 2 MiB; static PNG/JPEG/WebP images are at most 20 MiB compressed and 40,000,000 pixels with each edge at most 16,384 pixels. Text opens read-only and offers explicit Edit/Save; see the editing section below.
+
+Desktop lists, properties and confirmed file/folder changes use SSH commands. Opening file contents, HTML resources, saving text and transferring files require SFTP separately. Unavailable SFTP does not disable command-backed browsing.
 
 Use Refresh to see external changes. Viewers require an explicit reread; they do not watch the server. The last listing/content can remain visible read-only after disconnect, with its read time.
 
@@ -28,7 +30,9 @@ Select upload files or a download folder using the native dialog, review the ser
 
 The persistent shelf separates byte transfer from full content verification. Upload read-back adds download traffic and time. A completed byte bar does not mean finalization has finished. At most two transfers run globally and one per server; at most 100 wait. Closing the explorer does not stop an accepted transfer.
 
-The first version supports one-folder creation, same-folder regular-file rename and nonrecursive regular-file/empty-folder deletion. It excludes recursive transfers/deletion, folder rename, permission editing and move/copy between servers. Terminal commands are a separate remote-account facility.
+Right-click an operable file or folder for Open, Delete, Rename and Properties. Rename stays within the same parent and never replaces an existing destination. Delete permanently removes the item and all descendants after confirmation; there is no trash or undo. It uses one server recursive command, not client-side per-entry deletion. A failed deletion may be partial; a disconnect can leave the result unknown. Basic properties refresh the selected item and show numeric owner/group IDs, permissions, size and times. Folder size is the directory entry size, not recursive disk usage. Recursive transfers, permission editing and move/copy between servers are not provided.
+
+Rename is supported only on verified ext-family, btrfs, tmpfs or XFS mounts with Linux 6.8 or later and unfiltered SSH command processes (`Seccomp: 0`). NFS, FUSE, overlay, filtered containers and unverified environments are refused before renaming, with an explicit error. This restriction does not disable browsing, viewing or transfers. Avoid concurrent parent-directory replacement/remounts; the app does not provide a server-side filesystem sandbox.
 
 ## Run a Program or Terminal
 
@@ -36,7 +40,7 @@ Choose the explicit Run action on a regular file. Confirm server, account, absol
 
 The output window displays bounded stdout/stderr and observed exit information. Exit code 0 is an observed process result, not proof that a business task or file change succeeded. A GUI program's graphical window is not forwarded. Programs needing interactive input belong in a separate PTY terminal.
 
-Choose Console for the central terminal workspace. Mode changes keep existing terminal sessions and transfers. Use the Console tabs to select an existing terminal, New Terminal to explicitly open another within channel limits, and Close Terminal for the confirmation flow. Explorer navigation never injects commands into the shell.
+Choose Console for the central terminal workspace. Mode changes keep existing terminal sessions and transfers. Use the Console tabs to select an existing terminal, New Terminal to explicitly open another within channel limits, and the selected tab’s × icon for the confirmation flow. Explorer navigation never injects commands into the shell.
 
 The terminal runs the remote account's existing login shell and can run installed tools such as `vi`. Multiline or large paste requires confirmation for the fixed target. Closing a terminal channel or requesting TERM does not prove every remote child/daemon stopped.
 
@@ -87,3 +91,11 @@ Text is limited to 2 MiB, preserves an existing UTF-8 BOM and uniform LF/CRLF. M
 Double-click PNG, JPG/JPEG or static WebP to open the image viewer. Recognition uses file bytes, not only the extension. Use screen-fit or zoom without downloading the file again. Compressed files are limited to 20 MiB, 40 million pixels and 16384 pixels per dimension. GIF/BMP/TIFF/HEIC/SVG and animated formats are not supported by this viewer; download them for a suitable local application.
 
 In Console, use each tab's `×` button to close that specific terminal. An active terminal still asks for confirmation; closing its channel does not prove all remote child processes have terminated.
+
+## Remote HTML Preview
+
+Open an `.html` or `.htm` file to show it in an internal browser window. Relative CSS, images, fonts, JavaScript and JSON resources are read over SFTP; no web server is installed or started. The default resource root is the HTML file’s containing folder. To include parent-folder resources, explicitly set an absolute root that contains the document and choose Apply Root. Root changes reload the page. Symlink files/parents and unsupported resource types remain blocked.
+
+JavaScript is off initially. The per-window checkbox enables it and reloads that preview. The page never receives the sshOS API, Node or local file authority. External internet requests, popups, downloads and embedded frames are blocked. Pages requiring a backend, remote CDN, server routing or external API may therefore be incomplete. This is a static file preview, not a running website.
+
+Each resource is limited to 20 MiB; a load is limited to 64 MiB and 512 requests. Refresh explicitly reloads. Switching to Console or opening Settings hides the browser content; closing its window disposes it. Source HTML and normal image-viewer pixels retain their own colors.

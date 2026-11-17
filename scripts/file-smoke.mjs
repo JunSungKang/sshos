@@ -47,12 +47,13 @@ try {
   await mutationDialog.getByLabel('새 이름').fill('renamed.txt');
   await mutationDialog.getByRole('button',{name:'서버와 경로 미리 보기'}).click();
   await mutationDialog.getByRole('button',{name:'확인하고 작업 시작'}).click();
-  await expect.poll(() => page.evaluate(async () => (await window.sshOS.task.list(0)).rows.some(row => row.operation === 'rename' && row.phase === 'failed' && row.errorCode === 'HARDLINK_UNSUPPORTED')),{timeout:15000}).toBe(true);
-  assert.equal(await fs.readFile(join(fixtureRoot,'home/fixture/hello.txt'),'utf8'),'fixture only\n');
-  await assert.rejects(fs.stat(join(fixtureRoot,'home/fixture/renamed.txt')));
+  await expect.poll(()=>page.evaluate(async()=>(await window.sshOS.task.list(0)).rows.some(row=>row.operation==='rename'&&row.phase==='completed'))).toBe(true);
+  assert.equal(await fs.readFile(join(fixtureRoot,'home/fixture/renamed.txt'),'utf8'),'fixture only\n');
+  await assert.rejects(fs.stat(join(fixtureRoot,'home/fixture/hello.txt')));
+  await explorer.getByRole('listitem').filter({hasText:'renamed.txt'}).waitFor();
   await page.getByRole('button',{name:'전체 작업',exact:true}).click();
   const tasks=page.getByRole('region',{name:'작업',exact:true});
-  await tasks.locator('article').filter({hasText:'HARDLINK_UNSUPPORTED'}).getByRole('button',{name:'상세',exact:true}).click();
+  await tasks.locator('article').filter({hasText:'이름 변경'}).getByRole('button',{name:'상세',exact:true}).click();
   const details=page.getByRole('dialog',{name:'작업 상세'});await details.getByText('원본 /home/fixture/hello.txt',{exact:false}).waitFor();await details.getByRole('button',{name:'닫기',exact:true}).click();
   const mutationsBeforeForget=fixture.metrics.mutations.length;
   await tasks.locator('article').filter({hasText:'폴더 생성'}).getByRole('button',{name:'로컬 기록 삭제',exact:true}).click();
@@ -69,14 +70,15 @@ try {
   assert.equal(await explorer.getByRole('listitem').filter({hasText:'external.txt'}).count(),0);
   await explorer.getByRole('button',{name:'새로고침',exact:true}).click();
   await explorer.getByRole('listitem').filter({hasText:'external.txt'}).waitFor();
-  const readsBeforeReload = fixture.metrics.readDirs;
+  assert.equal(fixture.metrics.readDirs,0);
+  const readsBeforeReload = fixture.metrics.metadataCommands.length;
   await page.waitForTimeout(300); await page.reload();
   await explorer.getByRole('listitem').filter({hasText:'external.txt'}).waitFor();
-  assert.equal(fixture.metrics.readDirs,readsBeforeReload);
+  assert.equal(fixture.metrics.metadataCommands.length,readsBeforeReload);
   await explorer.getByRole('listitem').filter({hasText:'folder with spaces'}).dblclick();
   await explorer.getByText('/home/fixture/folder with spaces',{exact:true}).waitFor();
   await explorer.getByRole('button',{name:'상위 폴더',exact:true}).click();
-  await explorer.getByRole('listitem').filter({hasText:'hello.txt'}).waitFor();
+  await explorer.getByRole('listitem').filter({hasText:'renamed.txt'}).waitFor();
   await page.screenshot({path:join(localPath('evidence'),'d05-files.png')});
   await application.evaluate(({dialog})=>{dialog.showMessageBox=async()=>({response:1,checkboxChecked:false});});
   await page.evaluate(id => window.sshOS.session.disconnect(id),profileId);
@@ -85,7 +87,7 @@ try {
   const receiptNames=await fs.readdir(join(env.SSHOS_RUNTIME_ROOT,'data/receipts'));
   assert.ok(receiptNames.some(name => name.endsWith('.json')));
   for (const name of receiptNames) {const content=await fs.readFile(join(env.SSHOS_RUNTIME_ROOT,'data/receipts',name),'utf8');assert.equal(content.includes('test-only'),false);}
-  const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['real SSH/SFTP directory enumeration','folder navigation with spaces','untrusted names as text','symlink is metadata only','explicit refresh sees external changes','renderer reload restores cached directory without remote enumeration','GUI preview sends no mutation before confirmation','confirmed mkdir0700 and nonrecursive delete with durable receipts','unsupported hardlink preserves original file','task details and confirmed local receipt deletion without remote mutation','disconnect preserves readonly last listing'],limitation:'Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance.'};
+  const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['SSH command directory enumeration; zero SFTP READDIR','folder navigation with spaces','untrusted names as text','symlink is metadata only','explicit refresh sees external changes','renderer reload restores cached directory without remote enumeration','GUI preview sends no mutation before confirmation','confirmed mkdir0700 and recursive command delete with durable receipts','rename is verified without overwriting','task details and confirmed local receipt deletion without remote mutation','disconnect preserves readonly last listing'],limitation:'Local ssh2 fixture, not Ubuntu/OpenSSH or target OS acceptance.'};
   await fs.writeFile(join(localPath('evidence'),'d05-files.json'),JSON.stringify(report,null,2)+'\n'); console.log(JSON.stringify(report));
 } finally {
   if (application) await closeTestApplication(application); await fixture.close();

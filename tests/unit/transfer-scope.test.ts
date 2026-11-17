@@ -1,36 +1,296 @@
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { TransferScope,transferFailure } from '../../src/worker/transfers/scope';
-import type { AuxiliaryLease } from '../../src/worker/connection/auxiliary-sockets';
-const deferred=<T>() => {let resolve!:(value:T)=>void;const promise=new Promise<T>(done => {resolve=done;});return {promise,resolve};};
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  TransferScope,
+  transferFailure,
+} from "../../src/worker/transfers/scope";
+import type { AuxiliaryLease } from "../../src/worker/connections/auxiliary-sockets";
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+};
 afterEach(() => vi.useRealTimers());
-describe('transfer I/O cancellation and ACK boundary',() => {
-  it('waits for native operations to settle and records a late successful create without resuming it',async () => {
-    const abort=new AbortController(),gate=deferred<string>();const observations:string[]=[];const scope=new TransferScope(abort.signal,() => {},stage => observations.push(stage));
-    const created=scope.native(() => gate.promise,'temp_create_ack');const rejected=expect(created).rejects.toMatchObject({message:'REQUEST_CANCELLED',uncertain:true});abort.abort(new Error('REQUEST_CANCELLED'));await rejected;
-    let settled=false;const shutdown=scope.shutdown().then(() => {settled=true;});for (let i=0;i<5;i++) await Promise.resolve();expect(settled).toBe(false);gate.resolve('late-native-handle');await shutdown;expect(observations).toEqual(['temp_create_ack']);
+describe("transfer I/O cancellation and ACK boundary", () => {
+  it("waits for native operations to settle and records a late successful create without resuming it", async () => {
+    const abort = new AbortController(),
+      gate = deferred<string>();
+    const observations: string[] = [];
+    const scope = new TransferScope(
+      abort.signal,
+      () => {},
+      (stage) => observations.push(stage),
+    );
+    const created = scope.native(() => gate.promise, "temp_create_ack");
+    const rejected = expect(created).rejects.toMatchObject({
+      message: "REQUEST_CANCELLED",
+      uncertain: true,
+    });
+    abort.abort(new Error("REQUEST_CANCELLED"));
+    await rejected;
+    let settled = false;
+    const shutdown = scope.shutdown().then(() => {
+      settled = true;
+    });
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    expect(settled).toBe(false);
+    gate.resolve("late-native-handle");
+    await shutdown;
+    expect(observations).toEqual(["temp_create_ack"]);
   });
-  it('distinguishes explicit SFTP failure from timeout and keeps late link ACK observational',async () => {
-    vi.useFakeTimers();const abort=new AbortController();const observations:string[]=[];const scope=new TransferScope(abort.signal,() => {},stage => observations.push(stage));
-    await expect(scope.remote<void>(done => done(Object.assign(new Error('fixture-denial'),{code:3}),undefined),'final_link_ack')).rejects.toMatchObject({message:'PERMISSION_DENIED',statusCode:3,uncertain:false});
-    let callback!:(error:Error|null,value:undefined)=>void;const link=scope.remote<undefined>(done => {callback=done;},'final_link_ack');const rejected=expect(link).rejects.toMatchObject({message:'IO_TIMEOUT',uncertain:true});await vi.advanceTimersByTimeAsync(15001);await rejected;callback(null,undefined);expect(observations).toEqual(['final_link_ack']);await scope.shutdown();
+  it("distinguishes explicit SFTP failure from timeout and keeps late link ACK observational", async () => {
+    vi.useFakeTimers();
+    const abort = new AbortController();
+    const observations: string[] = [];
+    const scope = new TransferScope(
+      abort.signal,
+      () => {},
+      (stage) => observations.push(stage),
+    );
+    await expect(
+      scope.remote<void>(
+        (done) =>
+          done(
+            Object.assign(new Error("fixture-denial"), { code: 3 }),
+            undefined,
+          ),
+        "final_link_ack",
+      ),
+    ).rejects.toMatchObject({
+      message: "PERMISSION_DENIED",
+      statusCode: 3,
+      uncertain: false,
+    });
+    let callback!: (error: Error | null, value: undefined) => void;
+    const link = scope.remote<undefined>((done) => {
+      callback = done;
+    }, "final_link_ack");
+    const rejected = expect(link).rejects.toMatchObject({
+      message: "IO_TIMEOUT",
+      uncertain: true,
+    });
+    await vi.advanceTimersByTimeAsync(15001);
+    await rejected;
+    callback(null, undefined);
+    expect(observations).toEqual(["final_link_ack"]);
+    await scope.shutdown();
   });
-  it('refuses a stale control capability before dispatch and closes only its owned lease',async () => {
-    let active=true,dispatches=0,closes=0;const closed=deferred<void>();const abort=new AbortController();const scope=new TransferScope(abort.signal,() => {if (!active) throw new Error('CONNECTION_LOST');},() => {});
-    const lease={ready:Promise.resolve({}),closed:closed.promise,closing:false,close:() => {closes++;closed.resolve();}} as unknown as AuxiliaryLease;scope.attach(lease);active=false;
-    await expect(scope.remote<void>(() => {dispatches++;},'temp_create_ack')).rejects.toMatchObject({message:'CONNECTION_LOST',uncertain:false});expect(dispatches).toBe(0);abort.abort(new Error('REQUEST_CANCELLED'));await scope.shutdown();expect(closes).toBeGreaterThanOrEqual(1);
+  it("refuses a stale control capability before dispatch and closes only its owned lease", async () => {
+    let active = true,
+      dispatches = 0,
+      closes = 0;
+    const closed = deferred<void>();
+    const abort = new AbortController();
+    const scope = new TransferScope(
+      abort.signal,
+      () => {
+        if (!active) throw new Error("CONNECTION_LOST");
+      },
+      () => {},
+    );
+    const lease = {
+      ready: Promise.resolve({}),
+      closed: closed.promise,
+      closing: false,
+      close: () => {
+        closes++;
+        closed.resolve();
+      },
+    } as unknown as AuxiliaryLease;
+    scope.attach(lease);
+    active = false;
+    await expect(
+      scope.remote<void>(() => {
+        dispatches++;
+      }, "temp_create_ack"),
+    ).rejects.toMatchObject({ message: "CONNECTION_LOST", uncertain: false });
+    expect(dispatches).toBe(0);
+    abort.abort(new Error("REQUEST_CANCELLED"));
+    await scope.shutdown();
+    expect(closes).toBeGreaterThanOrEqual(1);
   });
-  it('does not dispatch an unsupported hardlink or reinterpret local EEXIST as uncertainty',async () => {
-    const scope=new TransferScope(new AbortController().signal,() => {},() => {});
-    await expect(scope.remote<void>(() => {throw new Error('Server does not support this extended request');},'final_link_ack')).rejects.toMatchObject({message:'HARDLINK_UNSUPPORTED',uncertain:false});
-    await expect(scope.native(async () => {throw Object.assign(new Error('fixture-existing'),{code:'EEXIST'});},'temp_create_ack')).rejects.toMatchObject({message:'NAME_CONFLICT',uncertain:false});await scope.shutdown();
+  it("does not dispatch an unsupported hardlink or reinterpret local EEXIST as uncertainty", async () => {
+    const scope = new TransferScope(
+      new AbortController().signal,
+      () => {},
+      () => {},
+    );
+    await expect(
+      scope.remote<void>(() => {
+        throw new Error("Server does not support this extended request");
+      }, "final_link_ack"),
+    ).rejects.toMatchObject({
+      message: "HARDLINK_UNSUPPORTED",
+      uncertain: false,
+    });
+    await expect(
+      scope.native(async () => {
+        throw Object.assign(new Error("fixture-existing"), { code: "EEXIST" });
+      }, "temp_create_ack"),
+    ).rejects.toMatchObject({ message: "NAME_CONFLICT", uncertain: false });
+    await scope.shutdown();
   });
 });
 
+it("maps explicit remote/native denials and preserves existing uncertainty without exposing raw messages", () => {
+  for (const [code, expected] of [
+    [3, "PERMISSION_DENIED"],
+    ["EACCES", "PERMISSION_DENIED"],
+    ["EPERM", "PERMISSION_DENIED"],
+    ["EROFS", "PERMISSION_DENIED"],
+    ["EEXIST", "NAME_CONFLICT"],
+    [2, "PATH_UNSUPPORTED"],
+    ["ENOENT", "PATH_UNSUPPORTED"],
+    ["ENOTDIR", "PATH_UNSUPPORTED"],
+    ["EISDIR", "PATH_UNSUPPORTED"],
+    ["ENAMETOOLONG", "PATH_UNSUPPORTED"],
+    ["EINVAL", "PATH_UNSUPPORTED"],
+    [8, "HARDLINK_UNSUPPORTED"],
+    ["EXDEV", "HARDLINK_UNSUPPORTED"],
+    ["ENOTSUP", "HARDLINK_UNSUPPORTED"],
+    ["EOPNOTSUPP", "HARDLINK_UNSUPPORTED"],
+  ] as const) {
+    const result = transferFailure(
+      Object.assign(new Error("private diagnostic"), { code }),
+      "final_link_ack",
+      typeof code === "string",
+    );
+    expect(result).toMatchObject({
+      message: expected,
+      uncertain: false,
+      statusCode: code,
+    });
+    expect(transferFailure(result)).toBe(result);
+  }
+  expect(transferFailure({ code: {} }, "temp_create_ack", true)).toMatchObject({
+    message: "INTERNAL_ERROR",
+    uncertain: true,
+    statusCode: null,
+  });
+  expect(transferFailure("private text")).toMatchObject({
+    message: "INTERNAL_ERROR",
+    uncertain: false,
+  });
+});
+it("denies already-aborted work, duplicate attachment and native rejection without releasing another lease", async () => {
+  const abort = new AbortController();
+  abort.abort("no Error reason");
+  const scope = new TransferScope(
+    abort.signal,
+    () => {},
+    () => {},
+  );
+  await expect(scope.wait(Promise.resolve("never"))).rejects.toMatchObject({
+    message: "CONNECTION_LOST",
+  });
+  let closed = 0;
+  const lease = {
+    ready: Promise.resolve({}),
+    closed: Promise.resolve(),
+    closing: false,
+    close: () => {
+      closed++;
+    },
+  } as unknown as AuxiliaryLease;
+  scope.attach(lease);
+  expect(closed).toBeGreaterThan(0);
+  expect(() => scope.attach(lease)).toThrow("INPUT_INVALID");
+  await scope.shutdown();
+  const healthy = new TransferScope(
+    new AbortController().signal,
+    () => {},
+    () => {},
+  );
+  await expect(
+    healthy.native(async () => {
+      throw Object.assign(new Error("denied"), { code: "EACCES" });
+    }),
+  ).rejects.toMatchObject({ message: "PERMISSION_DENIED", uncertain: false });
+  await expect(
+    healthy.wait(Promise.reject(new Error("CONNECTION_LOST"))),
+  ).rejects.toMatchObject({ message: "CONNECTION_LOST" });
+  await healthy.shutdown();
+});
+it("checks authority again at successful callback and records a late ACK only as an observation", async () => {
+  let live = true,
+    callback!: (error: Error | null, value: undefined) => void;
+  const observed: string[] = [],
+    scope = new TransferScope(
+      new AbortController().signal,
+      () => {
+        if (!live) throw "generation revoked";
+      },
+      (value) => observed.push(value),
+    );
+  const pending = scope.remote<undefined>(
+      (done) => {
+        callback = done;
+      },
+      "final_link_ack",
+      null,
+    ),
+    failure = expect(pending).rejects.toMatchObject({
+      message: "CONNECTION_LOST",
+      uncertain: true,
+    });
+  live = false;
+  callback(null, undefined);
+  await failure;
+  expect(observed).toEqual(["final_link_ack"]);
+  await scope.shutdown();
+});
+it("maps synchronous local/remote exceptions, ordinary successful replies and cancellation without mutations", async () => {
+  const abort = new AbortController(),
+    scope = new TransferScope(
+      abort.signal,
+      () => {},
+      () => {},
+    );
+  expect(await scope.remote<string>((done) => done(null, "ok"))).toBe("ok");
+  await expect(
+    scope.remote<void>(() => {
+      throw new Error("raw private text");
+    }),
+  ).rejects.toMatchObject({ message: "INTERNAL_ERROR" });
+  let callback!: (error: Error | null, value: undefined) => void;
+  const pending = scope.remote<undefined>(
+      (done) => {
+        callback = done;
+      },
+      null,
+      null,
+    ),
+    failure = expect(pending).rejects.toMatchObject({
+      message: "CONNECTION_LOST",
+      uncertain: false,
+    });
+  scope.stop(new Error("not a public code"));
+  await failure;
+  callback(null, undefined);
+  await scope.shutdown();
+});
 
-it('maps explicit remote/native denials and preserves existing uncertainty without exposing raw messages',()=>{for(const [code,expected]of [[3,'PERMISSION_DENIED'],['EACCES','PERMISSION_DENIED'],['EPERM','PERMISSION_DENIED'],['EROFS','PERMISSION_DENIED'],['EEXIST','NAME_CONFLICT'],[2,'PATH_UNSUPPORTED'],['ENOENT','PATH_UNSUPPORTED'],['ENOTDIR','PATH_UNSUPPORTED'],['EISDIR','PATH_UNSUPPORTED'],['ENAMETOOLONG','PATH_UNSUPPORTED'],['EINVAL','PATH_UNSUPPORTED'],[8,'HARDLINK_UNSUPPORTED'],['EXDEV','HARDLINK_UNSUPPORTED'],['ENOTSUP','HARDLINK_UNSUPPORTED'],['EOPNOTSUPP','HARDLINK_UNSUPPORTED']] as const){const result=transferFailure(Object.assign(new Error('private diagnostic'),{code}),'final_link_ack',typeof code==='string');expect(result).toMatchObject({message:expected,uncertain:false,statusCode:code});expect(transferFailure(result)).toBe(result);}expect(transferFailure({code:{}},'temp_create_ack',true)).toMatchObject({message:'INTERNAL_ERROR',uncertain:true,statusCode:null});expect(transferFailure('private text')).toMatchObject({message:'INTERNAL_ERROR',uncertain:false});});
-it('denies already-aborted work, duplicate attachment and native rejection without releasing another lease',async()=>{const abort=new AbortController();abort.abort('no Error reason');const scope=new TransferScope(abort.signal,()=>{},()=>{});await expect(scope.wait(Promise.resolve('never'))).rejects.toMatchObject({message:'CONNECTION_LOST'});let closed=0;const lease={ready:Promise.resolve({}),closed:Promise.resolve(),closing:false,close:()=>{closed++;}} as unknown as AuxiliaryLease;scope.attach(lease);expect(closed).toBeGreaterThan(0);expect(()=>scope.attach(lease)).toThrow('INPUT_INVALID');await scope.shutdown();const healthy=new TransferScope(new AbortController().signal,()=>{},()=>{});await expect(healthy.native(async()=>{throw Object.assign(new Error('denied'),{code:'EACCES'});})).rejects.toMatchObject({message:'PERMISSION_DENIED',uncertain:false});await expect(healthy.wait(Promise.reject(new Error('CONNECTION_LOST')))).rejects.toMatchObject({message:'CONNECTION_LOST'});await healthy.shutdown();});
-it('checks authority again at successful callback and records a late ACK only as an observation',async()=>{let live=true,callback!:(error:Error|null,value:undefined)=>void;const observed:string[]=[],scope=new TransferScope(new AbortController().signal,()=>{if(!live)throw 'generation revoked';},value=>observed.push(value));const pending=scope.remote<undefined>(done=>{callback=done;},'final_link_ack',null),failure=expect(pending).rejects.toMatchObject({message:'CONNECTION_LOST',uncertain:true});live=false;callback(null,undefined);await failure;expect(observed).toEqual(['final_link_ack']);await scope.shutdown();});
-it('maps synchronous local/remote exceptions, ordinary successful replies and cancellation without mutations',async()=>{const abort=new AbortController(),scope=new TransferScope(abort.signal,()=>{},()=>{});expect(await scope.remote<string>(done=>done(null,'ok'))).toBe('ok');await expect(scope.remote<void>(()=>{throw new Error('raw private text');})).rejects.toMatchObject({message:'INTERNAL_ERROR'});let callback!:(error:Error|null,value:undefined)=>void;const pending=scope.remote<undefined>(done=>{callback=done;},null,null),failure=expect(pending).rejects.toMatchObject({message:'CONNECTION_LOST',uncertain:false});scope.stop(new Error('not a public code'));await failure;callback(null,undefined);await scope.shutdown();});
-
-
-it('never stores a server SFTP description as an application error code or invents authentication failure from generic FAILURE',()=>{for(const message of ['SENTINEL_REMOTE_TEXT','AUTH_FAILED','SOURCE_CHANGED']){const value=transferFailure(Object.assign(new Error(message),{code:4}),'final_link_ack');expect(value.message).toBe('INTERNAL_ERROR');expect(value.uncertain).toBe(false);}expect(transferFailure(Object.assign(new Error('AUTH_FAILED'),{code:3}),'temp_create_ack').message).toBe('PERMISSION_DENIED');expect(transferFailure(new Error('STORAGE_FAILED')).message).toBe('STORAGE_FAILED');});
+it("never stores a server SFTP description as an application error code or invents authentication failure from generic FAILURE", () => {
+  for (const message of [
+    "SENTINEL_REMOTE_TEXT",
+    "AUTH_FAILED",
+    "SOURCE_CHANGED",
+  ]) {
+    const value = transferFailure(
+      Object.assign(new Error(message), { code: 4 }),
+      "final_link_ack",
+    );
+    expect(value.message).toBe("INTERNAL_ERROR");
+    expect(value.uncertain).toBe(false);
+  }
+  expect(
+    transferFailure(
+      Object.assign(new Error("AUTH_FAILED"), { code: 3 }),
+      "temp_create_ack",
+    ).message,
+  ).toBe("PERMISSION_DENIED");
+  expect(transferFailure(new Error("STORAGE_FAILED")).message).toBe(
+    "STORAGE_FAILED",
+  );
+});

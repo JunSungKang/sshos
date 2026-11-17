@@ -1,10 +1,116 @@
-import { describe,expect,it } from 'vitest';
-import { inspectPrivateKey } from '../../src/worker/connection/key-policy';
-const uint=(value:number)=>{const b=Buffer.alloc(4);b.writeUInt32BE(value);return b;},string=(value:Buffer|string)=>{const b=Buffer.from(value);return Buffer.concat([uint(b.length),b]);},magic=Buffer.from('openssh-key-v1\0');
-function pem(bytes:Buffer){return Buffer.from('-----BEGIN OPENSSH PRIVATE KEY-----\n'+bytes.toString('base64')+'\n-----END OPENSSH PRIVATE KEY-----');}
-function key(cipher='none',kdf='none',options=Buffer.alloc(0),count=1,extra=Buffer.alloc(0)){return pem(Buffer.concat([magic,string(cipher),string(kdf),string(options),uint(count),string('public'),string('private'),extra]));}
-describe('OpenSSH header and KDF work bounds',()=>{
- it('permits bounded unencrypted/encrypted headers and RSA framing for the subsequent cryptographic parser',()=>{expect(()=>inspectPrivateKey(key())).not.toThrow();expect(()=>inspectPrivateKey(key('aes256-ctr','bcrypt',Buffer.concat([string(Buffer.alloc(16)),uint(1)])))).not.toThrow();expect(()=>inspectPrivateKey(key('aes256-ctr','bcrypt',Buffer.concat([string(Buffer.alloc(16)),uint(100)])))).not.toThrow();expect(()=>inspectPrivateKey(Buffer.from('-----BEGIN RSA PRIVATE KEY-----\nx\n-----END RSA PRIVATE KEY-----'))).not.toThrow();});
- it('rejects malformed base64/magic/lengths and non-single-key containers before expensive work',()=>{for(const bytes of [Buffer.alloc(0),Buffer.alloc(512*1024+1),pem(Buffer.from('other magic')),pem(magic),pem(Buffer.concat([magic,uint(0xffffffff)])),key('none','none',Buffer.alloc(0),0),key('none','none',Buffer.alloc(0),2),key('none','none',Buffer.alloc(0),1,Buffer.from('trailing')),Buffer.from('-----BEGIN OPENSSH PRIVATE KEY-----\nA\n-----END OPENSSH PRIVATE KEY-----')])expect(()=>inspectPrivateKey(bytes)).toThrow('KEY_INVALID');expect(()=>inspectPrivateKey(Buffer.from('-----BEGIN DSA PRIVATE KEY-----\nx'))).toThrow('AUTH_UNSUPPORTED');});
- it('rejects mismatched none/KDF/options and rounds0/101/trailing or truncated bcrypt parameters',()=>{for(const bytes of [key('none','bcrypt'),key('none','none',Buffer.from('unexpected')),key('aes256-ctr','pbkdf2'),key('aes256-ctr','bcrypt',Buffer.alloc(0)),key('aes256-ctr','bcrypt',Buffer.concat([string(Buffer.alloc(16)),uint(0)])),key('aes256-ctr','bcrypt',Buffer.concat([string(Buffer.alloc(16)),uint(101)])),key('aes256-ctr','bcrypt',Buffer.concat([string(Buffer.alloc(16)),uint(1),Buffer.from('extra')]))])expect(()=>inspectPrivateKey(bytes)).toThrow('KEY_INVALID');});
+import { describe, expect, it } from "vitest";
+import { inspectPrivateKey } from "../../src/worker/connections/key-policy";
+const uint = (value: number) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32BE(value);
+    return b;
+  },
+  string = (value: Buffer | string) => {
+    const b = Buffer.from(value);
+    return Buffer.concat([uint(b.length), b]);
+  },
+  magic = Buffer.from("openssh-key-v1\0");
+function pem(bytes: Buffer) {
+  return Buffer.from(
+    "-----BEGIN OPENSSH PRIVATE KEY-----\n" +
+      bytes.toString("base64") +
+      "\n-----END OPENSSH PRIVATE KEY-----",
+  );
+}
+function key(
+  cipher = "none",
+  kdf = "none",
+  options = Buffer.alloc(0),
+  count = 1,
+  extra = Buffer.alloc(0),
+) {
+  return pem(
+    Buffer.concat([
+      magic,
+      string(cipher),
+      string(kdf),
+      string(options),
+      uint(count),
+      string("public"),
+      string("private"),
+      extra,
+    ]),
+  );
+}
+describe("OpenSSH header and KDF work bounds", () => {
+  it("permits bounded unencrypted/encrypted headers and RSA framing for the subsequent cryptographic parser", () => {
+    expect(() => inspectPrivateKey(key())).not.toThrow();
+    expect(() =>
+      inspectPrivateKey(
+        key(
+          "aes256-ctr",
+          "bcrypt",
+          Buffer.concat([string(Buffer.alloc(16)), uint(1)]),
+        ),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      inspectPrivateKey(
+        key(
+          "aes256-ctr",
+          "bcrypt",
+          Buffer.concat([string(Buffer.alloc(16)), uint(100)]),
+        ),
+      ),
+    ).not.toThrow();
+    expect(() =>
+      inspectPrivateKey(
+        Buffer.from(
+          "-----BEGIN RSA PRIVATE KEY-----\nx\n-----END RSA PRIVATE KEY-----",
+        ),
+      ),
+    ).not.toThrow();
+  });
+  it("rejects malformed base64/magic/lengths and non-single-key containers before expensive work", () => {
+    for (const bytes of [
+      Buffer.alloc(0),
+      Buffer.alloc(512 * 1024 + 1),
+      pem(Buffer.from("other magic")),
+      pem(magic),
+      pem(Buffer.concat([magic, uint(0xffffffff)])),
+      key("none", "none", Buffer.alloc(0), 0),
+      key("none", "none", Buffer.alloc(0), 2),
+      key("none", "none", Buffer.alloc(0), 1, Buffer.from("trailing")),
+      Buffer.from(
+        "-----BEGIN OPENSSH PRIVATE KEY-----\nA\n-----END OPENSSH PRIVATE KEY-----",
+      ),
+    ])
+      expect(() => inspectPrivateKey(bytes)).toThrow("KEY_INVALID");
+    expect(() =>
+      inspectPrivateKey(Buffer.from("-----BEGIN DSA PRIVATE KEY-----\nx")),
+    ).toThrow("AUTH_UNSUPPORTED");
+  });
+  it("rejects mismatched none/KDF/options and rounds0/101/trailing or truncated bcrypt parameters", () => {
+    for (const bytes of [
+      key("none", "bcrypt"),
+      key("none", "none", Buffer.from("unexpected")),
+      key("aes256-ctr", "pbkdf2"),
+      key("aes256-ctr", "bcrypt", Buffer.alloc(0)),
+      key(
+        "aes256-ctr",
+        "bcrypt",
+        Buffer.concat([string(Buffer.alloc(16)), uint(0)]),
+      ),
+      key(
+        "aes256-ctr",
+        "bcrypt",
+        Buffer.concat([string(Buffer.alloc(16)), uint(101)]),
+      ),
+      key(
+        "aes256-ctr",
+        "bcrypt",
+        Buffer.concat([
+          string(Buffer.alloc(16)),
+          uint(1),
+          Buffer.from("extra"),
+        ]),
+      ),
+    ])
+      expect(() => inspectPrivateKey(bytes)).toThrow("KEY_INVALID");
+  });
 });

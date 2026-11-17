@@ -19,3 +19,5 @@ This area explains product behavior, implementation boundaries, local developmen
 - Use isolated fixtures. Native support and security claims require evidence from the specified targets.
 - Keep code, English guides and executable documentation consumers consistent.
 - Follow [Documentation Maintenance](guides/documentation-maintenance.md) when relocating or translating a contract.
+
+Desktop file-command, context-menu and isolated HTML-preview ownership is documented in [System Architecture](architecture/system-architecture.md) and [User Guide](guides/user-guide.md).

@@ -1,22 +1,288 @@
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { mkdir,mkdtemp,rm } from 'node:fs/promises';
-import { join,resolve } from 'node:path';
-import { dialog,type BrowserWindow } from 'electron';
-import { ProfileController,hasBlockingProfileWork } from '../../src/main/profiles';
-import {transferReceipt} from '../fixtures/transfers';
-import { StateRepository } from '../../src/main/persistence/state-repository';
-import { NativeDialogGate } from '../../src/main/native-dialogs';
-import type { ProfileView } from '../../src/shared/models';
-vi.mock('electron',()=>({dialog:{showOpenDialog:vi.fn()}}));
-const owned:string[]=[];afterEach(async()=>{vi.restoreAllMocks();for(const path of owned.splice(0))await rm(path,{recursive:true});});
-const draft={name:'server',host:'Example.COM.',port:22,username:'u',authentication:'password' as const};
-async function fixture(){await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/profiles-'));owned.push(root);const repo=await StateRepository.open(join(root,'data'));let owner:BrowserWindow|null={isDestroyed:()=>false,webContents:{id:1}} as BrowserWindow,busy=false;const controller=new ProfileController(repo,()=>owner,()=>busy);vi.mocked(dialog.showOpenDialog).mockResolvedValue({canceled:false,filePaths:[join(root,'id_ed25519')]});return {root,repo,controller,owner:()=>owner,none:()=>{owner=null;},busy:()=>{busy=true;}};}
-describe('named profile bridge and key picker authority',()=>{
- it('blocks identity/auth/delete for unresolved work, permits display names and respects explicit acknowledgement',async()=>{const f=await fixture(),pick=await f.controller.handle('profile:pickKey',undefined) as {token:string},profile=await f.controller.handle('profile:create',{...draft,authentication:'key',keyToken:pick.token}) as ProfileView,row={...transferReceipt(),serverId:profile.id,phase:'failed' as const,cleanupState:'needed' as const},rows=[row],controller=new ProfileController(f.repo,f.owner,id=>hasBlockingProfileWork(id,rows,()=>false));await expect(controller.handle('profile:delete',profile.id)).rejects.toThrow('PROFILE_BUSY');for(const input of [{...draft,authentication:'key',host:'other.test'},{...draft,authentication:'password'}])await expect(controller.handle('profile:update',{id:profile.id,input})).rejects.toThrow('PROFILE_BUSY');expect(await controller.handle('profile:update',{id:profile.id,input:{...draft,authentication:'key',name:'display only'}})).toMatchObject({id:profile.id,name:'display only'});row.acknowledgedAt=new Date().toISOString();await controller.handle('profile:delete',profile.id);expect(controller.list()).toEqual([]);});
- it('includes active cleanup and record-error overlays while excluding another profile',()=>{const id=crypto.randomUUID(),row={...transferReceipt(),serverId:id,phase:'completed' as const,cleanupState:'confirmed' as const,acknowledgedAt:new Date().toISOString()};expect(hasBlockingProfileWork(id,[row],()=>true)).toBe(true);expect(hasBlockingProfileWork(id,[{...row,recordError:true}],()=>false)).toBe(true);expect(hasBlockingProfileWork(crypto.randomUUID(),[row],()=>true)).toBe(false);expect(hasBlockingProfileWork(id,[row],()=>false)).toBe(false);});
- it('keeps the profile writer reservation through async storage and releases it after failure',async()=>{const f=await fixture(),profile=await f.controller.handle('profile:create',draft) as ProfileView,native=f.repo.store.update.bind(f.repo.store);let release!:()=>void;vi.spyOn(f.repo.store,'update').mockImplementationOnce(change=>new Promise<void>((resolve,reject)=>{release=()=>{void native(change).then(resolve,reject);};}));const pending=f.controller.handle('profile:update',{id:profile.id,input:{...draft,name:'new'}});expect(f.controller.writing).toBe(true);release();await pending;expect(f.controller.writing).toBe(false);f.busy();await expect(f.controller.handle('profile:delete',profile.id)).rejects.toThrow('PROFILE_BUSY');expect(f.controller.writing).toBe(false);});
- it('creates public views, updates display fields, clones changed endpoints and deletes only local data',async()=>{const f=await fixture(),first=await f.controller.handle('profile:create',draft) as ProfileView;expect(first).toMatchObject({host:'example.com',keyFilename:null,hasSavedSecret:false});expect((await f.controller.handle('profile:list',undefined) as ProfileView[])).toHaveLength(1);const renamed=await f.controller.handle('profile:update',{id:first.id,input:{...draft,name:'renamed'}}) as ProfileView;expect(renamed.id).toBe(first.id);const clone=await f.controller.handle('profile:update',{id:first.id,input:{...draft,host:'other.test'}}) as ProfileView;expect(clone.id).not.toBe(first.id);await f.controller.handle('profile:delete',clone.id);expect(f.controller.list()).toHaveLength(1);f.busy();await expect(f.controller.handle('profile:delete',first.id)).rejects.toThrow('PROFILE_BUSY');});
- it('binds native-selected private-key paths to tokens and exposes only basenames while retaining existing keys on edit',async()=>{const f=await fixture(),selected=await f.controller.handle('profile:pickKey',undefined) as {token:string;filename:string};expect(selected.filename).toBe('id_ed25519');expect(JSON.stringify(selected)).not.toContain(f.root);const key=await f.controller.handle('profile:create',{...draft,authentication:'key',keyToken:selected.token}) as ProfileView;expect(key).toMatchObject({keyFilename:'id_ed25519'});expect(JSON.stringify(key)).not.toContain(f.root);const same=await f.controller.handle('profile:update',{id:key.id,input:{...draft,authentication:'key',name:'same key'}}) as ProfileView;expect(same.keyFilename).toBe('id_ed25519');await expect(f.controller.handle('profile:create',{...draft,authentication:'key'})).rejects.toThrow('KEY_INVALID');await expect(f.controller.handle('profile:create',{...draft,authentication:'key',keyToken:crypto.randomUUID()})).rejects.toThrow('KEY_INVALID');await expect(f.controller.handle('profile:create',{...draft,keyPath:'/arbitrary/path'})).rejects.toThrow();});
- it('rejects missing profiles/actions/payloads and expired picker capabilities without raw path access',async()=>{const clock=vi.spyOn(performance,'now').mockReturnValue(0),f=await fixture(),pick=await f.controller.handle('profile:pickKey',undefined) as {token:string};clock.mockReturnValue(120000);await expect(f.controller.handle('profile:create',{...draft,authentication:'key',keyToken:pick.token})).rejects.toThrow('KEY_INVALID');await expect(f.controller.handle('profile:update',{id:crypto.randomUUID(),input:draft})).rejects.toThrow('PROFILE_NOT_FOUND');for(const action of ['profile:list','profile:pickKey'])await expect(f.controller.handle(action,{})).rejects.toThrow('INPUT_INVALID');await expect(f.controller.handle('profile:unknown',undefined)).rejects.toThrow('INPUT_INVALID');});
- it('cancels absent/cancelled selections, refuses public keys and unowned windows, and invalidates late dialog answers',async()=>{const f=await fixture();for(const result of [{canceled:true,filePaths:[]},{canceled:false,filePaths:[]}]){vi.mocked(dialog.showOpenDialog).mockResolvedValue(result);expect(await f.controller.handle('profile:pickKey',undefined)).toBeNull();}vi.mocked(dialog.showOpenDialog).mockResolvedValue({canceled:false,filePaths:[join(f.root,'key.pub')]});await expect(f.controller.handle('profile:pickKey',undefined)).rejects.toThrow('KEY_INVALID');let finish!:(value:Electron.OpenDialogReturnValue)=>void;vi.mocked(dialog.showOpenDialog).mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));const pending=f.controller.handle('profile:pickKey',undefined),rejected=expect(pending).rejects.toThrow('REQUEST_CANCELLED');f.controller.invalidate();finish({canceled:false,filePaths:[join(f.root,'late-key')]});await rejected;f.none();await expect(f.controller.handle('profile:pickKey',undefined)).rejects.toThrow('INPUT_INVALID');const g=await fixture();vi.spyOn(g.owner()!,'isDestroyed').mockReturnValue(true);await expect(g.controller.handle('profile:pickKey',undefined)).rejects.toThrow('INPUT_INVALID');const gate=new NativeDialogGate();await expect(gate.run(0,async()=>true)).rejects.toThrow('IPC_DENIED');});
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { dialog, type BrowserWindow } from "electron";
+import {
+  ProfileController,
+  hasBlockingProfileWork,
+} from "../../src/main/connections/profiles";
+import { transferReceipt } from "../fixtures/transfers";
+import { StateRepository } from "../../src/main/persistence/state-repository";
+import { NativeDialogGate } from "../../src/main/native-dialogs";
+import type { ProfileView } from "../../src/shared/models";
+vi.mock("electron", () => ({ dialog: { showOpenDialog: vi.fn() } }));
+const owned: string[] = [];
+afterEach(async () => {
+  vi.restoreAllMocks();
+  for (const path of owned.splice(0)) await rm(path, { recursive: true });
+});
+const draft = {
+  name: "server",
+  host: "Example.COM.",
+  port: 22,
+  username: "u",
+  authentication: "password" as const,
+};
+async function fixture() {
+  await mkdir(resolve(".local/tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".local/tmp/profiles-"));
+  owned.push(root);
+  const repo = await StateRepository.open(join(root, "data"));
+  let owner: BrowserWindow | null = {
+      isDestroyed: () => false,
+      webContents: { id: 1 },
+    } as BrowserWindow,
+    busy = false;
+  const controller = new ProfileController(
+    repo,
+    () => owner,
+    () => busy,
+  );
+  vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+    canceled: false,
+    filePaths: [join(root, "id_ed25519")],
+  });
+  return {
+    root,
+    repo,
+    controller,
+    owner: () => owner,
+    none: () => {
+      owner = null;
+    },
+    busy: () => {
+      busy = true;
+    },
+  };
+}
+describe("named profile bridge and key picker authority", () => {
+  it("blocks identity/auth/delete for unresolved work, permits display names and respects explicit acknowledgement", async () => {
+    const f = await fixture(),
+      pick = (await f.controller.handle("profile:pickKey", undefined)) as {
+        token: string;
+      },
+      profile = (await f.controller.handle("profile:create", {
+        ...draft,
+        authentication: "key",
+        keyToken: pick.token,
+      })) as ProfileView,
+      row = {
+        ...transferReceipt(),
+        serverId: profile.id,
+        phase: "failed" as const,
+        cleanupState: "needed" as const,
+      },
+      rows = [row],
+      controller = new ProfileController(f.repo, f.owner, (id) =>
+        hasBlockingProfileWork(id, rows, () => false),
+      );
+    await expect(
+      controller.handle("profile:delete", profile.id),
+    ).rejects.toThrow("PROFILE_BUSY");
+    for (const input of [
+      { ...draft, authentication: "key", host: "other.test" },
+      { ...draft, authentication: "password" },
+    ])
+      await expect(
+        controller.handle("profile:update", { id: profile.id, input }),
+      ).rejects.toThrow("PROFILE_BUSY");
+    expect(
+      await controller.handle("profile:update", {
+        id: profile.id,
+        input: { ...draft, authentication: "key", name: "display only" },
+      }),
+    ).toMatchObject({ id: profile.id, name: "display only" });
+    row.acknowledgedAt = new Date().toISOString();
+    await controller.handle("profile:delete", profile.id);
+    expect(controller.list()).toEqual([]);
+  });
+  it("includes active cleanup and record-error overlays while excluding another profile", () => {
+    const id = crypto.randomUUID(),
+      row = {
+        ...transferReceipt(),
+        serverId: id,
+        phase: "completed" as const,
+        cleanupState: "confirmed" as const,
+        acknowledgedAt: new Date().toISOString(),
+      };
+    expect(hasBlockingProfileWork(id, [row], () => true)).toBe(true);
+    expect(
+      hasBlockingProfileWork(id, [{ ...row, recordError: true }], () => false),
+    ).toBe(true);
+    expect(hasBlockingProfileWork(crypto.randomUUID(), [row], () => true)).toBe(
+      false,
+    );
+    expect(hasBlockingProfileWork(id, [row], () => false)).toBe(false);
+  });
+  it("keeps the profile writer reservation through async storage and releases it after failure", async () => {
+    const f = await fixture(),
+      profile = (await f.controller.handle(
+        "profile:create",
+        draft,
+      )) as ProfileView,
+      native = f.repo.store.update.bind(f.repo.store);
+    let release!: () => void;
+    vi.spyOn(f.repo.store, "update").mockImplementationOnce(
+      (change) =>
+        new Promise<void>((resolve, reject) => {
+          release = () => {
+            void native(change).then(resolve, reject);
+          };
+        }),
+    );
+    const pending = f.controller.handle("profile:update", {
+      id: profile.id,
+      input: { ...draft, name: "new" },
+    });
+    expect(f.controller.writing).toBe(true);
+    release();
+    await pending;
+    expect(f.controller.writing).toBe(false);
+    f.busy();
+    await expect(
+      f.controller.handle("profile:delete", profile.id),
+    ).rejects.toThrow("PROFILE_BUSY");
+    expect(f.controller.writing).toBe(false);
+  });
+  it("creates public views, updates display fields, clones changed endpoints and deletes only local data", async () => {
+    const f = await fixture(),
+      first = (await f.controller.handle(
+        "profile:create",
+        draft,
+      )) as ProfileView;
+    expect(first).toMatchObject({
+      host: "example.com",
+      keyFilename: null,
+      hasSavedSecret: false,
+    });
+    expect(
+      (await f.controller.handle("profile:list", undefined)) as ProfileView[],
+    ).toHaveLength(1);
+    const renamed = (await f.controller.handle("profile:update", {
+      id: first.id,
+      input: { ...draft, name: "renamed" },
+    })) as ProfileView;
+    expect(renamed.id).toBe(first.id);
+    const clone = (await f.controller.handle("profile:update", {
+      id: first.id,
+      input: { ...draft, host: "other.test" },
+    })) as ProfileView;
+    expect(clone.id).not.toBe(first.id);
+    await f.controller.handle("profile:delete", clone.id);
+    expect(f.controller.list()).toHaveLength(1);
+    f.busy();
+    await expect(
+      f.controller.handle("profile:delete", first.id),
+    ).rejects.toThrow("PROFILE_BUSY");
+  });
+  it("binds native-selected private-key paths to tokens and exposes only basenames while retaining existing keys on edit", async () => {
+    const f = await fixture(),
+      selected = (await f.controller.handle("profile:pickKey", undefined)) as {
+        token: string;
+        filename: string;
+      };
+    expect(selected.filename).toBe("id_ed25519");
+    expect(JSON.stringify(selected)).not.toContain(f.root);
+    const key = (await f.controller.handle("profile:create", {
+      ...draft,
+      authentication: "key",
+      keyToken: selected.token,
+    })) as ProfileView;
+    expect(key).toMatchObject({ keyFilename: "id_ed25519" });
+    expect(JSON.stringify(key)).not.toContain(f.root);
+    const same = (await f.controller.handle("profile:update", {
+      id: key.id,
+      input: { ...draft, authentication: "key", name: "same key" },
+    })) as ProfileView;
+    expect(same.keyFilename).toBe("id_ed25519");
+    await expect(
+      f.controller.handle("profile:create", {
+        ...draft,
+        authentication: "key",
+      }),
+    ).rejects.toThrow("KEY_INVALID");
+    await expect(
+      f.controller.handle("profile:create", {
+        ...draft,
+        authentication: "key",
+        keyToken: crypto.randomUUID(),
+      }),
+    ).rejects.toThrow("KEY_INVALID");
+    await expect(
+      f.controller.handle("profile:create", {
+        ...draft,
+        keyPath: "/arbitrary/path",
+      }),
+    ).rejects.toThrow();
+  });
+  it("rejects missing profiles/actions/payloads and expired picker capabilities without raw path access", async () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0),
+      f = await fixture(),
+      pick = (await f.controller.handle("profile:pickKey", undefined)) as {
+        token: string;
+      };
+    clock.mockReturnValue(120000);
+    await expect(
+      f.controller.handle("profile:create", {
+        ...draft,
+        authentication: "key",
+        keyToken: pick.token,
+      }),
+    ).rejects.toThrow("KEY_INVALID");
+    await expect(
+      f.controller.handle("profile:update", {
+        id: crypto.randomUUID(),
+        input: draft,
+      }),
+    ).rejects.toThrow("PROFILE_NOT_FOUND");
+    for (const action of ["profile:list", "profile:pickKey"])
+      await expect(f.controller.handle(action, {})).rejects.toThrow(
+        "INPUT_INVALID",
+      );
+    await expect(
+      f.controller.handle("profile:unknown", undefined),
+    ).rejects.toThrow("INPUT_INVALID");
+  });
+  it("cancels absent/cancelled selections, refuses public keys and unowned windows, and invalidates late dialog answers", async () => {
+    const f = await fixture();
+    for (const result of [
+      { canceled: true, filePaths: [] },
+      { canceled: false, filePaths: [] },
+    ]) {
+      vi.mocked(dialog.showOpenDialog).mockResolvedValue(result);
+      expect(
+        await f.controller.handle("profile:pickKey", undefined),
+      ).toBeNull();
+    }
+    vi.mocked(dialog.showOpenDialog).mockResolvedValue({
+      canceled: false,
+      filePaths: [join(f.root, "key.pub")],
+    });
+    await expect(
+      f.controller.handle("profile:pickKey", undefined),
+    ).rejects.toThrow("KEY_INVALID");
+    let finish!: (value: Electron.OpenDialogReturnValue) => void;
+    vi.mocked(dialog.showOpenDialog).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = f.controller.handle("profile:pickKey", undefined),
+      rejected = expect(pending).rejects.toThrow("REQUEST_CANCELLED");
+    f.controller.invalidate();
+    finish({ canceled: false, filePaths: [join(f.root, "late-key")] });
+    await rejected;
+    f.none();
+    await expect(
+      f.controller.handle("profile:pickKey", undefined),
+    ).rejects.toThrow("INPUT_INVALID");
+    const g = await fixture();
+    vi.spyOn(g.owner()!, "isDestroyed").mockReturnValue(true);
+    await expect(
+      g.controller.handle("profile:pickKey", undefined),
+    ).rejects.toThrow("INPUT_INVALID");
+    const gate = new NativeDialogGate();
+    await expect(gate.run(0, async () => true)).rejects.toThrow("IPC_DENIED");
+  });
 });

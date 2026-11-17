@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
 import { startSSHFixture } from './fixtures/ssh-server.mjs';
 
-const require=createRequire(import.meta.url);const {inspectLocalFile,inspectLocalDirectory}=require(join(root,'dist/worker/transfers/local.js'));
+const require=createRequire(import.meta.url);const {inspectLocalFile,inspectLocalDirectory}=require(join(root,'dist/platform/local-files/selection.js'));
 const id=randomUUID(),base=localPath(`fixtures/transfer-engine-${id}`),env=runtimeEnvironment(`transfer-engine-${id}`);Object.assign(process.env,env);
 const {default:executablePath}=await import('electron');let application,fixture;
 try {
@@ -19,7 +19,7 @@ try {
   await fs.writeFile(mainPath,`
 const {app,utilityProcess}=require('electron');const fs=require('node:fs/promises');const {join}=require('node:path');const {randomUUID}=require('node:crypto');
 const root=${JSON.stringify(root)};app.setName('sshOS transfer fixture');app.setPath('userData',process.env.SSHOS_RUNTIME_ROOT);app.setPath('temp',process.env.TMPDIR);
-const {MainStorageRecovery}=require(join(root,'dist/main/storage-recovery.js'));const {EngineGateway}=require(join(root,'dist/main/engine-gateway.js'));const {MainReceiptChannel}=require(join(root,'dist/main/receipt-channel.js'));const {ReceiptRepository}=require(join(root,'dist/main/persistence/receipts.js'));
+const {MainStorageRecovery}=require(join(root,'dist/main/lifecycle/storage-recovery.js'));const {EngineGateway}=require(join(root,'dist/main/engine-gateway.js'));const {MainReceiptChannel}=require(join(root,'dist/main/receipt-channel.js'));const {ReceiptRepository}=require(join(root,'dist/main/persistence/receipts.js'));
 let worker;app.whenReady().then(async()=>{const dataRoot=join(process.env.SSHOS_RUNTIME_ROOT,'data');await fs.mkdir(dataRoot,{recursive:true});let repo=await ReceiptRepository.open(dataRoot);const epoch=randomUUID();worker=utilityProcess.fork(join(root,'dist/worker/index.js'),[epoch],{stdio:'ignore'});const ready=new Promise(resolve=>worker.on('message',message=>{if(message.type==='ready'&&message.backendEpoch===epoch)resolve();}));const channel=new MainReceiptChannel(epoch,()=>repo,()=>true,message=>worker.postMessage(message));const recovery=new MainStorageRecovery(epoch,worker);const events=[];const gateway=new EngineGateway(worker,epoch,()=>{},channel,snapshot=>events.push(snapshot));app.__sshosTransferFixture={get repo(){return repo;},epoch,gateway,ready,events,recovery,async reopen(){await channel.settled();await repo.settled();repo=await ReceiptRepository.open(dataRoot);}};});app.on('before-quit',()=>worker?.kill());
 `);
   application=await electron.launch({executablePath,args:[`--user-data-dir=${env.SSHOS_RUNTIME_ROOT}`,mainPath],cwd:root,env,timeout:15000});
@@ -37,7 +37,7 @@ let worker;app.whenReady().then(async()=>{const dataRoot=join(process.env.SSHOS_
   await application.evaluate(async ({app},input) => app.__sshosTransferFixture.gateway.request(input),{action:'transfer:commit',serverId,generation:1,reservationToken});
   await expect.poll(() => application.evaluate(({app}) => app.__sshosTransferFixture.repo.snapshots().filter(row=>row.phase==='completed').length),{timeout:30000,intervals:[100,250,500]}).toBe(2);
   await expect.poll(() => application.evaluate(async ({app},serverId) => (await app.__sshosTransferFixture.gateway.request({action:'transfer:snapshot',serverId,generation:1,offset:0})).rows.length,serverId),{timeout:5000}).toBe(0);
-  assert.deepEqual(await fs.readFile(join(remoteRoot,'home/fixture/uploaded.bin')),data);assert.deepEqual(await fs.readFile(join(native,'downloaded.bin')),data);assert.equal(fixture.metrics.authenticationRequests,3);assert.deepEqual(fixture.metrics.commands.filter(command=>!command.includes('getent passwd')),[]);
+  assert.deepEqual(await fs.readFile(join(remoteRoot,'home/fixture/uploaded.bin')),data);assert.deepEqual(await fs.readFile(join(native,'downloaded.bin')),data);assert.equal(fixture.metrics.authenticationRequests,3);assert.deepEqual(fixture.metrics.commands.filter(command=>!fixture.metrics.metadataCommands.includes(command)).filter(command=>!command.includes('getent passwd')),[]);
   const records=await application.evaluate(({app}) => app.__sshosTransferFixture.repo.snapshots());for (const row of records) {assert.equal(row.streamSha256,createHash('sha256').update(data).digest('hex'));assert.equal(row.cleanupState,'confirmed');assert.equal(row.transferredBytes,data.length);assert.equal(row.verifiedBytes,data.length);}
   const sessions=await application.evaluate(async ({app},serverId) => app.__sshosTransferFixture.gateway.request({action:'session:snapshot',serverId,generation:1}),serverId);assert.equal(sessions.rows[0].status,'connected');
   const events=await application.evaluate(({app}) => app.__sshosTransferFixture.events);assert.ok(events.some(row=>row.phase==='queued'));assert.ok(events.some(row=>row.phase==='completed'&&!row.active));assert.ok(events.every(row=>!('source'in row)&&!('destination'in row)&&!('bytes'in row)));

@@ -1,28 +1,428 @@
-import { describe,it,expect,vi } from 'vitest';
-import { EventEmitter } from 'node:events';
-import type { UtilityProcess } from 'electron';
-import { executionReceipt } from '../fixtures/executions';
-import { transferReceipt } from '../fixtures/transfers';
-import { EngineGateway } from '../../src/main/engine-gateway';
-function port(){const value=new EventEmitter() as EventEmitter & {postMessage:ReturnType<typeof vi.fn>};value.postMessage=vi.fn();return value;}
-it('fills a session event gap without rewinding a newer per-server event',async()=>{
- const worker=port(),epoch=crypto.randomUUID(),changed=vi.fn(),gateway=new EngineGateway(worker as unknown as UtilityProcess,epoch,changed),serverId=crypto.randomUUID(),other=crypto.randomUUID();const snapshot={serverId,generation:1,status:'connected',os:'supported',osConfirmed:false,sftp:'available',initialPath:'/home/u',errorCode:null};
- worker.emit('message',{type:'session',backendEpoch:epoch,sequence:2,snapshot});const request=worker.postMessage.mock.calls[0]![0];worker.emit('message',{type:'session',backendEpoch:epoch,sequence:3,snapshot:{...snapshot,status:'disconnected'}});
- worker.emit('message',{type:'response',requestId:request.requestId,backendEpoch:epoch,serverId,generation:1,ok:true,result:{sequence:2,rows:[snapshot,{...snapshot,serverId:other}]}});await Promise.resolve();await Promise.resolve();expect(changed.mock.calls.map(row=>[row[0].serverId,row[0].status])).toEqual([[serverId,'connected'],[serverId,'disconnected'],[other,'connected']]);worker.emit('exit');
+import { describe, it, expect, vi } from "vitest";
+import { EventEmitter } from "node:events";
+import type { UtilityProcess } from "electron";
+import { executionReceipt } from "../fixtures/executions";
+import { transferReceipt } from "../fixtures/transfers";
+import { EngineGateway } from "../../src/main/engine-gateway";
+function port() {
+  const value = new EventEmitter() as EventEmitter & {
+    postMessage: ReturnType<typeof vi.fn>;
+  };
+  value.postMessage = vi.fn();
+  return value;
+}
+it("fills a session event gap without rewinding a newer per-server event", async () => {
+  const worker = port(),
+    epoch = crypto.randomUUID(),
+    changed = vi.fn(),
+    gateway = new EngineGateway(
+      worker as unknown as UtilityProcess,
+      epoch,
+      changed,
+    ),
+    serverId = crypto.randomUUID(),
+    other = crypto.randomUUID();
+  const snapshot = {
+    serverId,
+    generation: 1,
+    status: "connected",
+    os: "supported",
+    osConfirmed: false,
+    sftp: "available",
+    initialPath: "/home/u",
+    errorCode: null,
+  };
+  worker.emit("message", {
+    type: "session",
+    backendEpoch: epoch,
+    sequence: 2,
+    snapshot,
+  });
+  const request = worker.postMessage.mock.calls[0]![0];
+  worker.emit("message", {
+    type: "session",
+    backendEpoch: epoch,
+    sequence: 3,
+    snapshot: { ...snapshot, status: "disconnected" },
+  });
+  worker.emit("message", {
+    type: "response",
+    requestId: request.requestId,
+    backendEpoch: epoch,
+    serverId,
+    generation: 1,
+    ok: true,
+    result: { sequence: 2, rows: [snapshot, { ...snapshot, serverId: other }] },
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(
+    changed.mock.calls.map((row) => [row[0].serverId, row[0].status]),
+  ).toEqual([
+    [serverId, "connected"],
+    [serverId, "disconnected"],
+    [other, "connected"],
+  ]);
+  worker.emit("exit");
 });
-describe('explicit engine epoch replacement',()=>{
- it('rejects pending old work on exit, never replays it, ignores all old-port messages and accepts only new-epoch replies',async()=>{
- const first=port(),epoch=crypto.randomUUID(),changed=vi.fn(),receipt=vi.fn(()=>false),gateway=new EngineGateway(first as unknown as UtilityProcess,epoch,changed,{accept:receipt}),serverId=crypto.randomUUID();const pending=gateway.request({action:'session:snapshot',serverId,generation:1});const failure=expect(pending).rejects.toThrow('ENGINE_STOPPED');expect(()=>gateway.restart(port() as unknown as UtilityProcess,crypto.randomUUID())).toThrow('REQUEST_BUSY');first.emit('exit');await failure;expect(gateway.running).toBe(false);const second=port(),nextEpoch=crypto.randomUUID(),nextReceipt=vi.fn(()=>false);gateway.restart(second as unknown as UtilityProcess,nextEpoch,{accept:nextReceipt});expect(gateway.epoch).toBe(nextEpoch);expect(second.postMessage).not.toHaveBeenCalled();first.emit('message',{type:'session',backendEpoch:epoch,sequence:1,snapshot:{serverId,generation:1,status:'connected',os:'unknown',osConfirmed:false,sftp:'unknown',initialPath:null,errorCode:null}});first.emit('exit');expect(changed).not.toHaveBeenCalled();expect(gateway.running).toBe(true);expect(nextReceipt).not.toHaveBeenCalled();const result=gateway.request({action:'session:snapshot',serverId,generation:2}),request=second.postMessage.mock.calls[0]![0];second.emit('message',{type:'response',requestId:request.requestId,backendEpoch:epoch,serverId,generation:2,ok:true,result:['stale']});second.emit('message',{type:'response',requestId:request.requestId,backendEpoch:nextEpoch,serverId,generation:2,ok:true,result:['fresh']});expect(await result).toEqual(['fresh']);second.emit('exit');
- });
- it('returns a busy limit without pretending the live engine stopped and clears all request timers on real exit',async()=>{
- const worker=port(),gateway=new EngineGateway(worker as unknown as UtilityProcess,crypto.randomUUID(),()=>{}),serverId=crypto.randomUUID();const failures=Array.from({length:24},()=>expect(gateway.request({action:'session:snapshot',serverId,generation:1})).rejects.toThrow('ENGINE_STOPPED'));await expect(gateway.request({action:'session:snapshot',serverId,generation:1})).rejects.toThrow('REQUEST_BUSY');expect(gateway.running).toBe(true);worker.emit('exit');await Promise.all(failures);await expect(gateway.request({action:'session:snapshot',serverId,generation:1})).rejects.toThrow('ENGINE_STOPPED');
- });
+describe("explicit engine epoch replacement", () => {
+  it("rejects pending old work on exit, never replays it, ignores all old-port messages and accepts only new-epoch replies", async () => {
+    const first = port(),
+      epoch = crypto.randomUUID(),
+      changed = vi.fn(),
+      receipt = vi.fn(() => false),
+      gateway = new EngineGateway(
+        first as unknown as UtilityProcess,
+        epoch,
+        changed,
+        { accept: receipt },
+      ),
+      serverId = crypto.randomUUID();
+    const pending = gateway.request({
+      action: "session:snapshot",
+      serverId,
+      generation: 1,
+    });
+    const failure = expect(pending).rejects.toThrow("ENGINE_STOPPED");
+    expect(() =>
+      gateway.restart(port() as unknown as UtilityProcess, crypto.randomUUID()),
+    ).toThrow("REQUEST_BUSY");
+    first.emit("exit");
+    await failure;
+    expect(gateway.running).toBe(false);
+    const second = port(),
+      nextEpoch = crypto.randomUUID(),
+      nextReceipt = vi.fn(() => false);
+    gateway.restart(second as unknown as UtilityProcess, nextEpoch, {
+      accept: nextReceipt,
+    });
+    expect(gateway.epoch).toBe(nextEpoch);
+    expect(second.postMessage).not.toHaveBeenCalled();
+    first.emit("message", {
+      type: "session",
+      backendEpoch: epoch,
+      sequence: 1,
+      snapshot: {
+        serverId,
+        generation: 1,
+        status: "connected",
+        os: "unknown",
+        osConfirmed: false,
+        sftp: "unknown",
+        initialPath: null,
+        errorCode: null,
+      },
+    });
+    first.emit("exit");
+    expect(changed).not.toHaveBeenCalled();
+    expect(gateway.running).toBe(true);
+    expect(nextReceipt).not.toHaveBeenCalled();
+    const result = gateway.request({
+        action: "session:snapshot",
+        serverId,
+        generation: 2,
+      }),
+      request = second.postMessage.mock.calls[0]![0];
+    second.emit("message", {
+      type: "response",
+      requestId: request.requestId,
+      backendEpoch: epoch,
+      serverId,
+      generation: 2,
+      ok: true,
+      result: ["stale"],
+    });
+    second.emit("message", {
+      type: "response",
+      requestId: request.requestId,
+      backendEpoch: nextEpoch,
+      serverId,
+      generation: 2,
+      ok: true,
+      result: ["fresh"],
+    });
+    expect(await result).toEqual(["fresh"]);
+    second.emit("exit");
+  });
+  it("returns a busy limit without pretending the live engine stopped and clears all request timers on real exit", async () => {
+    const worker = port(),
+      gateway = new EngineGateway(
+        worker as unknown as UtilityProcess,
+        crypto.randomUUID(),
+        () => {},
+      ),
+      serverId = crypto.randomUUID();
+    const failures = Array.from({ length: 24 }, () =>
+      expect(
+        gateway.request({
+          action: "session:snapshot",
+          serverId,
+          generation: 1,
+        }),
+      ).rejects.toThrow("ENGINE_STOPPED"),
+    );
+    await expect(
+      gateway.request({ action: "session:snapshot", serverId, generation: 1 }),
+    ).rejects.toThrow("REQUEST_BUSY");
+    expect(gateway.running).toBe(true);
+    worker.emit("exit");
+    await Promise.all(failures);
+    await expect(
+      gateway.request({ action: "session:snapshot", serverId, generation: 1 }),
+    ).rejects.toThrow("ENGINE_STOPPED");
+  });
 });
 
-it('reserves cleanup and disconnect capacity when normal RPCs are stalled',async()=>{const worker=port(),gateway=new EngineGateway(worker as unknown as UtilityProcess,crypto.randomUUID(),()=>{}),serverId=crypto.randomUUID(),pending:Promise<unknown>[]=[];for(let i=0;i<24;i++)pending.push(gateway.request({action:'session:snapshot',serverId,generation:1}).catch(()=>{}));await expect(gateway.request({action:'session:snapshot',serverId,generation:1})).rejects.toThrow('REQUEST_BUSY');for(let i=0;i<4;i++)pending.push(gateway.request({action:'execution:close',serverId,generation:1,executionId:crypto.randomUUID()}).catch(()=>{}));await expect(gateway.request({action:'execution:close',serverId,generation:1,executionId:crypto.randomUUID()})).rejects.toThrow('REQUEST_BUSY');for(let i=0;i<4;i++)pending.push(gateway.request({action:'session:disconnect',serverId,generation:1}).catch(()=>{}));await expect(gateway.request({action:'session:disconnect',serverId,generation:1})).rejects.toThrow('REQUEST_BUSY');expect(worker.postMessage).toHaveBeenCalledTimes(32);worker.emit('exit');await Promise.all(pending);});
+it("reserves cleanup and disconnect capacity when normal RPCs are stalled", async () => {
+  const worker = port(),
+    gateway = new EngineGateway(
+      worker as unknown as UtilityProcess,
+      crypto.randomUUID(),
+      () => {},
+    ),
+    serverId = crypto.randomUUID(),
+    pending: Promise<unknown>[] = [];
+  for (let i = 0; i < 24; i++)
+    pending.push(
+      gateway
+        .request({ action: "session:snapshot", serverId, generation: 1 })
+        .catch(() => {}),
+    );
+  await expect(
+    gateway.request({ action: "session:snapshot", serverId, generation: 1 }),
+  ).rejects.toThrow("REQUEST_BUSY");
+  for (let i = 0; i < 4; i++)
+    pending.push(
+      gateway
+        .request({
+          action: "execution:close",
+          serverId,
+          generation: 1,
+          executionId: crypto.randomUUID(),
+        })
+        .catch(() => {}),
+    );
+  await expect(
+    gateway.request({
+      action: "execution:close",
+      serverId,
+      generation: 1,
+      executionId: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("REQUEST_BUSY");
+  for (let i = 0; i < 4; i++)
+    pending.push(
+      gateway
+        .request({ action: "session:disconnect", serverId, generation: 1 })
+        .catch(() => {}),
+    );
+  await expect(
+    gateway.request({ action: "session:disconnect", serverId, generation: 1 }),
+  ).rejects.toThrow("REQUEST_BUSY");
+  expect(worker.postMessage).toHaveBeenCalledTimes(32);
+  worker.emit("exit");
+  await Promise.all(pending);
+});
 
-it('routes only validated current-epoch mutation observations, without treating them as replies or replay commands',()=>{const worker=port(),epoch=crypto.randomUUID(),observe=vi.fn(),gateway=new EngineGateway(worker as unknown as UtilityProcess,epoch,()=>{},undefined,undefined,undefined,undefined,observe),value={backendEpoch:epoch,serverId:crypto.randomUUID(),generation:1,taskId:crypto.randomUUID(),operation:'mkdir',source:null,destination:'/home/new',observation:{stage:'mkdir_ack',at:new Date().toISOString()}};worker.emit('message',{type:'mutation_observation',...value,backendEpoch:crypto.randomUUID()});worker.emit('message',{type:'mutation_observation',...value,password:'sentinel'});expect(observe).not.toHaveBeenCalled();worker.emit('message',{type:'mutation_observation',...value});expect(observe).toHaveBeenCalledExactlyOnceWith(value);expect(worker.postMessage).not.toHaveBeenCalled();worker.emit('exit');expect(gateway.running).toBe(false);});
+it("routes only validated current-epoch mutation observations, without treating them as replies or replay commands", () => {
+  const worker = port(),
+    epoch = crypto.randomUUID(),
+    observe = vi.fn(),
+    gateway = new EngineGateway(
+      worker as unknown as UtilityProcess,
+      epoch,
+      () => {},
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      observe,
+    ),
+    value = {
+      backendEpoch: epoch,
+      serverId: crypto.randomUUID(),
+      generation: 1,
+      taskId: crypto.randomUUID(),
+      operation: "mkdir",
+      source: null,
+      destination: "/home/new",
+      observation: { stage: "mkdir_ack", at: new Date().toISOString() },
+    };
+  worker.emit("message", {
+    type: "mutation_observation",
+    ...value,
+    backendEpoch: crypto.randomUUID(),
+  });
+  worker.emit("message", {
+    type: "mutation_observation",
+    ...value,
+    password: "sentinel",
+  });
+  expect(observe).not.toHaveBeenCalled();
+  worker.emit("message", { type: "mutation_observation", ...value });
+  expect(observe).toHaveBeenCalledExactlyOnceWith(value);
+  expect(worker.postMessage).not.toHaveBeenCalled();
+  worker.emit("exit");
+  expect(gateway.running).toBe(false);
+});
 
-
-it('routes validated transfer/exec/PTY sequences independently, flags gaps and suppresses stale events',()=>{const worker=port(),epoch=crypto.randomUUID(),transfer=vi.fn(),execution=vi.fn(),terminal=vi.fn(),receipt=vi.fn(()=>false);new EngineGateway(worker as unknown as UtilityProcess,epoch,()=>{},{accept:receipt},transfer,execution,terminal);const exec={receipt:executionReceipt(),recordError:false,recordPending:false,active:false,cleanupPending:false},ptyRecord={...executionReceipt(),kind:'pty',executionId:null,source:null,cwd:null};ptyRecord.terminalId=ptyRecord.taskId;const pty={execution:{...exec,receipt:ptyRecord},uiReady:false,inputUncertain:false,inputInFlight:0,nextInputSequence:1},row=transferReceipt(),progress={taskId:row.taskId,serverId:row.serverId,generation:1,phase:'queued',totalBytes:row.totalBytes,transferredBytes:0,verifiedBytes:0,bytesPerSecond:null,cleanupState:'none',tempCreated:false,destinationCreated:false,lastConfirmedPhase:'queued',errorCode:null,updatedAt:row.updatedAt,recordError:false,active:false,slotOccupied:false,cleanupPending:false};for(const [type,snapshot,observer]of [['execution',exec,execution],['pty',pty,terminal],['transfer',progress,transfer]] as const){worker.emit('message',{type,backendEpoch:epoch,sequence:1,snapshot});worker.emit('message',{type,backendEpoch:epoch,sequence:1,snapshot});worker.emit('message',{type,backendEpoch:epoch,sequence:3,snapshot});expect(observer).toHaveBeenCalledTimes(2);expect(observer.mock.calls.map(args=>args.slice(1))).toEqual([[false,1],[true,3]]);}receipt.mockReturnValue(true);worker.emit('message',{type:'session',backendEpoch:epoch,sequence:4,snapshot:{}});expect(receipt).toHaveBeenCalled();worker.emit('exit');});
-it('rejects wrong request identities, exposes only fixed failure codes, expires pending requests and handles a failed port send',async()=>{vi.useFakeTimers();try{const worker=port(),epoch=crypto.randomUUID(),gateway=new EngineGateway(worker as unknown as UtilityProcess,epoch,()=>{}),serverId=crypto.randomUUID();const pending=gateway.request({action:'session:snapshot',serverId,generation:1}),failure=expect(pending).rejects.toThrow('IO_TIMEOUT'),request=worker.postMessage.mock.calls[0]![0];worker.emit('message',{invalid:true});for(const changed of [{requestId:crypto.randomUUID()},{serverId:crypto.randomUUID()},{generation:2}])worker.emit('message',{type:'response',requestId:request.requestId,backendEpoch:epoch,serverId,generation:1,...changed,ok:true,result:'wrong'});await vi.advanceTimersByTimeAsync(90000);await failure;const next=gateway.request({action:'session:snapshot',serverId,generation:1}),second=worker.postMessage.mock.calls.at(-1)![0];worker.emit('message',{type:'response',requestId:second.requestId,backendEpoch:epoch,serverId,generation:1,ok:false});await expect(next).rejects.toThrow('INTERNAL_ERROR');worker.postMessage.mockImplementation(()=>{throw new Error('port closed');});await expect(gateway.request({action:'session:snapshot',serverId,generation:1})).rejects.toThrow('ENGINE_STOPPED');worker.emit('exit');}finally{vi.useRealTimers();}});
+it("routes validated transfer/exec/PTY sequences independently, flags gaps and suppresses stale events", () => {
+  const worker = port(),
+    epoch = crypto.randomUUID(),
+    transfer = vi.fn(),
+    execution = vi.fn(),
+    terminal = vi.fn(),
+    receipt = vi.fn(() => false);
+  new EngineGateway(
+    worker as unknown as UtilityProcess,
+    epoch,
+    () => {},
+    { accept: receipt },
+    transfer,
+    execution,
+    terminal,
+  );
+  const exec = {
+      receipt: executionReceipt(),
+      recordError: false,
+      recordPending: false,
+      active: false,
+      cleanupPending: false,
+    },
+    ptyRecord = {
+      ...executionReceipt(),
+      kind: "pty",
+      executionId: null,
+      source: null,
+      cwd: null,
+    };
+  ptyRecord.terminalId = ptyRecord.taskId;
+  const pty = {
+      execution: { ...exec, receipt: ptyRecord },
+      uiReady: false,
+      inputUncertain: false,
+      inputInFlight: 0,
+      nextInputSequence: 1,
+    },
+    row = transferReceipt(),
+    progress = {
+      taskId: row.taskId,
+      serverId: row.serverId,
+      generation: 1,
+      phase: "queued",
+      totalBytes: row.totalBytes,
+      transferredBytes: 0,
+      verifiedBytes: 0,
+      bytesPerSecond: null,
+      cleanupState: "none",
+      tempCreated: false,
+      destinationCreated: false,
+      lastConfirmedPhase: "queued",
+      errorCode: null,
+      updatedAt: row.updatedAt,
+      recordError: false,
+      active: false,
+      slotOccupied: false,
+      cleanupPending: false,
+    };
+  for (const [type, snapshot, observer] of [
+    ["execution", exec, execution],
+    ["pty", pty, terminal],
+    ["transfer", progress, transfer],
+  ] as const) {
+    worker.emit("message", {
+      type,
+      backendEpoch: epoch,
+      sequence: 1,
+      snapshot,
+    });
+    worker.emit("message", {
+      type,
+      backendEpoch: epoch,
+      sequence: 1,
+      snapshot,
+    });
+    worker.emit("message", {
+      type,
+      backendEpoch: epoch,
+      sequence: 3,
+      snapshot,
+    });
+    expect(observer).toHaveBeenCalledTimes(2);
+    expect(observer.mock.calls.map((args) => args.slice(1))).toEqual([
+      [false, 1],
+      [true, 3],
+    ]);
+  }
+  receipt.mockReturnValue(true);
+  worker.emit("message", {
+    type: "session",
+    backendEpoch: epoch,
+    sequence: 4,
+    snapshot: {},
+  });
+  expect(receipt).toHaveBeenCalled();
+  worker.emit("exit");
+});
+it("rejects wrong request identities, exposes only fixed failure codes, expires pending requests and handles a failed port send", async () => {
+  vi.useFakeTimers();
+  try {
+    const worker = port(),
+      epoch = crypto.randomUUID(),
+      gateway = new EngineGateway(
+        worker as unknown as UtilityProcess,
+        epoch,
+        () => {},
+      ),
+      serverId = crypto.randomUUID();
+    const pending = gateway.request({
+        action: "session:snapshot",
+        serverId,
+        generation: 1,
+      }),
+      failure = expect(pending).rejects.toThrow("IO_TIMEOUT"),
+      request = worker.postMessage.mock.calls[0]![0];
+    worker.emit("message", { invalid: true });
+    for (const changed of [
+      { requestId: crypto.randomUUID() },
+      { serverId: crypto.randomUUID() },
+      { generation: 2 },
+    ])
+      worker.emit("message", {
+        type: "response",
+        requestId: request.requestId,
+        backendEpoch: epoch,
+        serverId,
+        generation: 1,
+        ...changed,
+        ok: true,
+        result: "wrong",
+      });
+    await vi.advanceTimersByTimeAsync(90000);
+    await failure;
+    const next = gateway.request({
+        action: "session:snapshot",
+        serverId,
+        generation: 1,
+      }),
+      second = worker.postMessage.mock.calls.at(-1)![0];
+    worker.emit("message", {
+      type: "response",
+      requestId: second.requestId,
+      backendEpoch: epoch,
+      serverId,
+      generation: 1,
+      ok: false,
+    });
+    await expect(next).rejects.toThrow("INTERNAL_ERROR");
+    worker.postMessage.mockImplementation(() => {
+      throw new Error("port closed");
+    });
+    await expect(
+      gateway.request({ action: "session:snapshot", serverId, generation: 1 }),
+    ).rejects.toThrow("ENGINE_STOPPED");
+    worker.emit("exit");
+  } finally {
+    vi.useRealTimers();
+  }
+});

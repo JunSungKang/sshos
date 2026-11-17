@@ -1,11 +1,93 @@
-import { EventEmitter } from 'node:events';
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { PrivateKeyParser } from '../../src/worker/connection/key-parser';
-afterEach(()=>vi.useRealTimers());
-const tick=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
-function fixture(){const workers:(EventEmitter & {terminate:ReturnType<typeof vi.fn>})[]=[];const parser=new PrivateKeyParser(()=>{const worker=Object.assign(new EventEmitter(),{terminate:vi.fn(async()=>0)});workers.push(worker);return worker as never;});return {workers,parser};}
-describe('parser queue and worker failure boundaries',()=>{
- it('does not spawn for empty/excess passphrase/cancelled queued inputs and scrubs accepted buffers',async()=>{const f=fixture();await expect(f.parser.parse(Buffer.alloc(0))).rejects.toThrow('KEY_INVALID');await expect(f.parser.parse(Buffer.from('x'),'a'.repeat(1025))).rejects.toThrow('KEY_INVALID');const bytes=Buffer.from('owned');await expect(f.parser.parse(bytes,undefined,()=>false)).rejects.toThrow('CONNECTION_LOST');expect(bytes.every(value=>value===0)).toBe(true);expect(f.workers).toEqual([]);});
- it('rejects malformed/error/exit/timeout replies and terminates each worker exactly once',async()=>{vi.useFakeTimers();for(const failure of ['malformed','error','exit','timeout']){const f=fixture(),bytes=Buffer.from('owned'),promise=f.parser.parse(bytes),rejected=expect(promise).rejects.toThrow('KEY_INVALID');await tick();const worker=f.workers[0]!;if(failure==='malformed')worker.emit('message',{ok:true,privatePEM:'',publicSSH:'x'});else if(failure==='error')worker.emit('error',new Error('SENTINEL_PRIVATE_PATH'));else if(failure==='exit')worker.emit('exit',1);else await vi.advanceTimersByTimeAsync(5000);await rejected;expect(worker.terminate).toHaveBeenCalledTimes(1);expect(bytes.every(value=>value===0)).toBe(true);worker.emit('message',{ok:true,privatePEM:'late-private',publicSSH:'late-public'});expect(worker.terminate).toHaveBeenCalledTimes(1);}});
- it('waits for termination before starting another queue entry and never starts a cancelled queued request',async()=>{const f=fixture(),first=f.parser.parse(Buffer.from('first'));await tick();let finish!:()=>void;f.workers[0]!.terminate.mockImplementation(()=>new Promise<void>(resolve=>{finish=resolve;}));let current=true;const bytes=Buffer.from('second'),second=f.parser.parse(bytes,undefined,()=>current),secondFailure=expect(second).rejects.toThrow('CONNECTION_LOST');f.workers[0]!.emit('message',{ok:true,privatePEM:'accepted',publicSSH:'accepted-public'});await tick();expect(f.workers).toHaveLength(1);current=false;finish();expect(await first).toEqual({privatePEM:'accepted',publicSSH:'accepted-public'});await secondFailure;expect(f.workers).toHaveLength(1);});
+import { EventEmitter } from "node:events";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { PrivateKeyParser } from "../../src/worker/connections/key-parser";
+afterEach(() => vi.useRealTimers());
+const tick = async () => {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+};
+function fixture() {
+  const workers: (EventEmitter & { terminate: ReturnType<typeof vi.fn> })[] =
+    [];
+  const parser = new PrivateKeyParser(() => {
+    const worker = Object.assign(new EventEmitter(), {
+      terminate: vi.fn(async () => 0),
+    });
+    workers.push(worker);
+    return worker as never;
+  });
+  return { workers, parser };
+}
+describe("parser queue and worker failure boundaries", () => {
+  it("does not spawn for empty/excess passphrase/cancelled queued inputs and scrubs accepted buffers", async () => {
+    const f = fixture();
+    await expect(f.parser.parse(Buffer.alloc(0))).rejects.toThrow(
+      "KEY_INVALID",
+    );
+    await expect(
+      f.parser.parse(Buffer.from("x"), "a".repeat(1025)),
+    ).rejects.toThrow("KEY_INVALID");
+    const bytes = Buffer.from("owned");
+    await expect(f.parser.parse(bytes, undefined, () => false)).rejects.toThrow(
+      "CONNECTION_LOST",
+    );
+    expect(bytes.every((value) => value === 0)).toBe(true);
+    expect(f.workers).toEqual([]);
+  });
+  it("rejects malformed/error/exit/timeout replies and terminates each worker exactly once", async () => {
+    vi.useFakeTimers();
+    for (const failure of ["malformed", "error", "exit", "timeout"]) {
+      const f = fixture(),
+        bytes = Buffer.from("owned"),
+        promise = f.parser.parse(bytes),
+        rejected = expect(promise).rejects.toThrow("KEY_INVALID");
+      await tick();
+      const worker = f.workers[0]!;
+      if (failure === "malformed")
+        worker.emit("message", { ok: true, privatePEM: "", publicSSH: "x" });
+      else if (failure === "error")
+        worker.emit("error", new Error("SENTINEL_PRIVATE_PATH"));
+      else if (failure === "exit") worker.emit("exit", 1);
+      else await vi.advanceTimersByTimeAsync(5000);
+      await rejected;
+      expect(worker.terminate).toHaveBeenCalledTimes(1);
+      expect(bytes.every((value) => value === 0)).toBe(true);
+      worker.emit("message", {
+        ok: true,
+        privatePEM: "late-private",
+        publicSSH: "late-public",
+      });
+      expect(worker.terminate).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("waits for termination before starting another queue entry and never starts a cancelled queued request", async () => {
+    const f = fixture(),
+      first = f.parser.parse(Buffer.from("first"));
+    await tick();
+    let finish!: () => void;
+    f.workers[0]!.terminate.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    let current = true;
+    const bytes = Buffer.from("second"),
+      second = f.parser.parse(bytes, undefined, () => current),
+      secondFailure = expect(second).rejects.toThrow("CONNECTION_LOST");
+    f.workers[0]!.emit("message", {
+      ok: true,
+      privatePEM: "accepted",
+      publicSSH: "accepted-public",
+    });
+    await tick();
+    expect(f.workers).toHaveLength(1);
+    current = false;
+    finish();
+    expect(await first).toEqual({
+      privatePEM: "accepted",
+      publicSSH: "accepted-public",
+    });
+    await secondFailure;
+    expect(f.workers).toHaveLength(1);
+  });
 });

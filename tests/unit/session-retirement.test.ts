@@ -1,34 +1,273 @@
-import { afterEach,describe,it,expect,vi } from 'vitest';
-import type { EventEmitter } from 'node:events';
-import { Client,utils } from 'ssh2';
-import {PrivateKeyParser} from '../../src/worker/connection/key-parser';
-vi.mock('ssh2',async load=>{
- const original=await load<typeof import('ssh2')>();const {EventEmitter}=await import('node:events');
- class Client extends EventEmitter {
-  static instances:EventEmitter[]=[];
-  constructor(){super();Client.instances.push(this);}
-  connect(){return this;}
-  destroy(){return this;}
-  sftp(done:(error:Error)=>void){done(new Error('SFTP denied'));}
- }
- return {...original,...(original as any).default,Client};
+import { afterEach, describe, it, expect, vi } from "vitest";
+import type { EventEmitter } from "node:events";
+import { Client, utils } from "ssh2";
+import { PrivateKeyParser } from "../../src/worker/connections/key-parser";
+vi.mock("ssh2", async (load) => {
+  const original = await load<typeof import("ssh2")>();
+  const { EventEmitter } = await import("node:events");
+  class Client extends EventEmitter {
+    static instances: EventEmitter[] = [];
+    constructor() {
+      super();
+      Client.instances.push(this);
+    }
+    connect() {
+      return this;
+    }
+    destroy() {
+      return this;
+    }
+    sftp(done: (error: Error) => void) {
+      done(new Error("SFTP denied"));
+    }
+  }
+  return { ...original, ...(original as any).default, Client };
 });
-import { SessionManager } from '../../src/worker/connection/session-manager';
-const state={clients:(Client as unknown as {instances:EventEmitter[]}).instances};
-const managers:SessionManager[]=[];afterEach(()=>{for(const manager of managers.splice(0))manager.closeAll();for(const client of state.clients.splice(0))client.emit('close');vi.restoreAllMocks();vi.useRealTimers();});
-const input=()=>({host:'example.invalid',port:22,username:'fixture',authentication:'password' as const,password:'fixture',trustedHostKey:Buffer.from('fixture-key').toString('base64')});
-const tick=async()=>{for(let index=0;index<40;index++)await Promise.resolve();};
-function manager(){const value=new SessionManager(()=>{});managers.push(value);return value;}
-describe('control generation socket retirement',()=>{
- it('refuses missing key/password material without starting a socket or retaining selected bytes',async()=>{const sessions=manager();for(const raw of [{...input(),password:undefined},{...input(),authentication:'key' as const,keyBytes:undefined}]){const id=crypto.randomUUID();await expect(sessions.connect(id,1,raw)).rejects.toThrow(raw.authentication==='key'?'KEY_INVALID':'INPUT_INVALID');expect(sessions.snapshots().find(row=>row.serverId===id)).toMatchObject({status:'failed'});}expect(state.clients).toHaveLength(2);});
- it('uses the selected parser result without leaving authentication bytes in snapshots',async()=>{const {fixtureKey}=await import('../../scripts/fixtures/keys.mjs'),key=fixtureKey(),parsed=utils.parseKey(key.private);if(parsed instanceof Error||Array.isArray(parsed))throw new Error('invalid fixture');vi.spyOn(PrivateKeyParser.prototype,'parse').mockResolvedValue({privatePEM:parsed.getPrivatePEM(),publicSSH:key.public.split(' ').slice(0,2).join(' ')});const sessions=manager(),id=crypto.randomUUID(),pending=sessions.connect(id,1,{...input(),authentication:'key',keyBytes:Buffer.from(key.private)});await vi.waitFor(()=>expect(state.clients[0]!.listenerCount('ready')).toBe(1));state.clients[0]!.emit('ready');await pending;expect(sessions.snapshots()[0]?.status).toBe('connected');expect(JSON.stringify(sessions.snapshots())).not.toContain('PRIVATE KEY');sessions.disconnect(id,1);});
- it.each([['client-timeout','CONNECT_TIMEOUT'],['protocol','CONNECTION_LOST']])('maps %s to a fixed failure and ignores repeated completion',async(level,code)=>{const sessions=manager(),id=crypto.randomUUID(),pending=sessions.connect(id,1,input());state.clients[0]!.emit('error',Object.assign(new Error('SENTINEL_REMOTE_TEXT'),{level}));await expect(pending).rejects.toThrow(code);state.clients[0]!.emit('close');expect(sessions.snapshots()[0]).toMatchObject({status:'failed',errorCode:code});});
- it('handles a synchronous connect failure and refuses concurrent/wrong-generation work',async()=>{vi.spyOn(Client.prototype,'connect').mockImplementationOnce(()=>{throw new Error('native detail');});const sessions=manager(),id=crypto.randomUUID();await expect(sessions.connect(id,1,input())).rejects.toThrow('INPUT_INVALID');state.clients[0]!.emit('close');await tick();const pending=sessions.connect(id,2,input());await expect(sessions.connect(id,3,input())).rejects.toThrow('SESSION_BUSY');expect(()=>sessions.disconnect(id,999)).toThrow('INPUT_INVALID');state.clients[1]!.emit('ready');await pending;expect(()=>sessions.readClient(id,2)).toThrow('CONNECTION_LOST');await expect(sessions.connect(id,3,input())).rejects.toThrow('SESSION_BUSY');});
- it('times out a stalled subsystem without reporting the control as ready',async()=>{vi.useFakeTimers();vi.spyOn(Client.prototype,'sftp').mockImplementation(()=>{});const sessions=manager(),id=crypto.randomUUID(),pending=sessions.connect(id,1,input()),rejected=expect(pending).rejects.toThrow('IO_TIMEOUT');state.clients[0]!.emit('ready');await vi.advanceTimersByTimeAsync(15000);await rejected;expect(sessions.snapshots()[0]).toMatchObject({status:'failed',errorCode:'IO_TIMEOUT'});expect(vi.getTimerCount()).toBe(0);});
- it('closes a late subsystem result after its session ended and refuses stale capabilities',async()=>{let callback!:Function;vi.spyOn(Client.prototype,'sftp').mockImplementation(done=>{callback=done;});const sessions=manager(),id=crypto.randomUUID(),pending=sessions.connect(id,1,input());state.clients[0]!.emit('ready');await tick();sessions.disconnect(id,1);const end=vi.fn();callback(null,{end});await pending;expect(end).toHaveBeenCalledOnce();expect(()=>sessions.auxiliary(id,1,'execution')).toThrow('CONNECTION_LOST');});
- it('does not leave a deadline timer after a synchronous SFTP inspection exception',async()=>{vi.useFakeTimers();vi.spyOn(Client.prototype,'sftp').mockImplementation(()=>{throw new Error('synchronous subsystem failure');});const sessions=manager(),id=crypto.randomUUID(),pending=sessions.connect(id,1,input());state.clients[0]!.emit('ready');expect(await pending).toMatchObject({status:'connected',snapshot:{sftp:'unavailable'}});expect(vi.getTimerCount()).toBe(0);});
- it('waits for both old control and auxiliary actual close before allocating any replacement socket',async()=>{const sessions=manager(),id=crypto.randomUUID(),first=sessions.connect(id,1,input());state.clients[0]!.emit('ready');await first;sessions.confirmOS(id,1);const lease=sessions.auxiliary(id,1,'execution');state.clients[1]!.emit('ready');await lease.ready;sessions.disconnect(id,1);const replacement=sessions.connect(id,2,input());await tick();expect(state.clients).toHaveLength(2);state.clients[0]!.emit('close');await tick();expect(state.clients).toHaveLength(2);state.clients[1]!.emit('close');await tick();expect(state.clients).toHaveLength(3);state.clients[2]!.emit('ready');await replacement;expect(sessions.snapshots()[0]).toMatchObject({generation:2,status:'connected'});});
- it('cancels a newer connection waiting for retirement without ever creating its TCP client or changing older socket ownership',async()=>{const sessions=manager(),id=crypto.randomUUID(),first=sessions.connect(id,1,input());state.clients[0]!.emit('ready');await first;sessions.disconnect(id,1);const waiting=sessions.connect(id,2,input()),failure=expect(waiting).rejects.toThrow('CONNECTION_LOST');sessions.disconnect(id,2);await failure;expect(state.clients).toHaveLength(1);state.clients[0]!.emit('close');await tick();expect(state.clients).toHaveLength(1);});
- it('counts closing sockets toward the global three-server limit and does not evict them as disconnected history',async()=>{const sessions=manager(),ids=Array.from({length:3},()=>crypto.randomUUID());for(const id of ids){const pending=sessions.connect(id,1,input());state.clients.at(-1)!.emit('ready');await pending;sessions.disconnect(id,1);}const fourth=crypto.randomUUID();await expect(sessions.connect(fourth,1,input())).rejects.toThrow('SESSION_LIMIT');expect(state.clients).toHaveLength(3);state.clients[0]!.emit('close');await tick();const pending=sessions.connect(fourth,1,input());expect(state.clients).toHaveLength(4);state.clients[3]!.emit('ready');await pending;});
- it('rejects stale generations and closeAll cancels waiting reservations without a post-close reconnect',async()=>{const sessions=manager(),id=crypto.randomUUID(),first=sessions.connect(id,1,input());state.clients[0]!.emit('ready');await first;await expect(sessions.connect(id,1,input())).rejects.toThrow('INPUT_INVALID');sessions.disconnect(id,1);const pending=sessions.connect(id,2,input()),failure=expect(pending).rejects.toThrow('CONNECTION_LOST');sessions.closeAll();await failure;state.clients[0]!.emit('close');await tick();expect(state.clients).toHaveLength(1);});
+import { SessionManager } from "../../src/worker/connections/session-manager";
+const state = {
+  clients: (Client as unknown as { instances: EventEmitter[] }).instances,
+};
+const managers: SessionManager[] = [];
+afterEach(() => {
+  for (const manager of managers.splice(0)) manager.closeAll();
+  for (const client of state.clients.splice(0)) client.emit("close");
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
+const input = () => ({
+  host: "example.invalid",
+  port: 22,
+  username: "fixture",
+  authentication: "password" as const,
+  password: "fixture",
+  trustedHostKey: Buffer.from("fixture-key").toString("base64"),
+});
+const tick = async () => {
+  for (let index = 0; index < 40; index++) await Promise.resolve();
+};
+function manager() {
+  const value = new SessionManager(() => {});
+  managers.push(value);
+  return value;
+}
+describe("control generation socket retirement", () => {
+  it("refuses missing key/password material without starting a socket or retaining selected bytes", async () => {
+    const sessions = manager();
+    for (const raw of [
+      { ...input(), password: undefined },
+      { ...input(), authentication: "key" as const, keyBytes: undefined },
+    ]) {
+      const id = crypto.randomUUID();
+      await expect(sessions.connect(id, 1, raw)).rejects.toThrow(
+        raw.authentication === "key" ? "KEY_INVALID" : "INPUT_INVALID",
+      );
+      expect(
+        sessions.snapshots().find((row) => row.serverId === id),
+      ).toMatchObject({ status: "failed" });
+    }
+    expect(state.clients).toHaveLength(2);
+  });
+  it("uses the selected parser result without leaving authentication bytes in snapshots", async () => {
+    const { fixtureKey } = await import("../../scripts/fixtures/keys.mjs"),
+      key = fixtureKey(),
+      parsed = utils.parseKey(key.private);
+    if (parsed instanceof Error || Array.isArray(parsed))
+      throw new Error("invalid fixture");
+    vi.spyOn(PrivateKeyParser.prototype, "parse").mockResolvedValue({
+      privatePEM: parsed.getPrivatePEM(),
+      publicSSH: key.public.split(" ").slice(0, 2).join(" "),
+    });
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      pending = sessions.connect(id, 1, {
+        ...input(),
+        authentication: "key",
+        keyBytes: Buffer.from(key.private),
+      });
+    await vi.waitFor(() =>
+      expect(state.clients[0]!.listenerCount("ready")).toBe(1),
+    );
+    state.clients[0]!.emit("ready");
+    await pending;
+    expect(sessions.snapshots()[0]?.status).toBe("connected");
+    expect(JSON.stringify(sessions.snapshots())).not.toContain("PRIVATE KEY");
+    sessions.disconnect(id, 1);
+  });
+  it.each([
+    ["client-timeout", "CONNECT_TIMEOUT"],
+    ["protocol", "CONNECTION_LOST"],
+  ])(
+    "maps %s to a fixed failure and ignores repeated completion",
+    async (level, code) => {
+      const sessions = manager(),
+        id = crypto.randomUUID(),
+        pending = sessions.connect(id, 1, input());
+      state.clients[0]!.emit(
+        "error",
+        Object.assign(new Error("SENTINEL_REMOTE_TEXT"), { level }),
+      );
+      await expect(pending).rejects.toThrow(code);
+      state.clients[0]!.emit("close");
+      expect(sessions.snapshots()[0]).toMatchObject({
+        status: "failed",
+        errorCode: code,
+      });
+    },
+  );
+  it("handles a synchronous connect failure and refuses concurrent/wrong-generation work", async () => {
+    vi.spyOn(Client.prototype, "connect").mockImplementationOnce(() => {
+      throw new Error("native detail");
+    });
+    const sessions = manager(),
+      id = crypto.randomUUID();
+    await expect(sessions.connect(id, 1, input())).rejects.toThrow(
+      "INPUT_INVALID",
+    );
+    state.clients[0]!.emit("close");
+    await tick();
+    const pending = sessions.connect(id, 2, input());
+    await expect(sessions.connect(id, 3, input())).rejects.toThrow(
+      "SESSION_BUSY",
+    );
+    expect(() => sessions.disconnect(id, 999)).toThrow("INPUT_INVALID");
+    state.clients[1]!.emit("ready");
+    await pending;
+    expect(() => sessions.readClient(id, 2)).toThrow("SFTP_UNAVAILABLE");
+    await expect(sessions.connect(id, 3, input())).rejects.toThrow(
+      "SESSION_BUSY",
+    );
+  });
+  it("times out a stalled subsystem without reporting the control as ready", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Client.prototype, "sftp").mockImplementation(() => {});
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      pending = sessions.connect(id, 1, input()),
+      rejected = expect(pending).rejects.toThrow("IO_TIMEOUT");
+    state.clients[0]!.emit("ready");
+    await vi.advanceTimersByTimeAsync(15000);
+    await rejected;
+    expect(sessions.snapshots()[0]).toMatchObject({
+      status: "failed",
+      errorCode: "IO_TIMEOUT",
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("closes a late subsystem result after its session ended and refuses stale capabilities", async () => {
+    let callback!: Function;
+    vi.spyOn(Client.prototype, "sftp").mockImplementation((done) => {
+      callback = done;
+    });
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      pending = sessions.connect(id, 1, input());
+    state.clients[0]!.emit("ready");
+    await tick();
+    sessions.disconnect(id, 1);
+    const end = vi.fn();
+    const rejected = expect(pending).rejects.toThrow("IO_TIMEOUT");
+    callback(null, { end });
+    await rejected;
+    expect(end).toHaveBeenCalledOnce();
+    expect(() => sessions.auxiliary(id, 1, "execution")).toThrow(
+      "CONNECTION_LOST",
+    );
+  });
+  it("does not leave a deadline timer after a synchronous SFTP inspection exception", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Client.prototype, "sftp").mockImplementation(() => {
+      throw new Error("synchronous subsystem failure");
+    });
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      pending = sessions.connect(id, 1, input());
+    state.clients[0]!.emit("ready");
+    expect(await pending).toMatchObject({
+      status: "connected",
+      snapshot: { sftp: "unavailable" },
+    });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it("waits for both old control and auxiliary actual close before allocating any replacement socket", async () => {
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      first = sessions.connect(id, 1, input());
+    state.clients[0]!.emit("ready");
+    await first;
+    sessions.confirmOS(id, 1);
+    const lease = sessions.auxiliary(id, 1, "execution");
+    state.clients[1]!.emit("ready");
+    await lease.ready;
+    sessions.disconnect(id, 1);
+    const replacement = sessions.connect(id, 2, input());
+    await tick();
+    expect(state.clients).toHaveLength(2);
+    state.clients[0]!.emit("close");
+    await tick();
+    expect(state.clients).toHaveLength(2);
+    state.clients[1]!.emit("close");
+    await tick();
+    expect(state.clients).toHaveLength(3);
+    state.clients[2]!.emit("ready");
+    await replacement;
+    expect(sessions.snapshots()[0]).toMatchObject({
+      generation: 2,
+      status: "connected",
+    });
+  });
+  it("cancels a newer connection waiting for retirement without ever creating its TCP client or changing older socket ownership", async () => {
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      first = sessions.connect(id, 1, input());
+    state.clients[0]!.emit("ready");
+    await first;
+    sessions.disconnect(id, 1);
+    const waiting = sessions.connect(id, 2, input()),
+      failure = expect(waiting).rejects.toThrow("CONNECTION_LOST");
+    sessions.disconnect(id, 2);
+    await failure;
+    expect(state.clients).toHaveLength(1);
+    state.clients[0]!.emit("close");
+    await tick();
+    expect(state.clients).toHaveLength(1);
+  });
+  it("counts closing sockets toward the global three-server limit and does not evict them as disconnected history", async () => {
+    const sessions = manager(),
+      ids = Array.from({ length: 3 }, () => crypto.randomUUID());
+    for (const id of ids) {
+      const pending = sessions.connect(id, 1, input());
+      state.clients.at(-1)!.emit("ready");
+      await pending;
+      sessions.disconnect(id, 1);
+    }
+    const fourth = crypto.randomUUID();
+    await expect(sessions.connect(fourth, 1, input())).rejects.toThrow(
+      "SESSION_LIMIT",
+    );
+    expect(state.clients).toHaveLength(3);
+    state.clients[0]!.emit("close");
+    await tick();
+    const pending = sessions.connect(fourth, 1, input());
+    expect(state.clients).toHaveLength(4);
+    state.clients[3]!.emit("ready");
+    await pending;
+  });
+  it("rejects stale generations and closeAll cancels waiting reservations without a post-close reconnect", async () => {
+    const sessions = manager(),
+      id = crypto.randomUUID(),
+      first = sessions.connect(id, 1, input());
+    state.clients[0]!.emit("ready");
+    await first;
+    await expect(sessions.connect(id, 1, input())).rejects.toThrow(
+      "INPUT_INVALID",
+    );
+    sessions.disconnect(id, 1);
+    const pending = sessions.connect(id, 2, input()),
+      failure = expect(pending).rejects.toThrow("CONNECTION_LOST");
+    sessions.closeAll();
+    await failure;
+    state.clients[0]!.emit("close");
+    await tick();
+    expect(state.clients).toHaveLength(1);
+  });
 });
