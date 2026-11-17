@@ -20,6 +20,8 @@ Select affected checks rather than treating every command as required for every 
 
 Unit coverage enforces per-file statement 90%/branch 85% for configured modules. Preserve documented actual-process entrypoint verification; do not add exclusions or lower thresholds to pass. Meaningful boundary/state/fault behavior matters beyond percentages.
 
+The integration group also includes `remote-desktop-gui-smoke`: actual context menu/properties, nonempty folder rename and one-command recursive delete, zero SFTP READDIR, isolated HTML/CSS/image rendering, JavaScript default/opt-in, root expansion, network/API isolation, native geometry and overlay/close disposal. Its server is a strict command-template adapter, not a real GNU shell.
+
 The integration group includes `text-edit-gui-smoke`: default read-only opening, explicit Edit/Save, editor viewport geometry and padding, unchanged remote bytes before Save, BOM plus leading U+FEFF content/CRLF/mode preservation, durable content-free edit records, conflicting external edits with retained drafts, discard/close/quit confirmation, Desktop PNG/JPG/JPEG/WebP display, and independent terminal-tab closing including the final tab. Unit fault tests cover capability/byte limits, source and staged-file changes, path locks, cancellation before metadata queue admission and during source reads, deferred finalization of active saves, storage ACK failures, unsupported publication and unknown outcomes. No real server fault injection or native target acceptance is inferred from these fixtures.
 
 Packaging runs an additional archived-worker SSH/SFTP regression for each target ASAR. To repeat it for an existing workspace-local artifact, run `node scripts/package-ssh-smoke.mjs <absolute-path-to-app.asar>`. It uses host development Electron, an isolated temporary profile and a loopback fixture, then removes that profile/fixture. It tests the packaged SSH dependencies through host trust, authentication and directory enumeration; it does not establish native target executable acceptance. See [Packaging](packaging.md) for the required portable crypto module and report scope.
@@ -37,3 +39,5 @@ For each executed row record checkId, status, binary SHA256, source revision, ap
 ## Documentation Checks
 
 The documentation validator checks public links and rejects tracked private planning paths, including ignored paths that were force-added. It runs without private planning archives. It does not certify product behavior, legal compliance or native acceptance.
+
+`node scripts/metadata-benchmark.mjs` compares batched SFTP READDIR against the command-backed FileBrowser using 100/1,000/10,000 entries and 0/50/150 ms server-response delays. It writes ignored `.local/performance/metadata-comparison.json`. This is a single-run adapter comparison, not real GNU process timing, calibrated network RTT, renderer first-paint or target acceptance.

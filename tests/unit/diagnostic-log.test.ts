@@ -1,16 +1,150 @@
-import { afterEach,describe,expect,it } from 'vitest';
-import { mkdir,mkdtemp,readFile,readdir,rm,stat,symlink,writeFile } from 'node:fs/promises';
-import { resolve,join } from 'node:path';
-import { DiagnosticLog } from '../../src/main/diagnostic-log';
-import { errorCodeOf,errorMessages } from '../../src/shared/errors';
-const owned:string[]=[];afterEach(async()=>{for(const path of owned.splice(0))await rm(path,{recursive:true});});
-async function fixture(){await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/diagnostics-'));owned.push(root);const dir=join(root,'events'),log=await DiagnosticLog.create(dir,'0.1.0');return {root,dir,log};}
-describe('bounded diagnostics allowlist',()=>{
- it('stores only known fields/codes/phases and drops raw text, secrets, endpoints and paths',async()=>{const f=await fixture(),id=crypto.randomUUID();f.log.record({taskId:id,to:'running'});f.log.record({taskId:id,to:'running'});for(const input of [{errorCode:'SENTINEL_PASSWORD'},{to:'remote-host.example'},{to:'failed',password:'SENTINEL_PASSWORD'},{to:'failed',path:'/private/file'},{to:'failed',message:'stdout sentinel'},{to:'failed',username:'ubuntu'}])f.log.record(input as never);f.log.record({taskId:id,to:'exited'});await f.log.settled();const raw=await readFile(join(f.dir,'events.jsonl'),'utf8');expect(raw).not.toMatch(/SENTINEL|remote-host|private|stdout|ubuntu/u);expect(raw.trim().split('\n')).toHaveLength(2);expect((await f.log.recent()).map(row=>row.to)).toEqual(['running','exited']);});
- it('rotates at1MiB to exactly three bounded files and bounds pending append memory',async()=>{const f=await fixture();for(let cycle=0;cycle<4;cycle++){await writeFile(join(f.dir,'events.jsonl'),'\n'.repeat(1024**2),{mode:0o600});f.log.record({to:cycle%2 ? 'ready':'starting'});await f.log.settled();}expect((await readdir(f.dir)).sort()).toEqual(['events.1.jsonl','events.2.jsonl','events.jsonl']);for(const name of await readdir(f.dir)){expect((await stat(join(f.dir,name))).size).toBeLessThanOrEqual(1024**2);}for(let i=0;i<1000;i++)f.log.record({taskId:crypto.randomUUID(),to:'queued'});await f.log.settled();const lines=(await readFile(join(f.dir,'events.jsonl'),'utf8')).trim().split('\n');expect(lines.length).toBeLessThanOrEqual(129);expect((await f.log.recent()).length).toBeLessThanOrEqual(100);});
- it('does not follow a log-file symlink or include unvalidated preexisting lines in preview',async()=>{const f=await fixture(),outside=join(f.root,'owned-sentinel');await writeFile(outside,'SENTINEL_KEEP');await symlink(outside,join(f.dir,'events.jsonl'));f.log.record({to:'ready'});await f.log.settled();expect(f.log.unavailable).toBe(true);expect(await readFile(outside,'utf8')).toBe('SENTINEL_KEEP');await expect(f.log.recent()).rejects.toThrow();const g=await fixture();await writeFile(join(g.dir,'events.jsonl'),'not json\n'+JSON.stringify({time:new Date().toISOString(),appVersion:'0.1.0',to:'failed',password:'sentinel'})+'\n');expect(await g.log.recent()).toEqual([]);});
- it('matches every fixed specification13 message and refuses unknown/raw error text',async()=>{const expected=JSON.parse(await readFile(resolve('tests/fixtures/error-messages.json'),'utf8')) as Record<string,string>;let checked=0;for(const [name,message]of Object.entries(expected)){expect(errorMessages[name as keyof typeof errorMessages]).toBe(message);checked++;}expect(checked).toBe(25);expect(errorCodeOf(new Error("Error invoking remote method 'session:connect': Error: AUTH_FAILED"))).toBe('AUTH_FAILED');expect(errorCodeOf(new Error('server says password is wrong'))).toBe('INTERNAL_ERROR');expect(errorCodeOf('AUTH_FAILED extra secret')).toBe('INTERNAL_ERROR');});
+import { afterEach, describe, expect, it } from "vitest";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
+import { resolve, join } from "node:path";
+import { DiagnosticLog } from "../../src/main/settings/diagnostic-log";
+import { errorCodeOf, errorMessages } from "../../src/shared/errors";
+const owned: string[] = [];
+afterEach(async () => {
+  for (const path of owned.splice(0)) await rm(path, { recursive: true });
+});
+async function fixture() {
+  await mkdir(resolve(".local/tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".local/tmp/diagnostics-"));
+  owned.push(root);
+  const dir = join(root, "events"),
+    log = await DiagnosticLog.create(dir, "0.1.0");
+  return { root, dir, log };
+}
+describe("bounded diagnostics allowlist", () => {
+  it("stores only known fields/codes/phases and drops raw text, secrets, endpoints and paths", async () => {
+    const f = await fixture(),
+      id = crypto.randomUUID();
+    f.log.record({ taskId: id, to: "running" });
+    f.log.record({ taskId: id, to: "running" });
+    for (const input of [
+      { errorCode: "SENTINEL_PASSWORD" },
+      { to: "remote-host.example" },
+      { to: "failed", password: "SENTINEL_PASSWORD" },
+      { to: "failed", path: "/private/file" },
+      { to: "failed", message: "stdout sentinel" },
+      { to: "failed", username: "ubuntu" },
+    ])
+      f.log.record(input as never);
+    f.log.record({ taskId: id, to: "exited" });
+    await f.log.settled();
+    const raw = await readFile(join(f.dir, "events.jsonl"), "utf8");
+    expect(raw).not.toMatch(/SENTINEL|remote-host|private|stdout|ubuntu/u);
+    expect(raw.trim().split("\n")).toHaveLength(2);
+    expect((await f.log.recent()).map((row) => row.to)).toEqual([
+      "running",
+      "exited",
+    ]);
+  });
+  it("rotates at1MiB to exactly three bounded files and bounds pending append memory", async () => {
+    const f = await fixture();
+    for (let cycle = 0; cycle < 4; cycle++) {
+      await writeFile(join(f.dir, "events.jsonl"), "\n".repeat(1024 ** 2), {
+        mode: 0o600,
+      });
+      f.log.record({ to: cycle % 2 ? "ready" : "starting" });
+      await f.log.settled();
+    }
+    expect((await readdir(f.dir)).sort()).toEqual([
+      "events.1.jsonl",
+      "events.2.jsonl",
+      "events.jsonl",
+    ]);
+    for (const name of await readdir(f.dir)) {
+      expect((await stat(join(f.dir, name))).size).toBeLessThanOrEqual(
+        1024 ** 2,
+      );
+    }
+    for (let i = 0; i < 1000; i++)
+      f.log.record({ taskId: crypto.randomUUID(), to: "queued" });
+    await f.log.settled();
+    const lines = (await readFile(join(f.dir, "events.jsonl"), "utf8"))
+      .trim()
+      .split("\n");
+    expect(lines.length).toBeLessThanOrEqual(129);
+    expect((await f.log.recent()).length).toBeLessThanOrEqual(100);
+  });
+  it("does not follow a log-file symlink or include unvalidated preexisting lines in preview", async () => {
+    const f = await fixture(),
+      outside = join(f.root, "owned-sentinel");
+    await writeFile(outside, "SENTINEL_KEEP");
+    await symlink(outside, join(f.dir, "events.jsonl"));
+    f.log.record({ to: "ready" });
+    await f.log.settled();
+    expect(f.log.unavailable).toBe(true);
+    expect(await readFile(outside, "utf8")).toBe("SENTINEL_KEEP");
+    await expect(f.log.recent()).rejects.toThrow();
+    const g = await fixture();
+    await writeFile(
+      join(g.dir, "events.jsonl"),
+      "not json\n" +
+        JSON.stringify({
+          time: new Date().toISOString(),
+          appVersion: "0.1.0",
+          to: "failed",
+          password: "sentinel",
+        }) +
+        "\n",
+    );
+    expect(await g.log.recent()).toEqual([]);
+  });
+  it("matches every fixed specification13 message and refuses unknown/raw error text", async () => {
+    const expected = JSON.parse(
+      await readFile(resolve("tests/fixtures/error-messages.json"), "utf8"),
+    ) as Record<string, string>;
+    let checked = 0;
+    for (const [name, message] of Object.entries(expected)) {
+      expect(errorMessages[name as keyof typeof errorMessages]).toBe(message);
+      checked++;
+    }
+    expect(checked).toBe(25);
+    expect(
+      errorCodeOf(
+        new Error(
+          "Error invoking remote method 'session:connect': Error: AUTH_FAILED",
+        ),
+      ),
+    ).toBe("AUTH_FAILED");
+    expect(errorCodeOf(new Error("server says password is wrong"))).toBe(
+      "INTERNAL_ERROR",
+    );
+    expect(errorCodeOf("AUTH_FAILED extra secret")).toBe("INTERNAL_ERROR");
+  });
 });
 
-
-it('rejects oversized/nonregular log files, skips oversized records and invalid version metadata, and keeps deduplication bounded',async()=>{const f=await fixture();await writeFile(join(f.dir,'events.jsonl'),'x'.repeat(1024**2+1));await expect(f.log.recent()).rejects.toThrow('STORAGE_FAILED');f.log.record({to:'ready'});await f.log.settled();expect(f.log.unavailable).toBe(true);const g=await fixture();await mkdir(join(g.dir,'events.jsonl'));await expect(g.log.recent()).rejects.toThrow();const h=await fixture();await writeFile(join(h.dir,'events.jsonl'),'x'.repeat(513)+'\n');expect(await h.log.recent()).toEqual([]);for(let cycle=0;cycle<9;cycle++){for(let i=0;i<128;i++)h.log.record({taskId:crypto.randomUUID(),to:'queued'});await h.log.settled();}expect((await h.log.recent()).length).toBe(100);await expect(DiagnosticLog.create(join(h.root,'bad-version'),'not a version')).rejects.toThrow();});
+it("rejects oversized/nonregular log files, skips oversized records and invalid version metadata, and keeps deduplication bounded", async () => {
+  const f = await fixture();
+  await writeFile(join(f.dir, "events.jsonl"), "x".repeat(1024 ** 2 + 1));
+  await expect(f.log.recent()).rejects.toThrow("STORAGE_FAILED");
+  f.log.record({ to: "ready" });
+  await f.log.settled();
+  expect(f.log.unavailable).toBe(true);
+  const g = await fixture();
+  await mkdir(join(g.dir, "events.jsonl"));
+  await expect(g.log.recent()).rejects.toThrow();
+  const h = await fixture();
+  await writeFile(join(h.dir, "events.jsonl"), "x".repeat(513) + "\n");
+  expect(await h.log.recent()).toEqual([]);
+  for (let cycle = 0; cycle < 9; cycle++) {
+    for (let i = 0; i < 128; i++)
+      h.log.record({ taskId: crypto.randomUUID(), to: "queued" });
+    await h.log.settled();
+  }
+  expect((await h.log.recent()).length).toBe(100);
+  await expect(
+    DiagnosticLog.create(join(h.root, "bad-version"), "not a version"),
+  ).rejects.toThrow();
+});

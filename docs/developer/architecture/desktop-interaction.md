@@ -10,9 +10,9 @@ DesktopShell owns presentation state and WindowManager geometry. Main retains an
 
 ## Files
 
-After a supported connection, the worker reads the account UID/NSS home record using one fixed bounded metadata command and verifies the directory through SFTP. Invalid, denied or unmappable responses produce an unavailable state. Explicit SFTP-start fallback is identified separately from account home.
+After a supported connection, the worker reads the account UID/NSS home record using one fixed bounded metadata command and verifies the directory through a fixed bounded SSH command. Invalid, denied or unmappable responses produce an unavailable state. Explicit SSH-start fallback is identified separately from account home.
 
-The home resource is an icon grid backed by structured bounded SFTP metadata. Desktop folder activation opens a separate explorer for that server/generation/canonical folder. Explorer folder activation navigates that explorer. Main-owned directory/entry capabilities authorize actions; names are displayed as text and never evaluated as markup or shell input. Symlinks and special files remain metadata-only under the existing policy.
+The home resource is an icon grid backed by NUL-framed bounded SSH command metadata. Desktop folder activation opens a separate explorer for that server/generation/canonical folder. Explorer folder activation navigates that explorer. Main-owned directory/entry capabilities authorize actions; names are displayed as text and never evaluated as markup or shell input. Symlinks and special files remain metadata-only under the existing policy.
 
 The hidden-files preference defaults false, uses the main JSON writer and is broadcast after a successful write. All loaded file views apply it, clearing a newly hidden selection. Preferences do not authorize file access. Accepted tasks and open viewers survive a filter change. Explicit refresh observes external changes; there is no server watcher or periodic directory scan.
 
@@ -45,3 +45,9 @@ Wallpaper artwork stays behind the desktop and inside the decorative Settings sc
 Existing xterm instances receive `options.theme` changes. They retain their channels, input queues, output and restore barriers. A current-theme ref also supplies explicitly recreated displays, so an intentional display reset does not revert to the initial palette. Theme switching introduces no SSH command, network request, database, additional runtime or downloaded theme package.
 
 App controls retain visible keyboard focus, labels, reduced-motion behavior and distinct text/icon status. Automated contrast and fixture screenshots are separate from target screen-reader, IME and display-scaling acceptance. Native Windows/macOS and real Ubuntu/OpenSSH checks must be reported as untested when not performed.
+
+## File context menu and HTML previews
+
+Right-click or Context Menu/Shift+F10 targets the selected operable file or folder. Open uses the same activation path as double-click. Delete confirms the server and absolute path and permanently deletes the target tree through one server recursive command. Rename supports files and folders in the same parent and preserves an existing destination. Properties refreshes only the selected item through SSH; UID/GID are numeric, and folder byte size is not recursive disk usage. Completion refreshes only the affected current folder. No directory watcher is installed.
+
+HTML/HTM activation opens an internal web preview. The window chrome stays in the trusted renderer; content uses its own sandboxed WebContentsView/session without preload. Only the active visible Desktop web window is displayed. Its viewport follows DOM geometry and is hidden behind modal/context menus, other navigation panels and Console. An explicit resource-root control and per-preview JavaScript checkbox reload the content in a new isolated WebContents. Closing the window closes its contents and cancels pending resource access.

@@ -1,65 +1,303 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { SFTPWrapper, Stats } from 'ssh2';
-import { FileMutations } from '../../src/worker/files/mutations';
-import { PathLocks, claimsConflict } from '../../src/worker/files/path-locks';
-import type { MutationSpec,MutationObservation } from '../../src/shared/mutations';
-
-function fixture() {
-  const nodes=new Map<string,{type:'file'|'directory';size:number;mtime:number}>([['/home',{type:'directory',size:0,mtime:1}],['/home/source',{type:'file',size:3,mtime:1}]]);
-  const calls:string[]=[]; let removeFails=false; let unsupported=false;let removeHangs=false;let delayed:string|null=null;let late:Function|null=null;const observations:Omit<MutationObservation,'backendEpoch'>[]=[];
-  const attrs=(value:{type:'file'|'directory';size:number;mtime:number}):Stats => ({...value,mode:value.type === 'file' ? 0o100600 : 0o40700,uid:0,gid:0,atime:0,isFile:() => value.type === 'file',isDirectory:() => value.type === 'directory',isSymbolicLink:() => false,isFIFO:() => false,isSocket:() => false,isBlockDevice:() => false,isCharacterDevice:() => false});
-  const sftp={
-    realpath:(path:string,done:Function) => done(null,path),
-    lstat:(path:string,done:Function) => {const value=nodes.get(path);if (value) done(null,attrs(value));else done(Object.assign(new Error('untrusted remote text'),{code:2}));},
-    mkdir:(path:string,_options:unknown,done:Function) => {calls.push('mkdir');if (nodes.has(path)) done(Object.assign(new Error('exists'),{code:4}));else {nodes.set(path,{type:'directory',size:0,mtime:1});if(delayed==='mkdir')late=done;else done(null);}},
-    ext_openssh_hardlink:(source:string,destination:string,done:Function) => {if (unsupported) throw new Error('Server does not support this extended request');calls.push('link');if (nodes.has(destination)) done(Object.assign(new Error('exists'),{code:4}));else {nodes.set(destination,{...nodes.get(source)!});if(delayed==='link')late=done;else done(null);}},
-    unlink:(path:string,done:Function) => {calls.push('unlink');if (removeFails) done(Object.assign(new Error('denied'),{code:3}));else {nodes.delete(path);if (removeHangs || delayed==='unlink')late=done;else done(null);}},
-    rmdir:(path:string,done:Function) => {calls.push('rmdir');if ([...nodes.keys()].some(key => key.startsWith(path+'/'))) done(Object.assign(new Error('not empty'),{code:4}));else {nodes.delete(path);if(delayed==='rmdir')late=done;else done(null);}}
-  } as unknown as SFTPWrapper;
-  const locks=new PathLocks(); const service=new FileMutations(() => ({sftp,check:() => {},quarantine:() => {}}),locks,value=>observations.push(value));
-  return {nodes,calls,service,locks,observations,sftp,delay:(kind:string)=>{delayed=kind;},deliver:()=>{late?.(null);},setRemoveFailure:() => {removeFails=true;},setUnsupported:() => {unsupported=true;},setRemoveHangs:() => {removeHangs=true;}};
+import { afterEach, describe, it, expect, vi } from "vitest";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  lstat,
+} from "node:fs/promises";
+import { resolve, join } from "node:path";
+import { FileMutations } from "../../src/worker/remote-files/mutations";
+import {
+  PathLocks,
+  claimsConflict,
+} from "../../src/shared/file-policies/path-locks";
+import { SessionManager } from "../../src/worker/connections/session-manager";
+import { startSSHFixture } from "../../scripts/fixtures/ssh-server.mjs";
+import type { MutationSpec } from "../../src/shared/mutations";
+const clean: (() => Promise<void>)[] = [];
+afterEach(async () => {
+  for (const fn of clean.splice(0).reverse()) await fn();
+});
+async function fixture(options: Record<string, unknown> = {}) {
+  await mkdir(resolve(".local/tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".local/tmp/command-mutations-"));
+  clean.push(() => rm(root, { recursive: true, force: true }));
+  await mkdir(join(root, "home/fixture"), { recursive: true });
+  await mkdir(join(root, "etc"));
+  await writeFile(
+    join(root, "etc/os-release"),
+    "ID=ubuntu\nVERSION_ID=24.04\n",
+  );
+  await writeFile(join(root, "home/fixture/source"), "original");
+  const remote = await startSSHFixture(root, options);
+  clean.push(() => remote.close());
+  const sessions = new SessionManager(() => {});
+  clean.push(async () => sessions.closeAll());
+  const id = crypto.randomUUID(),
+    input = {
+      host: "127.0.0.1",
+      port: remote.port,
+      username: "fixture",
+      authentication: "password" as const,
+      password: "test-only",
+      trustedHostKey: null,
+    };
+  const trust = await sessions.connect(id, 1, input);
+  if (trust.status !== "awaiting_host_trust") throw Error("Expected trust");
+  await sessions.connect(id, 2, { ...input, trustedHostKey: trust.publicKey });
+  const locks = new PathLocks(),
+    service = new FileMutations(
+      (id, generation) => sessions.commandAccess(id, generation),
+      locks,
+    );
+  const run = async (spec: MutationSpec) => {
+    const task = crypto.randomUUID(),
+      stat = await service.inspect(id, 2, spec);
+    expect(await service.prepare(id, 2, task, spec, stat)).toBe(true);
+    const result = await service.step(id, 2, task, "first");
+    service.finish(
+      task,
+      result.phase === "result_unknown" || result.phase === "partial",
+    );
+    return result;
+  };
+  return { root, remote, sessions, id, locks, service, run };
 }
-afterEach(() => vi.useRealTimers());
-const rename:MutationSpec={operation:'rename',parent:'/home',source:'/home/source',destination:'/home/dest',type:'file'};
-describe('non-overwriting file mutations',() => {
-  it('refuses inconsistent operations, cross-parent paths, identical names and metadata-only links',async()=>{const f=fixture();for(const spec of [{...rename,type:'directory' as const},{...rename,destination:null},{...rename,source:null},{...rename,operation:'mkdir' as const},{...rename,operation:'delete' as const}])await expect(f.service.inspect('server',1,spec)).rejects.toThrow('INPUT_INVALID');await expect(f.service.inspect('server',1,{...rename,destination:'/elsewhere/new'})).rejects.toThrow('PATH_UNSUPPORTED');await expect(f.service.inspect('server',1,{...rename,destination:rename.source})).rejects.toThrow('NAME_CONFLICT');const original=f.sftp.lstat.bind(f.sftp);f.sftp.lstat=(path,done)=>original(path,(error,attrs)=>done(error,attrs?{...attrs,isSymbolicLink:()=>path==='/home/source'}:attrs));await expect(f.service.inspect('server',1,rename)).rejects.toThrow('PATH_UNSUPPORTED');});
-  it('releases acquired locks when preparation sees a source change and refuses duplicates/busy locks',async()=>{const f=fixture(),stat=await f.service.inspect('server',1,rename);await expect(f.service.prepare('server',1,'bad',rename,{...stat!,mtime:99})).rejects.toThrow('SOURCE_CHANGED');expect(await f.service.prepare('server',1,'one',rename,stat)).toBe(true);await expect(f.service.prepare('server',1,'one',rename,stat)).rejects.toThrow('REQUEST_BUSY');expect(await f.service.prepare('server',1,'two',rename,stat)).toBe(false);await expect(f.service.step('server',2,'one','first')).rejects.toThrow('TOKEN_EXPIRED');await expect(f.service.step('server',1,'one','remove_source')).rejects.toThrow('REQUEST_BUSY');f.service.finish('one',false);});
-  it('retains a busy mutation until the actual callback and refuses a second dispatch or premature finish',async()=>{const f=fixture(),stat=await f.service.inspect('server',1,rename);await f.service.prepare('server',1,'one',rename,stat);f.delay('link');const pending=f.service.step('server',1,'one','first');await vi.waitFor(()=>expect(f.calls).toEqual(['link']));expect(()=>f.service.finish('one',false)).toThrow('REQUEST_BUSY');await expect(f.service.step('server',1,'one','first')).rejects.toThrow('REQUEST_BUSY');f.deliver();expect(await pending).toMatchObject({phase:'first_ack'});f.service.finish('one',false);});
-  it('maps explicit hardlink status8 separately from an unknown synchronous dispatch failure',async()=>{for(const code of [8,null]){const f=fixture(),stat=await f.service.inspect('server',1,rename);await f.service.prepare('server',1,'one',rename,stat);f.sftp.ext_openssh_hardlink=(_source,_destination,done)=>{if(code===null)throw new Error('SENTINEL_REMOTE_TEXT');done(Object.assign(new Error('AUTH_FAILED'),{code}));};expect(await f.service.step('server',1,'one','first')).toMatchObject({phase:code===8?'failed':'result_unknown',errorCode:code===8?'HARDLINK_UNSUPPORTED':'RESULT_UNKNOWN'});f.service.finish('one',false);}});
-  it('verifies mkdir type after ACK and preserves unknown when the created path was replaced',async()=>{const f=fixture(),spec:MutationSpec={operation:'mkdir',parent:'/home',source:null,destination:'/home/new',type:null};await f.service.prepare('server',1,'one',spec,null);f.sftp.mkdir=(path,_options,done)=>{f.nodes.set(path,{type:'file',size:1,mtime:1});done(undefined);};expect(await f.service.step('server',1,'one','first')).toMatchObject({phase:'result_unknown',destinationCreated:true,errorCode:'RESULT_UNKNOWN'});f.service.finish('one',false);});
-  it('bounds prepared tasks at100 without displacing any existing mutation',async()=>{const f=fixture();for(let i=0;i<100;i++)expect(await f.service.prepare('server',1,'task'+i,{operation:'mkdir',parent:'/home',source:null,destination:'/home/new'+i,type:null},null)).toBe(true);await expect(f.service.prepare('server',1,'overflow',{operation:'mkdir',parent:'/home',source:null,destination:'/home/overflow',type:null},null)).rejects.toThrow('TASK_LIMIT');for(let i=0;i<100;i++)f.service.finish('task'+i,false);});
-  it('requires a separate source removal step after link acknowledgement',async () => {
-    const f=fixture();const stat=await f.service.inspect('server',1,rename);await f.service.prepare('server',1,'task',rename,stat);
-    const first=await f.service.step('server',1,'task','first');expect(first.phase).toBe('first_ack');expect(f.nodes.has('/home/source')).toBe(true);expect(f.calls).toEqual(['link']);
-    const second=await f.service.step('server',1,'task','remove_source');expect(second.phase).toBe('completed');expect(second.sourceRemovalConfirmed).toBe(true);expect(f.nodes.has('/home/dest')).toBe(true);expect(f.nodes.has('/home/source')).toBe(false);
+const rename: MutationSpec = {
+  operation: "rename",
+  parent: "/home/fixture",
+  source: "/home/fixture/source",
+  destination: "/home/fixture/dest",
+  type: "file",
+};
+describe("command-backed non-overwriting remote mutations", () => {
+  it("renames files and nonempty folders without SFTP traversal", async () => {
+    const f = await fixture();
+    expect(await f.run(rename)).toMatchObject({
+      phase: "completed",
+      sourceRemovalConfirmed: true,
+      destinationCreated: true,
+    });
+    expect(await readFile(join(f.root, "home/fixture/dest"), "utf8")).toBe(
+      "original",
+    );
+    await mkdir(join(f.root, "home/fixture/folder"));
+    await writeFile(join(f.root, "home/fixture/folder/child"), "child");
+    expect(
+      await f.run({
+        ...rename,
+        type: "directory",
+        source: "/home/fixture/folder",
+        destination: "/home/fixture/renamed",
+      }),
+    ).toMatchObject({ phase: "completed" });
+    expect(
+      await readFile(join(f.root, "home/fixture/renamed/child"), "utf8"),
+    ).toBe("child");
+    expect(f.remote.metrics.readDirs).toBe(0);
   });
-  it('preserves both names on source removal failure and restricts paths until acknowledged',async () => {
-    const f=fixture();await f.service.prepare('server',1,'task',rename,await f.service.inspect('server',1,rename));await f.service.step('server',1,'task','first');f.setRemoveFailure();
-    const result=await f.service.step('server',1,'task','remove_source');expect(result.phase).toBe('partial');expect(result.errorCode).toBe('PARTIAL_RENAME');expect(f.nodes.has('/home/source')).toBe(true);expect(f.nodes.has('/home/dest')).toBe(true);
-    f.service.finish('task',true);expect(f.locks.acquire('other','server',[{path:'/home',mode:'write'}])).toBe(false);f.service.finish('task',false);expect(f.locks.acquire('other','server',[{path:'/home',mode:'write'}])).toBe(true);
+  it("deletes a nested tree with one server recursive command and verifies disappearance", async () => {
+    const f = await fixture();
+    await mkdir(join(f.root, "home/fixture/tree/sub"), { recursive: true });
+    await writeFile(join(f.root, "home/fixture/tree/sub/a"), "a");
+    const result = await f.run({
+      ...rename,
+      operation: "delete",
+      source: "/home/fixture/tree",
+      destination: null,
+      type: "directory",
+    });
+    expect(result).toMatchObject({
+      phase: "completed",
+      sourceRemovalConfirmed: true,
+    });
+    await expect(
+      lstat(join(f.root, "home/fixture/tree")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+    expect(
+      f.remote.metrics.commands.filter((c) => c.startsWith("/usr/bin/rm ")),
+    ).toHaveLength(1);
+    expect(f.remote.metrics.readDirs).toBe(0);
   });
-  it('rejects collisions and unsupported hardlink without removing or renaming source',async () => {
-    const f=fixture();f.nodes.set('/home/dest',{type:'file',size:99,mtime:1});await expect(f.service.inspect('server',1,rename)).rejects.toThrow('NAME_CONFLICT');expect(f.calls).toEqual([]);
-    f.nodes.delete('/home/dest');await f.service.prepare('server',1,'task',rename,await f.service.inspect('server',1,rename));f.setUnsupported();
-    const result=await f.service.step('server',1,'task','first');expect(result.phase).toBe('failed');expect(result.errorCode).toBe('HARDLINK_UNSUPPORTED');expect(f.calls).toEqual([]);expect(f.nodes.has('/home/source')).toBe(true);
+  it("creates an exclusive 0700 directory and rejects existing destinations", async () => {
+    const f = await fixture();
+    expect(
+      await f.run({
+        operation: "mkdir",
+        parent: "/home/fixture",
+        source: null,
+        destination: "/home/fixture/new",
+        type: null,
+      }),
+    ).toMatchObject({ phase: "completed", destinationCreated: true });
+    expect((await lstat(join(f.root, "home/fixture/new"))).mode & 0o777).toBe(
+      0o700,
+    );
+    await expect(
+      f.service.inspect(f.id, 2, {
+        ...rename,
+        destination: "/home/fixture/new",
+      }),
+    ).rejects.toThrow("NAME_CONFLICT");
   });
-  it('rechecks metadata before dispatch and never recursively deletes',async () => {
-    const f=fixture();const spec:MutationSpec={operation:'delete',parent:'/home',source:'/home/source',destination:null,type:'file'};
-    await f.service.prepare('server',1,'task',spec,await f.service.inspect('server',1,spec));f.nodes.get('/home/source')!.mtime=2;
-    expect((await f.service.step('server',1,'task','first')).errorCode).toBe('SOURCE_CHANGED');expect(f.calls).toEqual([]);
-    f.nodes.set('/home/folder',{type:'directory',size:0,mtime:1});f.nodes.set('/home/folder/child',{type:'file',size:1,mtime:1});const folder:MutationSpec={operation:'delete',parent:'/home',source:'/home/folder',destination:null,type:'directory'};
-    await f.service.prepare('server',1,'folder',folder,await f.service.inspect('server',1,folder));expect((await f.service.step('server',1,'folder','first')).phase).toBe('failed');expect(f.calls).toEqual(['rmdir']);expect(f.nodes.has('/home/folder/child')).toBe(true);
+  it("preserves a destination created at rename dispatch and never reports a skipped mv as success", async () => {
+    let root = "";
+    const f = await fixture({
+      beforeRename: async () =>
+        writeFile(join(root, "home/fixture/dest"), "racer"),
+    });
+    root = f.root;
+    expect(await f.run(rename)).toMatchObject({
+      phase: "failed",
+      errorCode: "NAME_CONFLICT",
+    });
+    expect(await readFile(join(root, "home/fixture/source"), "utf8")).toBe(
+      "original",
+    );
+    expect(await readFile(join(root, "home/fixture/dest"), "utf8")).toBe(
+      "racer",
+    );
   });
-  it('allows independent children but locks aliases of active source/destination and ancestors',() => {
-    expect(claimsConflict([{path:'/a/x',mode:'write'},{path:'/a',mode:'keep'}],[{path:'/a/y',mode:'write'},{path:'/a',mode:'keep'}])).toBe(false);
-    expect(claimsConflict([{path:'/a',mode:'write'}],[{path:'/a/x',mode:'keep'}])).toBe(true);
-    expect(claimsConflict([{path:'/a/x',mode:'write'}],[{path:'/a/x',mode:'keep'}])).toBe(true);
+  it("marks failed recursive deletion partial and keeps its path restricted", async () => {
+    const f = await fixture({
+      beforeDelete: async () => {
+        throw Error("denied");
+      },
+    });
+    const result = await f.run({
+      ...rename,
+      operation: "delete",
+      destination: null,
+    });
+    expect(result).toMatchObject({ phase: "partial" });
+    expect(
+      f.locks.acquire("other", f.id, [
+        { path: "/home/fixture/source", mode: "write" },
+      ]),
+    ).toBe(false);
+    expect(await readFile(join(f.root, "home/fixture/source"), "utf8")).toBe(
+      "original",
+    );
   });
-  it('keeps missing unlink ACK unknown even when the fixture physically removed source',async () => {
-    const f=fixture();await f.service.prepare('server',1,'task',rename,await f.service.inspect('server',1,rename));await f.service.step('server',1,'task','first');f.setRemoveHangs();
-    vi.useFakeTimers();const waiting=f.service.step('server',1,'task','remove_source');await vi.advanceTimersByTimeAsync(15001);const result=await waiting;
-    expect(f.nodes.has('/home/source')).toBe(false);expect(result.phase).toBe('result_unknown');expect(result.sourceRemovalConfirmed).toBe(false);expect(result.destinationCreated).toBe(true);
+  it("refuses invalid specs, root/parent escape and source changes before dispatch", async () => {
+    const f = await fixture();
+    for (const spec of [
+      { ...rename, source: null },
+      { ...rename, destination: null },
+      { ...rename, operation: "mkdir" as const },
+    ])
+      await expect(f.service.inspect(f.id, 2, spec)).rejects.toThrow(
+        "INPUT_INVALID",
+      );
+    await expect(
+      f.service.inspect(f.id, 2, { ...rename, destination: "/outside" }),
+    ).rejects.toThrow("PATH_UNSUPPORTED");
+    await expect(
+      f.service.inspect(f.id, 2, { ...rename, destination: rename.source }),
+    ).rejects.toThrow("NAME_CONFLICT");
+    await expect(
+      f.service.inspect(f.id, 2, { ...rename, type: "directory" }),
+    ).rejects.toThrow("SOURCE_CHANGED");
+    const stat = await f.service.inspect(f.id, 2, rename);
+    await expect(
+      f.service.prepare(f.id, 2, "bad", rename, { ...stat!, size: 999 }),
+    ).rejects.toThrow("SOURCE_CHANGED");
+    await f.service.prepare(f.id, 2, "one", rename, stat);
+    expect(await f.service.prepare(f.id, 2, "two", rename, stat)).toBe(false);
+    await expect(
+      f.service.prepare(f.id, 2, "one", rename, stat),
+    ).rejects.toThrow("REQUEST_BUSY");
+    await expect(f.service.step(f.id, 99, "one", "first")).rejects.toThrow(
+      "TOKEN_EXPIRED",
+    );
+    await expect(
+      f.service.step(f.id, 2, "one", "remove_source"),
+    ).rejects.toThrow("REQUEST_BUSY");
+    await writeFile(join(f.root, "home/fixture/source"), "changed size");
+    expect(await f.service.step(f.id, 2, "one", "first")).toMatchObject({
+      phase: "failed",
+      errorCode: "SOURCE_CHANGED",
+    });
+    f.service.finish("one", false);
+  });
+  it("keeps in-flight ownership until the command closes, refuses duplicate dispatch and does not replay", async () => {
+    let release!: () => void;
+    const f = await fixture({
+      beforeRename: () =>
+        new Promise<void>((resolve) => {
+          release = resolve;
+        }),
+    });
+    const stat = await f.service.inspect(f.id, 2, rename);
+    await f.service.prepare(f.id, 2, "one", rename, stat);
+    const pending = f.service.step(f.id, 2, "one", "first");
+    await vi.waitFor(() => expect(release).toBeDefined());
+    expect(() => f.service.finish("one", false)).toThrow("REQUEST_BUSY");
+    await expect(f.service.step(f.id, 2, "one", "first")).rejects.toThrow(
+      "REQUEST_BUSY",
+    );
+    release();
+    expect(await pending).toMatchObject({ phase: "completed" });
+    await expect(f.service.step(f.id, 2, "one", "first")).rejects.toThrow(
+      "REQUEST_BUSY",
+    );
+    f.service.finish("one", false);
+  });
+  it("treats loss after dispatch as unknown without a second destructive request", async () => {
+    const f = await fixture({
+      beforeDelete: async () => {
+        f.sessions.disconnect(f.id, 2);
+      },
+    });
+    expect(
+      await f.run({ ...rename, operation: "delete", destination: null }),
+    ).toMatchObject({ phase: "result_unknown", errorCode: "RESULT_UNKNOWN" });
+    expect(
+      f.remote.metrics.commands.filter((c) => c.startsWith("/usr/bin/rm ")),
+    ).toHaveLength(1);
   });
 });
-
-it('records every late mutation ACK only as a bound observation after timeout/finish, without promoting its returned unknown result',async()=>{vi.useFakeTimers();for(const operation of ['mkdir','rename','delete','rmdir','remove_source']){const f=fixture();const spec:MutationSpec=operation==='mkdir' ? {operation:'mkdir',parent:'/home',source:null,destination:'/home/new',type:null}:operation==='delete' || operation==='rmdir' ? {operation:'delete',parent:'/home',source:operation==='rmdir' ? '/home/folder':'/home/source',destination:null,type:operation==='rmdir' ? 'directory':'file'}:rename;if(operation==='rmdir')f.nodes.set('/home/folder',{type:'directory',size:0,mtime:1});await f.service.prepare('server',1,'task',spec,await f.service.inspect('server',1,spec));if(operation==='remove_source')await f.service.step('server',1,'task','first');f.delay(operation==='mkdir' ? 'mkdir':operation==='rename' ? 'link':operation==='rmdir' ? 'rmdir':'unlink');const waiting=f.service.step('server',1,'task',operation==='remove_source' ? 'remove_source':'first');await vi.advanceTimersByTimeAsync(15001);const result=await waiting;expect(result.phase).toBe('result_unknown');expect(f.observations).toEqual([]);f.service.finish('task',true);f.deliver();f.deliver();expect(f.observations).toEqual([{serverId:'server',generation:1,taskId:'task',operation:spec.operation,source:spec.source,destination:spec.destination,observation:{stage:operation==='mkdir' ? 'mkdir_ack':operation==='rename' ? 'link_ack':operation==='remove_source' ? 'source_removed':'delete_ack',at:expect.any(String)}}]);expect(result.phase).toBe('result_unknown');expect(f.locks.acquire('other','server',[{path:'/home',mode:'write'}])).toBe(false);}});
+it("protects parents and descendants across mutation and transfer locks", () => {
+  expect(
+    claimsConflict(
+      [{ path: "/a", mode: "write" }],
+      [{ path: "/a/b", mode: "keep" }],
+    ),
+  ).toBe(true);
+  expect(
+    claimsConflict(
+      [{ path: "/a", mode: "keep" }],
+      [{ path: "/a/b", mode: "write" }],
+    ),
+  ).toBe(false);
+  const locks = new PathLocks();
+  expect(locks.acquire("one", "s", [{ path: "/a", mode: "write" }])).toBe(true);
+  expect(locks.acquire("one", "s", [{ path: "/a", mode: "write" }])).toBe(true);
+  expect(() => locks.acquire("one", "other", [])).toThrow();
+  locks.release("one");
+  expect(locks.acquire("two", "s", [{ path: "/a", mode: "write" }])).toBe(true);
+});
+it("retains unknown when a failed rename command might have produced effects", async () => {
+  let root = "";
+  const f = await fixture({
+    beforeRename: async () => {
+      await writeFile(join(root, "home/fixture/dest"), "possible effect");
+      throw Error("failure after effect");
+    },
+  });
+  root = f.root;
+  expect(await f.run(rename)).toMatchObject({
+    phase: "result_unknown",
+    errorCode: "RESULT_UNKNOWN",
+  });
+  expect(await readFile(join(root, "home/fixture/source"), "utf8")).toBe(
+    "original",
+  );
+  expect(
+    f.locks.acquire("another", f.id, [
+      { path: "/home/fixture/dest", mode: "write" },
+    ]),
+  ).toBe(false);
+});

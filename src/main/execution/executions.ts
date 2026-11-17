@@ -1,0 +1,619 @@
+import { randomUUID } from "node:crypto";
+import { posix } from "node:path";
+import { z } from "zod";
+import { executionRuntimeSchema } from "../../shared/execution-protocol";
+import {
+  executionReceiptSchema,
+  executionTerminal,
+  recoverExecution,
+  type ExecutionReceipt,
+} from "../../shared/executions";
+import type {
+  ExecutionRuntime,
+  ExecutionDescriptor,
+  ExecutionActionPreview,
+} from "../../shared/execution-ui";
+import type { WindowModel } from "../../shared/windows";
+import type { ReceiptRepository } from "../persistence/receipts";
+import type { ConnectionController } from "../connections/connections";
+import type { DesktopController } from "../desktop/desktop";
+import type { EngineGateway } from "../engine-gateway";
+import type { ExecutionPreviews } from "./execution-previews";
+import { ExecutionOutputReaders } from "./execution-output";
+type Resource = {
+  outputReleased: boolean;
+  id: string;
+  windowToken: string;
+  windowId: string | null;
+  epoch: string;
+  runtime: ExecutionRuntime;
+  workerKnown: boolean;
+  sequence: number;
+};
+type Action = {
+  id: string;
+  action: ExecutionActionPreview["action"];
+  windowId: string | null;
+  generation: number;
+  epoch: string;
+  deadline: number;
+};
+export class ExecutionController {
+  private readonly resources = new Map<string, Resource>();
+  private readonly actions = new Map<string, Action>();
+  private readonly starting = new Set<string>();
+  private readonly resyncing = new Set<string>();
+  readonly output: ExecutionOutputReaders;
+  constructor(
+    private readonly previews: ExecutionPreviews,
+    private readonly connections: ConnectionController,
+    private readonly desktop: DesktopController,
+    private readonly gateway: EngineGateway,
+    private readonly storage: () => ReceiptRepository | null,
+    private readonly healthy: () => boolean,
+    private readonly receiptSettled: () => Promise<void>,
+  ) {
+    desktop.registerResourceResolver("execution", (token) => {
+      const resource = [...this.resources.values()].find(
+        (row) => row.windowToken === token,
+      );
+      if (!resource) throw new Error("TOKEN_EXPIRED");
+      const row = resource.runtime.receipt;
+      return {
+        serverId: row.serverId,
+        generation: row.generation,
+        resourceId: row.taskId,
+      };
+    });
+    this.output = new ExecutionOutputReaders(gateway, (id) => {
+      this.desktop.requireWindow(id, "execution");
+      const resource = [...this.resources.values()].find(
+        (row) => row.windowId === id,
+      );
+      if (!resource?.workerKnown || resource.epoch !== gateway.epoch)
+        throw new Error("TOKEN_EXPIRED");
+    });
+  }
+  private repository(): ReceiptRepository {
+    const repo = this.storage();
+    if (!repo || repo.faulted || !this.healthy())
+      throw new Error("STORAGE_FAILED");
+    return repo;
+  }
+  private resource(id: string): Resource {
+    const value = this.resources.get(id);
+    if (value) return value;
+    const row = this.storage()?.get(id);
+    if (!row || row.kind !== "gui_exec") throw new Error("TOKEN_EXPIRED");
+    const resource: Resource = {
+      outputReleased: false,
+      id,
+      windowToken: randomUUID(),
+      windowId: null,
+      epoch: row.backendEpoch,
+      runtime: {
+        receipt: row,
+        active: false,
+        recordPending: false,
+        recordError: false,
+        cleanupPending: false,
+      },
+      workerKnown: false,
+      sequence: 0,
+    };
+    this.resources.set(id, resource);
+    return resource;
+  }
+  private session(serverId: string, generation: number, token: string): void {
+    const cap = this.connections.sessionCapability(token);
+    if (cap.serverId !== serverId || cap.generation !== generation)
+      throw new Error("TOKEN_EXPIRED");
+  }
+  private window(resource: Resource): WindowModel {
+    const model = this.desktop.handle("desktop:registerWindow", {
+      kind: "execution",
+      resourceToken: resource.windowToken,
+    }) as WindowModel;
+    resource.windowId = model.windowId;
+    return model;
+  }
+  isActive(id: string): boolean {
+    const resource = this.resources.get(id);
+    return (
+      this.starting.has(id) ||
+      Boolean(
+        resource &&
+          (resource.runtime.active ||
+            resource.runtime.recordPending ||
+            resource.runtime.cleanupPending),
+      )
+    );
+  }
+  async closeForShutdown(
+    serverId?: string,
+    generation?: number,
+  ): Promise<void> {
+    await Promise.allSettled(
+      [...this.resources.values()]
+        .filter(
+          (resource) =>
+            resource.workerKnown &&
+            resource.epoch === this.gateway.epoch &&
+            resource.runtime.active &&
+            (!serverId ||
+              (resource.runtime.receipt.serverId === serverId &&
+                resource.runtime.receipt.generation === generation)),
+        )
+        .map(async (resource) => {
+          const row = resource.runtime.receipt;
+          await this.gateway.request({
+            action: "execution:close",
+            serverId: row.serverId,
+            generation: row.generation,
+            executionId: row.taskId,
+          });
+        }),
+    );
+  }
+  storageContinuity(): string[] {
+    return [...this.resources.values()]
+      .filter(
+        (resource) =>
+          resource.workerKnown && resource.epoch === this.gateway.epoch,
+      )
+      .map((resource) => resource.id);
+  }
+  get hasActive(): boolean {
+    return [...this.resources.keys()].some((id) => this.isActive(id));
+  }
+  overlays(): (ExecutionReceipt & { recordError: boolean })[] {
+    return [...this.resources.values()]
+      .filter((row) => row.workerKnown || row.runtime.recordError)
+      .map((resource) => ({
+        ...resource.runtime.receipt,
+        acknowledgedAt:
+          this.storage()?.get(resource.id)?.acknowledgedAt ??
+          resource.runtime.receipt.acknowledgedAt,
+        recordError: resource.runtime.recordError,
+      }));
+  }
+  observe(raw: ExecutionRuntime, gap: boolean, sequence: number): void {
+    if (gap) {
+      for (const resource of this.resources.values())
+        if (resource.workerKnown)
+          void this.resync(
+            resource.runtime.receipt.serverId,
+            resource.runtime.receipt.generation,
+          );
+    }
+    const resource = this.resources.get(raw.receipt.taskId);
+    if (!resource || !resource.workerKnown || sequence <= resource.sequence)
+      return;
+    const before = resource.runtime.receipt,
+      row = raw.receipt;
+    if (
+      row.backendEpoch !== resource.epoch ||
+      row.serverId !== before.serverId ||
+      row.generation !== before.generation ||
+      row.kind !== "gui_exec" ||
+      row.source !== before.source ||
+      row.cwd !== before.cwd ||
+      row.hostKeyFingerprint !== before.hostKeyFingerprint ||
+      JSON.stringify(row.endpointSnapshot) !==
+        JSON.stringify(before.endpointSnapshot)
+    )
+      return;
+    resource.runtime = structuredClone(raw);
+    resource.sequence = sequence;
+  }
+  private async resync(serverId: string, generation: number): Promise<void> {
+    const key = `${serverId}:${generation}`;
+    if (this.resyncing.has(key)) return;
+    this.resyncing.add(key);
+    try {
+      const epoch = this.gateway.epoch;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        let offset: number | null = 0,
+          version: number | null = null,
+          stable = true,
+          pages = 0;
+        while (offset !== null && pages++ < 100) {
+          const page = z
+            .object({
+              sequence: z.int().nonnegative(),
+              rows: z.array(executionRuntimeSchema).max(100),
+              nextOffset: z.int().nonnegative().nullable(),
+            })
+            .strict()
+            .parse(
+              await this.gateway.request({
+                action: "execution:snapshot",
+                serverId,
+                generation,
+                offset,
+              }),
+            );
+          if (this.gateway.epoch !== epoch) return;
+          if (version !== null && version !== page.sequence) stable = false;
+          version = page.sequence;
+          for (const row of page.rows) this.observe(row, false, page.sequence);
+          if (page.nextOffset !== null && page.nextOffset <= offset)
+            throw new Error("INPUT_INVALID");
+          offset = page.nextOffset;
+        }
+        if (stable) break;
+      }
+    } catch {
+    } finally {
+      this.resyncing.delete(key);
+    }
+  }
+  private async start(token: string): Promise<WindowModel> {
+    const preview = this.previews.consume(token),
+      repo = this.repository(),
+      id = randomUUID(),
+      now = new Date().toISOString();
+    const row = executionReceiptSchema.parse({
+      kind: "gui_exec",
+      taskId: id,
+      executionId: id,
+      terminalId: null,
+      serverId: preview.serverId,
+      generation: preview.generation,
+      backendEpoch: preview.epoch,
+      endpointSnapshot: preview.identity.endpointSnapshot,
+      hostKeyFingerprint: preview.identity.hostKeyFingerprint,
+      source: preview.spec.path,
+      cwd: preview.spec.cwd,
+      destination: null,
+      phase: "prepared",
+      lastConfirmedPhase: "prepared",
+      channelAccepted: false,
+      channelClosed: false,
+      exitObserved: false,
+      exitCode: null,
+      exitSignal: null,
+      stopRequestedAt: null,
+      errorCode: null,
+      recoveryUncertain: false,
+      recoveredFromPhase: null,
+      acknowledgedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    repo.checkNew(row.serverId, []);
+    const resource: Resource = {
+      outputReleased: false,
+      id,
+      windowToken: randomUUID(),
+      windowId: null,
+      epoch: this.gateway.epoch,
+      runtime: {
+        receipt: row,
+        recordError: false,
+        recordPending: true,
+        active: false,
+        cleanupPending: false,
+      },
+      workerKnown: false,
+      sequence: 0,
+    };
+    this.resources.set(id, resource);
+    this.starting.add(id);
+    let model: WindowModel | null = null,
+      saved = false,
+      sent = false,
+      responseReceived = false;
+    try {
+      model = this.window(resource);
+      await repo.save(row);
+      saved = true;
+      this.repository();
+      this.session(row.serverId, row.generation, preview.sessionToken);
+      resource.workerKnown = true;
+      sent = true;
+      const response = await this.gateway.request({
+        action: "execution:start",
+        serverId: row.serverId,
+        generation: row.generation,
+        receipt: row,
+        spec: preview.spec,
+        expected: preview.stat,
+      });
+      responseReceived = true;
+      const runtime = executionRuntimeSchema.parse(response);
+      if (
+        runtime.receipt.taskId !== id ||
+        runtime.receipt.kind !== "gui_exec" ||
+        runtime.receipt.serverId !== row.serverId ||
+        runtime.receipt.generation !== row.generation ||
+        runtime.receipt.backendEpoch !== row.backendEpoch ||
+        runtime.receipt.source !== row.source ||
+        runtime.receipt.cwd !== row.cwd
+      )
+        throw new Error("INPUT_INVALID");
+      if (!resource.sequence) resource.runtime = runtime;
+      return model;
+    } catch (error) {
+      const code =
+          error instanceof Error && /^[A-Z_]{1,64}$/u.test(error.message)
+            ? error.message
+            : "INTERNAL_ERROR",
+        uncertain =
+          sent &&
+          (responseReceived ||
+            ![
+              "SESSION_LIMIT",
+              "STORAGE_FAILED",
+              "INPUT_INVALID",
+              "SESSION_BUSY",
+            ].includes(code));
+      if (uncertain) {
+        resource.runtime.recordError = true;
+        await this.resync(row.serverId, row.generation);
+      } else {
+        resource.workerKnown = false;
+        resource.runtime = {
+          ...resource.runtime,
+          receipt: {
+            ...resource.runtime.receipt,
+            phase: "cancelled_not_sent",
+            errorCode: code,
+            updatedAt: new Date().toISOString(),
+          },
+          recordPending: false,
+          active: false,
+        };
+        if (saved) {
+          try {
+            await repo.save(resource.runtime.receipt);
+          } catch {
+            resource.runtime.recordError = true;
+          }
+        }
+        if (model) {
+          this.desktop.handle("desktop:closeWindow", model.windowId);
+          resource.windowId = null;
+        }
+        if (!saved) this.resources.delete(id);
+      }
+      throw error;
+    } finally {
+      preview.spec.argv.fill("");
+      preview.spec.argv = [];
+      this.starting.delete(id);
+    }
+  }
+  descriptor(windowId: string): ExecutionDescriptor {
+    const window = this.desktop.requireWindow(windowId, "execution");
+    if (!window.resourceId) throw new Error("TOKEN_EXPIRED");
+    const resource = this.resource(window.resourceId),
+      row = resource.runtime.receipt;
+    if (
+      row.serverId !== window.serverId ||
+      row.generation !== window.sessionGeneration
+    )
+      throw new Error("TOKEN_EXPIRED");
+    resource.windowId = windowId;
+    const reader =
+      this.output.descriptor(windowId) ??
+      this.output.open(windowId, row.taskId, row.serverId, row.generation);
+    return {
+      executionId: row.taskId,
+      name: posix.basename(row.source ?? "실행"),
+      outputToken: reader.token,
+      readGeneration: reader.readGeneration,
+      nextOffset: reader.cursor,
+      outputAvailable:
+        resource.workerKnown &&
+        !resource.outputReleased &&
+        resource.epoch === this.gateway.epoch,
+      runtime: structuredClone(resource.runtime),
+    };
+  }
+  needsCloseConfirmation(windowId: string): boolean {
+    const window = this.desktop.requireWindow(windowId, "execution");
+    const resource = window.resourceId
+      ? this.resources.get(window.resourceId)
+      : null;
+    return Boolean(
+      resource && (resource.runtime.active || this.starting.has(resource.id)),
+    );
+  }
+  detachWindow(windowId: string): void {
+    this.output.close(windowId);
+    for (const resource of this.resources.values())
+      if (resource.windowId === windowId) resource.windowId = null;
+  }
+  sessionChanged(
+    serverId: string,
+    generation: number,
+    connected: boolean,
+  ): void {
+    for (const resource of this.resources.values())
+      if (
+        resource.runtime.receipt.serverId === serverId &&
+        (!connected || resource.runtime.receipt.generation !== generation)
+      ) {
+        resource.outputReleased = true;
+        if (resource.windowId) this.output.close(resource.windowId);
+      }
+  }
+  invalidateRenderer(): void {
+    this.previews.invalidate();
+    this.actions.clear();
+    this.output.invalidate();
+  }
+  private previewAction(payload: unknown): ExecutionActionPreview {
+    const input = z
+      .object({
+        id: z.uuid(),
+        action: z.enum(["stop", "close_channel", "close_window"]),
+      })
+      .strict()
+      .parse(payload);
+    let windowId: string | null = null,
+      id = input.id;
+    if (input.action === "close_window") {
+      const window = this.desktop.requireWindow(input.id, "execution");
+      if (!window.resourceId) throw new Error("TOKEN_EXPIRED");
+      id = window.resourceId;
+      windowId = window.windowId;
+    }
+    const resource = this.resource(id),
+      row = resource.runtime.receipt;
+    if (
+      input.action !== "close_window" &&
+      (!resource.workerKnown || !resource.runtime.active || row.channelClosed)
+    )
+      throw new Error("TOKEN_EXPIRED");
+    for (const [token, row] of this.actions)
+      if (row.deadline <= performance.now()) this.actions.delete(token);
+    if (this.actions.size >= 20) throw new Error("REQUEST_BUSY");
+    const token = randomUUID();
+    this.actions.set(token, {
+      id,
+      action: input.action,
+      windowId,
+      generation: row.generation,
+      epoch: resource.epoch,
+      deadline: performance.now() + 60000,
+    });
+    return {
+      confirmationToken: token,
+      executionId: id,
+      action: input.action,
+      serverName: row.endpointSnapshot.name,
+      endpoint: `${row.endpointSnapshot.username}@${row.endpointSnapshot.endpoint}`,
+      path: row.source,
+      phase: row.phase,
+      active: resource.runtime.active || this.starting.has(id),
+      canStop:
+        resource.runtime.active && row.channelAccepted && !row.channelClosed,
+      expiresAt: new Date(Date.now() + 60000).toISOString(),
+    };
+  }
+  private async applyAction(payload: unknown): Promise<void> {
+    const input = z
+        .object({
+          token: z.uuid(),
+          choice: z.enum(["hide", "stop"]).optional(),
+        })
+        .strict()
+        .parse(payload),
+      action = this.actions.get(input.token);
+    this.actions.delete(input.token);
+    if (!action || action.deadline <= performance.now())
+      throw new Error("TOKEN_EXPIRED");
+    const resource = this.resource(action.id),
+      row = resource.runtime.receipt;
+    if (resource.epoch !== action.epoch || row.generation !== action.generation)
+      throw new Error("TOKEN_EXPIRED");
+    if (action.action === "close_window" && input.choice === "hide") {
+      if (!action.windowId) throw new Error("INPUT_INVALID");
+      this.desktop.handle("desktop:closeWindow", action.windowId);
+      this.detachWindow(action.windowId);
+      return;
+    }
+    if (
+      (action.action === "close_window" && input.choice !== "stop") ||
+      (action.action !== "close_window" && input.choice !== undefined)
+    )
+      throw new Error("INPUT_INVALID");
+    if (!resource.workerKnown || !resource.runtime.active || row.channelClosed)
+      throw new Error("TOKEN_EXPIRED");
+    await this.gateway.request({
+      action:
+        action.action === "close_channel"
+          ? "execution:close"
+          : "execution:stop",
+      serverId: row.serverId,
+      generation: row.generation,
+      executionId: row.taskId,
+    });
+  }
+  async releaseRecord(row: ExecutionReceipt): Promise<void> {
+    if (this.isActive(row.taskId)) throw new Error("REQUEST_BUSY");
+    const resource = this.resources.get(row.taskId);
+    if (resource?.workerKnown)
+      await this.gateway
+        .request({
+          action: "execution:forget",
+          serverId: row.serverId,
+          generation: row.generation,
+          executionId: row.taskId,
+        })
+        .catch((error) => {
+          if (!(error instanceof Error) || error.message !== "ENGINE_STOPPED")
+            throw error;
+        });
+    if (resource) {
+      resource.workerKnown = false;
+      const saved = this.storage()?.get(row.taskId);
+      resource.runtime = {
+        receipt: saved && "exitObserved" in saved ? saved : row,
+        recordError: false,
+        recordPending: false,
+        active: false,
+        cleanupPending: false,
+      };
+      if (resource.windowId) this.output.close(resource.windowId);
+    }
+  }
+  async engineStopped(): Promise<void> {
+    await this.receiptSettled();
+    for (const resource of this.resources.values()) {
+      if (!resource.workerKnown) continue;
+      resource.workerKnown = false;
+      const disk = this.storage()?.get(resource.id),
+        base =
+          disk && "exitObserved" in disk && executionTerminal(disk.phase)
+            ? disk
+            : resource.runtime.receipt;
+      const recovered = recoverExecution(base, false);
+      resource.runtime = {
+        receipt: recovered,
+        recordError: false,
+        recordPending: false,
+        active: false,
+        cleanupPending: false,
+      };
+      try {
+        await this.repository().save(recovered);
+      } catch {
+        resource.runtime.recordError = true;
+      }
+    }
+    this.output.invalidate();
+  }
+  async handle(action: string, payload: unknown): Promise<unknown> {
+    if (action === "execution:context")
+      return this.previews.context(z.uuid().parse(payload));
+    if (action === "execution:preview") return this.previews.preview(payload);
+    if (action === "execution:releasePreview") {
+      this.previews.release(z.uuid().parse(payload));
+      return;
+    }
+    if (action === "execution:start")
+      return this.start(z.uuid().parse(payload));
+    if (action === "execution:get")
+      return this.descriptor(z.uuid().parse(payload));
+    if (action === "execution:reopen")
+      return this.window(this.resource(z.uuid().parse(payload)));
+    if (action === "execution:next") {
+      const input = z
+        .object({
+          token: z.uuid(),
+          readGeneration: z.int().positive(),
+          cursor: z.int().nonnegative(),
+        })
+        .strict()
+        .parse(payload);
+      return this.output.next(input.token, input.readGeneration, input.cursor);
+    }
+    if (action === "execution:previewAction")
+      return this.previewAction(payload);
+    if (action === "execution:applyAction") return this.applyAction(payload);
+    throw new Error("INPUT_INVALID");
+  }
+}

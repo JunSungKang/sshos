@@ -1,1 +1,5 @@
-export type DiagnosticPreview={token:string;json:string;expiresAt:string};
+export type DiagnosticPreview = {
+  token: string;
+  json: string;
+  expiresAt: string;
+};

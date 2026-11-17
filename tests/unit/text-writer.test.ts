@@ -1,60 +1,668 @@
-import {describe,it,expect,vi,afterEach} from 'vitest';
-import {createHash} from 'node:crypto';
-import type {Stats,SFTPWrapper} from 'ssh2';
-import {TextWriter} from '../../src/worker/viewers/text-writer';
-import {PathLocks} from '../../src/worker/files/path-locks';
-import {MetadataQueue} from '../../src/worker/connection/metadata-queue';
-import type {ControlAccess} from '../../src/worker/files/browser';
-import type {WorkerReceiptWriter} from '../../src/worker/receipt-writer';
-import type {MutationReceipt} from '../../src/shared/mutations';
-import {encodeEditedText,textBaselineSchema} from '../../src/shared/viewers/editor';
-import {decodeText,TEXT_LIMIT} from '../../src/shared/viewers/text';
-type File={bytes:Buffer;mode:number;mtime:number;uid:number;gid:number;link?:boolean};
-function fixture(content='original\n',queue?:ConstructorParameters<typeof TextWriter>[3]){
- const serverId=crypto.randomUUID(),taskId=crypto.randomUUID(),epoch=crypto.randomUUID(),path='/home/a.txt',tempPath=`/home/.sshos-edit-${taskId}.tmp`,original:File={bytes:Buffer.from(content),mode:0o100640,mtime:10,uid:501,gid:20},files=new Map<string,File>([[path,original]]),handles=new Map<string,File>(),persisted:MutationReceipt[]=[];
- let sequence=0,renames=0,connected=true;const options:{fail?:string;hook?:(stage:string)=>void;hold?:()=>Promise<void>;readHold?:Promise<void>;reading?:()=>void}={};
- const stats=(f:File):Stats=>({size:f.bytes.length,mtime:f.mtime,mode:f.mode,uid:f.uid,gid:f.gid,isFile:()=>!f.link,isSymbolicLink:()=>Boolean(f.link),isDirectory:()=>false} as Stats);
- const fault=(name:string,done:Function)=>{if(options.fail===name){done(Object.assign(new Error('fixture'),{code:3}));return true;}return false;};
- const sftp={
-  lstat:(p:string,done:Function)=>{if(fault('lstat',done))return;if(p==='/home'){done(null,{isDirectory:()=>true,isSymbolicLink:()=>false});return;}const f=files.get(p);done(f?null:Object.assign(new Error('absent'),{code:2}),f?stats(f):null);},
-  realpath:(p:string,done:Function)=>done(null,options.fail==='parent'?'/other':p),
-  open:(p:string,flags:string,modeOrDone:number|Function,callback?:Function)=>{const done=callback??modeOrDone as Function;if(fault(flags==='wx'?'create':'open',done))return;if(flags==='wx'){if(files.has(p)){done(Object.assign(new Error('exists'),{code:4}));return;}files.set(p,{bytes:Buffer.alloc(0),mode:0o100600,mtime:10,uid:options.fail==='owner'?999:501,gid:options.fail==='owner'?999:20});}const f=files.get(p);if(!f){done(Object.assign(new Error('absent'),{code:2}));return;}const handle=String(++sequence);handles.set(handle,f);done(null,Buffer.from(handle));},
-  fstat:(h:Buffer,done:Function)=>{const f=handles.get(h.toString())!;done(null,{...stats(f),...(options.fail==='fstat'?{mtime:11}:{})});},
-  read:(h:Buffer,bytes:Buffer,offset:number,length:number,position:number,done:Function)=>{const finish=()=>{const f=handles.get(h.toString())!;const count=options.fail==='short'?0:Math.max(0,Math.min(length,f.bytes.length-position));f.bytes.copy(bytes,offset,position,position+count);done(null,count);};options.reading?.();if(options.readHold)void options.readHold.then(finish);else finish();},
-  close:(h:Buffer,done:Function)=>{handles.delete(h.toString());if(!fault('close',done))done(null);},
-  write:(h:Buffer,bytes:Buffer,offset:number,length:number,position:number,done:Function)=>{if(fault('write',done))return;const f=handles.get(h.toString())!,next=Buffer.alloc(Math.max(f.bytes.length,position+length));f.bytes.copy(next);bytes.copy(next,position,offset,offset+length);f.bytes=next;done(null);},
-  fchmod:(h:Buffer,mode:number,done:Function)=>{if(fault('chmod',done))return;const f=handles.get(h.toString())!;f.mode=0o100000|mode;done(null);},
-  fchown:(h:Buffer,uid:number,gid:number,done:Function)=>{const f=handles.get(h.toString())!;f.uid=uid;f.gid=gid;done(null);},
-  ext_openssh_rename:(source:string,destination:string,done:Function)=>{if(options.fail==='unsupported')throw new Error('Server does not support this extended request');if(fault('rename',done))return;const f=files.get(source)!;files.set(destination,f);files.delete(source);renames++;if(options.fail==='lost')done(new Error('unobserved'));else{if(options.fail==='final')f.bytes=Buffer.from('changed after publication');done(null);}}
- } as unknown as SFTPWrapper;
- const control:ControlAccess={sftp,check:()=>{if(!connected)throw new Error('CONNECTION_LOST');},quarantine:()=>{connected=false;}};
- const writer={epoch,persist:async(row:MutationReceipt)=>{if(options.hold)await options.hold();options.hook?.(row.stage);if(options.fail===row.stage || options.fail==='storage')throw new Error('STORAGE_FAILED');persisted.push(structuredClone(row));}} as unknown as WorkerReceiptWriter;
- const locks=new PathLocks(),service=new TextWriter(()=>{control.check();return control;},locks,writer,queue),baseline={path,parent:'/home',sha256:createHash('sha256').update(original.bytes).digest('hex'),size:original.bytes.length,mtime:10,mode:original.mode,uid:501,gid:20},now=new Date().toISOString();
- const receipt:MutationReceipt={kind:'file_mutation',operation:'edit',taskId,serverId,generation:1,backendEpoch:epoch,endpointSnapshot:{name:'fixture',host:'fixture.invalid',port:22,username:'fixture',endpoint:'fixture.invalid:22'},hostKeyFingerprint:'SHA256:fixture',source:path,destination:path,parent:'/home',tempPath,sourceInitialStat:{type:'file',size:baseline.size,mtime:10,mode:baseline.mode},phase:'prepared',stage:'prepared',lastConfirmedPhase:'prepared',destinationCreated:false,sourceRemovalConfirmed:false,errorCode:null,recoveryUncertain:false,recoveredFromPhase:null,acknowledgedAt:null,createdAt:now,updatedAt:now};
- const prepare=()=>service.prepare(serverId,1,taskId,baseline,tempPath),save=(text='modified\n',row=receipt)=>service.save(serverId,1,row,new TextEncoder().encode(text));
- return {service,baseline,prepare,save,receipt,serverId,taskId,epoch,path,tempPath,files,handles,original,options,locks,persisted,get renames(){return renames;},disconnect:()=>{connected=false;}};
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { createHash } from "node:crypto";
+import type { Stats, SFTPWrapper } from "ssh2";
+import { TextWriter } from "../../src/worker/viewers/text-writer";
+import { PathLocks } from "../../src/shared/file-policies/path-locks";
+import { MetadataQueue } from "../../src/worker/connections/metadata-queue";
+import type { ControlAccess } from "../../src/worker/remote-files/sftp-control";
+import type { WorkerReceiptWriter } from "../../src/worker/receipt-writer";
+import type { MutationReceipt } from "../../src/shared/mutations";
+import {
+  encodeEditedText,
+  textBaselineSchema,
+} from "../../src/shared/viewers/editor";
+import { decodeText, TEXT_LIMIT } from "../../src/shared/viewers/text";
+type File = {
+  bytes: Buffer;
+  mode: number;
+  mtime: number;
+  uid: number;
+  gid: number;
+  link?: boolean;
+};
+function fixture(
+  content = "original\n",
+  queue?: ConstructorParameters<typeof TextWriter>[3],
+) {
+  const serverId = crypto.randomUUID(),
+    taskId = crypto.randomUUID(),
+    epoch = crypto.randomUUID(),
+    path = "/home/a.txt",
+    tempPath = `/home/.sshos-edit-${taskId}.tmp`,
+    original: File = {
+      bytes: Buffer.from(content),
+      mode: 0o100640,
+      mtime: 10,
+      uid: 501,
+      gid: 20,
+    },
+    files = new Map<string, File>([[path, original]]),
+    handles = new Map<string, File>(),
+    persisted: MutationReceipt[] = [];
+  let sequence = 0,
+    renames = 0,
+    connected = true;
+  const options: {
+    fail?: string;
+    hook?: (stage: string) => void;
+    hold?: () => Promise<void>;
+    readHold?: Promise<void>;
+    reading?: () => void;
+  } = {};
+  const stats = (f: File): Stats =>
+    ({
+      size: f.bytes.length,
+      mtime: f.mtime,
+      mode: f.mode,
+      uid: f.uid,
+      gid: f.gid,
+      isFile: () => !f.link,
+      isSymbolicLink: () => Boolean(f.link),
+      isDirectory: () => false,
+    }) as Stats;
+  const fault = (name: string, done: Function) => {
+    if (options.fail === name) {
+      done(Object.assign(new Error("fixture"), { code: 3 }));
+      return true;
+    }
+    return false;
+  };
+  const sftp = {
+    lstat: (p: string, done: Function) => {
+      if (fault("lstat", done)) return;
+      if (p === "/home") {
+        done(null, { isDirectory: () => true, isSymbolicLink: () => false });
+        return;
+      }
+      const f = files.get(p);
+      done(
+        f ? null : Object.assign(new Error("absent"), { code: 2 }),
+        f ? stats(f) : null,
+      );
+    },
+    realpath: (p: string, done: Function) =>
+      done(null, options.fail === "parent" ? "/other" : p),
+    open: (
+      p: string,
+      flags: string,
+      modeOrDone: number | Function,
+      callback?: Function,
+    ) => {
+      const done = callback ?? (modeOrDone as Function);
+      if (fault(flags === "wx" ? "create" : "open", done)) return;
+      if (flags === "wx") {
+        if (files.has(p)) {
+          done(Object.assign(new Error("exists"), { code: 4 }));
+          return;
+        }
+        files.set(p, {
+          bytes: Buffer.alloc(0),
+          mode: 0o100600,
+          mtime: 10,
+          uid: options.fail === "owner" ? 999 : 501,
+          gid: options.fail === "owner" ? 999 : 20,
+        });
+      }
+      const f = files.get(p);
+      if (!f) {
+        done(Object.assign(new Error("absent"), { code: 2 }));
+        return;
+      }
+      const handle = String(++sequence);
+      handles.set(handle, f);
+      done(null, Buffer.from(handle));
+    },
+    fstat: (h: Buffer, done: Function) => {
+      const f = handles.get(h.toString())!;
+      done(null, {
+        ...stats(f),
+        ...(options.fail === "fstat" ? { mtime: 11 } : {}),
+      });
+    },
+    read: (
+      h: Buffer,
+      bytes: Buffer,
+      offset: number,
+      length: number,
+      position: number,
+      done: Function,
+    ) => {
+      const finish = () => {
+        const f = handles.get(h.toString())!;
+        const count =
+          options.fail === "short"
+            ? 0
+            : Math.max(0, Math.min(length, f.bytes.length - position));
+        f.bytes.copy(bytes, offset, position, position + count);
+        done(null, count);
+      };
+      options.reading?.();
+      if (options.readHold) void options.readHold.then(finish);
+      else finish();
+    },
+    close: (h: Buffer, done: Function) => {
+      handles.delete(h.toString());
+      if (!fault("close", done)) done(null);
+    },
+    write: (
+      h: Buffer,
+      bytes: Buffer,
+      offset: number,
+      length: number,
+      position: number,
+      done: Function,
+    ) => {
+      if (fault("write", done)) return;
+      const f = handles.get(h.toString())!,
+        next = Buffer.alloc(Math.max(f.bytes.length, position + length));
+      f.bytes.copy(next);
+      bytes.copy(next, position, offset, offset + length);
+      f.bytes = next;
+      done(null);
+    },
+    fchmod: (h: Buffer, mode: number, done: Function) => {
+      if (fault("chmod", done)) return;
+      const f = handles.get(h.toString())!;
+      f.mode = 0o100000 | mode;
+      done(null);
+    },
+    fchown: (h: Buffer, uid: number, gid: number, done: Function) => {
+      const f = handles.get(h.toString())!;
+      f.uid = uid;
+      f.gid = gid;
+      done(null);
+    },
+    ext_openssh_rename: (
+      source: string,
+      destination: string,
+      done: Function,
+    ) => {
+      if (options.fail === "unsupported")
+        throw new Error("Server does not support this extended request");
+      if (fault("rename", done)) return;
+      const f = files.get(source)!;
+      files.set(destination, f);
+      files.delete(source);
+      renames++;
+      if (options.fail === "lost") done(new Error("unobserved"));
+      else {
+        if (options.fail === "final")
+          f.bytes = Buffer.from("changed after publication");
+        done(null);
+      }
+    },
+  } as unknown as SFTPWrapper;
+  const control: ControlAccess = {
+    sftp,
+    check: () => {
+      if (!connected) throw new Error("CONNECTION_LOST");
+    },
+    quarantine: () => {
+      connected = false;
+    },
+  };
+  const writer = {
+    epoch,
+    persist: async (row: MutationReceipt) => {
+      if (options.hold) await options.hold();
+      options.hook?.(row.stage);
+      if (options.fail === row.stage || options.fail === "storage")
+        throw new Error("STORAGE_FAILED");
+      persisted.push(structuredClone(row));
+    },
+  } as unknown as WorkerReceiptWriter;
+  const locks = new PathLocks(),
+    service = new TextWriter(
+      () => {
+        control.check();
+        return control;
+      },
+      locks,
+      writer,
+      queue,
+    ),
+    baseline = {
+      path,
+      parent: "/home",
+      sha256: createHash("sha256").update(original.bytes).digest("hex"),
+      size: original.bytes.length,
+      mtime: 10,
+      mode: original.mode,
+      uid: 501,
+      gid: 20,
+    },
+    now = new Date().toISOString();
+  const receipt: MutationReceipt = {
+    kind: "file_mutation",
+    operation: "edit",
+    taskId,
+    serverId,
+    generation: 1,
+    backendEpoch: epoch,
+    endpointSnapshot: {
+      name: "fixture",
+      host: "fixture.invalid",
+      port: 22,
+      username: "fixture",
+      endpoint: "fixture.invalid:22",
+    },
+    hostKeyFingerprint: "SHA256:fixture",
+    source: path,
+    destination: path,
+    parent: "/home",
+    tempPath,
+    sourceInitialStat: {
+      type: "file",
+      size: baseline.size,
+      mtime: 10,
+      mode: baseline.mode,
+    },
+    phase: "prepared",
+    stage: "prepared",
+    lastConfirmedPhase: "prepared",
+    destinationCreated: false,
+    sourceRemovalConfirmed: false,
+    errorCode: null,
+    recoveryUncertain: false,
+    recoveredFromPhase: null,
+    acknowledgedAt: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const prepare = () =>
+      service.prepare(serverId, 1, taskId, baseline, tempPath),
+    save = (text = "modified\n", row = receipt) =>
+      service.save(serverId, 1, row, new TextEncoder().encode(text));
+  return {
+    service,
+    baseline,
+    prepare,
+    save,
+    receipt,
+    serverId,
+    taskId,
+    epoch,
+    path,
+    tempPath,
+    files,
+    handles,
+    original,
+    options,
+    locks,
+    persisted,
+    get renames() {
+      return renames;
+    },
+    disconnect: () => {
+      connected = false;
+    },
+  };
 }
-afterEach(()=>vi.useRealTimers());
-describe('text encoding and explicit save limits',()=>{
- it.each([['lf',false],['lf',true],['crlf',false],['crlf',true]] as const)('preserves %s and BOM=%s', (lineEnding,hasBOM)=>{const bytes=encodeEditedText('한글\nnext\n',{lineEnding,hasBOM});expect(new TextDecoder('utf-8',{ignoreBOM:true}).decode(bytes)).toBe((hasBOM?'\ufeff':'')+(lineEnding==='crlf'?'한글\r\nnext\r\n':'한글\nnext\n'));expect(decodeText(bytes).lineEnding).toBe(lineEnding);});
- it('rejects mixed line endings, invalid scalars, NUL and UTF8 byte overflow',()=>{expect(()=>encodeEditedText('a',{hasBOM:false,lineEnding:'mixed'})).toThrow('TEXT_EDIT_UNSUPPORTED');for(const value of ['\ud800','a\0b'])expect(()=>encodeEditedText(value,{hasBOM:false,lineEnding:'lf'})).toThrow('VIEW_FORMAT_UNSUPPORTED');expect(()=>encodeEditedText(('한'.repeat(800)+'\n').repeat(1000),{hasBOM:false,lineEnding:'lf'})).toThrow('VIEW_LIMIT');expect(encodeEditedText('',{hasBOM:false,lineEnding:'lf'})).toHaveLength(0);expect(textBaselineSchema.safeParse({}).success).toBe(false);expect(TEXT_LIMIT).toBe(2097152);});
+afterEach(() => vi.useRealTimers());
+describe("text encoding and explicit save limits", () => {
+  it.each([
+    ["lf", false],
+    ["lf", true],
+    ["crlf", false],
+    ["crlf", true],
+  ] as const)("preserves %s and BOM=%s", (lineEnding, hasBOM) => {
+    const bytes = encodeEditedText("한글\nnext\n", { lineEnding, hasBOM });
+    expect(new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)).toBe(
+      (hasBOM ? "\ufeff" : "") +
+        (lineEnding === "crlf" ? "한글\r\nnext\r\n" : "한글\nnext\n"),
+    );
+    expect(decodeText(bytes).lineEnding).toBe(lineEnding);
+  });
+  it("rejects mixed line endings, invalid scalars, NUL and UTF8 byte overflow", () => {
+    expect(() =>
+      encodeEditedText("a", { hasBOM: false, lineEnding: "mixed" }),
+    ).toThrow("TEXT_EDIT_UNSUPPORTED");
+    for (const value of ["\ud800", "a\0b"])
+      expect(() =>
+        encodeEditedText(value, { hasBOM: false, lineEnding: "lf" }),
+      ).toThrow("VIEW_FORMAT_UNSUPPORTED");
+    expect(() =>
+      encodeEditedText(("한".repeat(800) + "\n").repeat(1000), {
+        hasBOM: false,
+        lineEnding: "lf",
+      }),
+    ).toThrow("VIEW_LIMIT");
+    expect(
+      encodeEditedText("", { hasBOM: false, lineEnding: "lf" }),
+    ).toHaveLength(0);
+    expect(textBaselineSchema.safeParse({}).success).toBe(false);
+    expect(TEXT_LIMIT).toBe(2097152);
+  });
 });
-describe('staged bounded SFTP text replacement',()=>{
- it.each([false,true])('preserves leading U+FEFF draft content separately from original BOM=%s',async originalBOM=>{const f=fixture(originalBOM?'\ufeff\ufefforiginal\n':'original\n');await f.prepare();const draft='\ufeffedited\n',transport=encodeEditedText(draft,{hasBOM:false,lineEnding:'lf'});expect((await f.service.save(f.serverId,1,f.receipt,transport)).receipt.phase).toBe('completed');expect(f.files.get(f.path)?.bytes.equals(Buffer.from((originalBOM?'\ufeff':'')+draft))).toBe(true);f.service.finish(f.serverId,1,f.taskId,false);});
- it('cancels an already queued preparation before it can install a late lock or task',async()=>{let resume!:()=>void;const gate=new Promise<void>(resolve=>{resume=resolve;}),queue=new MetadataQueue(()=>{}),blocker=queue.run(()=>gate),f=fixture('original\n',(_serverId,_generation,action)=>queue.run(action));const pending=f.prepare();const rejected=expect(pending).rejects.toThrow('REQUEST_CANCELLED');await expect(f.prepare()).rejects.toThrow('REQUEST_BUSY');expect(()=>f.service.finish(f.serverId,2,f.taskId,false)).toThrow('TOKEN_EXPIRED');f.service.finish(f.serverId,1,f.taskId,false);f.service.finish(f.serverId,1,f.taskId,false);resume();await blocker;await rejected;await expect(f.save()).rejects.toThrow('INPUT_INVALID');expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);expect(f.handles.size).toBe(0);});
- it('keeps an in-flight read claim until callbacks settle, then refuses late preparation ownership',async()=>{const f=fixture();let resume!:()=>void,started!:()=>void;f.options.readHold=new Promise<void>(resolve=>{resume=resolve;});const reading=new Promise<void>(resolve=>{started=resolve;});f.options.reading=started;const pending=f.prepare(),rejected=expect(pending).rejects.toThrow('REQUEST_CANCELLED');await reading;f.service.finish(f.serverId,1,f.taskId,false);f.service.finish(f.serverId,1,f.taskId,false);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(false);resume();await rejected;expect(f.handles.size).toBe(0);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);await expect(f.save()).rejects.toThrow('INPUT_INVALID');});
- it('waits for durable intents, preserves owner/mode/CRLF+BOM and verifies replacement without persisting contents',async()=>{const f=fixture('\ufefforiginal\r\n');await f.prepare();const result=await f.save('replacement\n');expect(result.receipt).toMatchObject({phase:'completed',lastConfirmedPhase:'text_saved'});expect(f.files.get(f.path)?.bytes.toString()).toBe('\ufeffreplacement\r\n');expect(f.files.get(f.path)?.mode).toBe(0o100640);expect(f.files.has(f.tempPath)).toBe(false);expect(f.renames).toBe(1);expect(f.persisted.map(row=>row.stage)).toEqual(['text_temp_intent','text_temp_verified','text_replace_intent','text_saved']);expect(JSON.stringify(f.persisted)).not.toContain('replacement');f.service.finish(f.serverId,1,f.taskId,false);});
- it('supports empty files, multi-chunk writes and restoring the original group/owner',async()=>{for(const value of ['',('line\n').repeat(20000)]){const f=fixture('');await f.prepare();f.options.fail='owner';expect((await f.save(value)).receipt.phase).toBe('completed');expect(f.files.get(f.path)?.bytes.toString()).toBe(value);expect(f.files.get(f.path)?.uid).toBe(501);f.service.finish(f.serverId,1,f.taskId,false);}});
- it('refuses a changed source even when its length and timestamp are unchanged',async()=>{const f=fixture();f.original.bytes=Buffer.from('altered!\n');await expect(f.prepare()).rejects.toThrow('SOURCE_CHANGED');expect(f.files.has(f.tempPath)).toBe(false);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);});
- it.each(['parent','lstat','open','fstat','short','close'])('rejects invalid or failed source inspection %s before writing',async failure=>{const f=fixture();f.options.fail=failure;await expect(f.prepare()).rejects.toThrow();expect(f.files.has(f.tempPath)).toBe(false);});
- it.each(['link','special','mixed','cr','invalid','large'])('refuses unsupported source %s',async kind=>{const f=fixture();if(kind==='link')f.original.link=true;if(kind==='special')f.original.mode|=0o4000;if(kind==='mixed')f.original.bytes=Buffer.from('a\r\nb\n');if(kind==='cr'){f.original.bytes=Buffer.from('old\rstyle');expect(()=>encodeEditedText('old\rstyle',{hasBOM:false,lineEnding:'lf'})).toThrow('TEXT_EDIT_UNSUPPORTED');}if(kind==='invalid')f.original.bytes=Buffer.from([255]);if(kind==='large')f.original.bytes=Buffer.alloc(TEXT_LIMIT+1);f.baseline.sha256=createHash('sha256').update(f.original.bytes).digest('hex');f.baseline.size=f.original.bytes.length;f.baseline.mode=f.original.mode;await expect(f.prepare()).rejects.toThrow();});
- it('binds the temporary name, task identity and generation and rejects a reused preparation',async()=>{const f=fixture();await expect(f.service.prepare(f.serverId,1,f.taskId,f.baseline,'/home/unowned')).rejects.toThrow('PATH_UNSUPPORTED');await f.prepare();await expect(f.prepare()).rejects.toThrow('REQUEST_BUSY');expect(()=>f.service.finish(crypto.randomUUID(),1,f.taskId,false)).toThrow('TOKEN_EXPIRED');for(const row of [{...f.receipt,serverId:crypto.randomUUID()},{...f.receipt,backendEpoch:crypto.randomUUID()},{...f.receipt,phase:'dispatched' as const},{...f.receipt,tempPath:'/home/other'},{...f.receipt,parent:'/other'}])await expect(f.save('text',row)).rejects.toThrow('INPUT_INVALID');f.service.finish(f.serverId,1,f.taskId,false);await expect(f.save()).rejects.toThrow('INPUT_INVALID');});
- it('blocks application path conflicts and releases the claim after an explicit finish',async()=>{const f=fixture();f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}]);await expect(f.prepare()).rejects.toThrow('REQUEST_BUSY');f.locks.release('other');await f.prepare();f.service.finish(f.serverId,1,f.taskId,true);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(false);f.service.finish(f.serverId,1,f.taskId,false);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);});
- it.each(['create','write','chmod','unsupported','rename','final','lost','storage'])('preserves uncertainty and refuses unsafe fallback on %s failure',async failure=>{const f=fixture();await f.prepare();f.options.fail=failure;const result=await f.save();expect(result.receipt.phase).not.toBe('completed');if(!['final','lost'].includes(failure))expect(f.files.get(f.path)?.bytes.toString()).toBe('original\n');if(failure==='unsupported'){expect(result.receipt.errorCode).toBe('ATOMIC_RENAME_UNSUPPORTED');expect(f.renames).toBe(0);}if(failure==='storage'){expect(result.recordError).toBe(true);expect(f.files.has(f.tempPath)).toBe(false);}if(['final','lost'].includes(failure))expect(result.receipt.phase).toBe('result_unknown');});
- it('does not overwrite an already existing temporary path',async()=>{const f=fixture();await f.prepare();const other={...f.original,bytes:Buffer.from('unowned')};f.files.set(f.tempPath,other);const result=await f.save();expect(result.receipt.phase).toBe('failed');expect(f.files.get(f.tempPath)?.bytes.toString()).toBe('unowned');expect(f.renames).toBe(0);});
- it.each(['text_temp_verified','text_replace_intent'])('rechecks the original after durable %s and retains the new temporary file on conflict',async stage=>{const f=fixture();await f.prepare();f.options.hook=value=>{if(value===stage)f.original.bytes=Buffer.from('external\n');};const result=await f.save();expect(result.receipt).toMatchObject({phase:'partial',errorCode:'SOURCE_CHANGED'});expect(f.files.get(f.path)?.bytes.toString()).toBe('external\n');expect(f.files.has(f.tempPath)).toBe(true);expect(f.renames).toBe(0);});
- it.each(['bytes','mode','owner'])('detects changed staged %s before publication',async field=>{const f=fixture();await f.prepare();f.options.hook=stage=>{if(stage==='text_replace_intent'){const temp=f.files.get(f.tempPath)!;if(field==='bytes')temp.bytes=Buffer.from('injected');if(field==='mode')temp.mode=0o100777;if(field==='owner')temp.uid=999;}};expect((await f.save()).receipt).toMatchObject({phase:'partial',errorCode:'VERIFY_MISMATCH'});expect(f.renames).toBe(0);});
- it.each([false,true])('defers finishing an active save with keepRestriction=%s until its callbacks settle',async keepRestriction=>{const f=fixture();await f.prepare();let resume!:()=>void;const gate=new Promise<void>(resolve=>{resume=resolve;});let waiting=true;f.options.hold=()=>waiting?gate:Promise.resolve();const pending=f.save();await Promise.resolve();f.service.finish(f.serverId,1,f.taskId,keepRestriction);await expect(f.save()).rejects.toThrow('INPUT_INVALID');expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(false);waiting=false;resume();expect((await pending).receipt.phase).toBe('completed');await expect(f.save()).rejects.toThrow('INPUT_INVALID');expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(!keepRestriction);f.service.finish(f.serverId,1,f.taskId,false);if(keepRestriction)expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);});
- it('honors a later explicit release after a busy unknown-outcome finish without releasing live claims',async()=>{const f=fixture();await f.prepare();let resume!:()=>void;const gate=new Promise<void>(resolve=>{resume=resolve;});let waiting=true;f.options.hold=()=>waiting?gate:Promise.resolve();const pending=f.save();await Promise.resolve();f.service.finish(f.serverId,1,f.taskId,true);f.service.finish(f.serverId,1,f.taskId,false);f.service.finish(f.serverId,1,f.taskId,true);expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(false);waiting=false;resume();expect((await pending).receipt.phase).toBe('completed');expect(f.locks.acquire('other',f.serverId,[{path:f.path,mode:'write'}])).toBe(true);});
- it('handles loss before save without leaving the task permanently busy',async()=>{const f=fixture();await f.prepare();f.disconnect();await expect(f.save()).rejects.toThrow('CONNECTION_LOST');expect(()=>f.service.finish(f.serverId,1,f.taskId,false)).not.toThrow();});
+describe("staged bounded SFTP text replacement", () => {
+  it.each([false, true])(
+    "preserves leading U+FEFF draft content separately from original BOM=%s",
+    async (originalBOM) => {
+      const f = fixture(originalBOM ? "\ufeff\ufefforiginal\n" : "original\n");
+      await f.prepare();
+      const draft = "\ufeffedited\n",
+        transport = encodeEditedText(draft, {
+          hasBOM: false,
+          lineEnding: "lf",
+        });
+      expect(
+        (await f.service.save(f.serverId, 1, f.receipt, transport)).receipt
+          .phase,
+      ).toBe("completed");
+      expect(
+        f.files
+          .get(f.path)
+          ?.bytes.equals(Buffer.from((originalBOM ? "\ufeff" : "") + draft)),
+      ).toBe(true);
+      f.service.finish(f.serverId, 1, f.taskId, false);
+    },
+  );
+  it("cancels an already queued preparation before it can install a late lock or task", async () => {
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+        resume = resolve;
+      }),
+      queue = new MetadataQueue(() => {}),
+      blocker = queue.run(() => gate),
+      f = fixture("original\n", (_serverId, _generation, action) =>
+        queue.run(action),
+      );
+    const pending = f.prepare();
+    const rejected = expect(pending).rejects.toThrow("REQUEST_CANCELLED");
+    await expect(f.prepare()).rejects.toThrow("REQUEST_BUSY");
+    expect(() => f.service.finish(f.serverId, 2, f.taskId, false)).toThrow(
+      "TOKEN_EXPIRED",
+    );
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    resume();
+    await blocker;
+    await rejected;
+    await expect(f.save()).rejects.toThrow("INPUT_INVALID");
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(true);
+    expect(f.handles.size).toBe(0);
+  });
+  it("keeps an in-flight read claim until callbacks settle, then refuses late preparation ownership", async () => {
+    const f = fixture();
+    let resume!: () => void, started!: () => void;
+    f.options.readHold = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const reading = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.options.reading = started;
+    const pending = f.prepare(),
+      rejected = expect(pending).rejects.toThrow("REQUEST_CANCELLED");
+    await reading;
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(false);
+    resume();
+    await rejected;
+    expect(f.handles.size).toBe(0);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(true);
+    await expect(f.save()).rejects.toThrow("INPUT_INVALID");
+  });
+  it("waits for durable intents, preserves owner/mode/CRLF+BOM and verifies replacement without persisting contents", async () => {
+    const f = fixture("\ufefforiginal\r\n");
+    await f.prepare();
+    const result = await f.save("replacement\n");
+    expect(result.receipt).toMatchObject({
+      phase: "completed",
+      lastConfirmedPhase: "text_saved",
+    });
+    expect(f.files.get(f.path)?.bytes.toString()).toBe("\ufeffreplacement\r\n");
+    expect(f.files.get(f.path)?.mode).toBe(0o100640);
+    expect(f.files.has(f.tempPath)).toBe(false);
+    expect(f.renames).toBe(1);
+    expect(f.persisted.map((row) => row.stage)).toEqual([
+      "text_temp_intent",
+      "text_temp_verified",
+      "text_replace_intent",
+      "text_saved",
+    ]);
+    expect(JSON.stringify(f.persisted)).not.toContain("replacement");
+    f.service.finish(f.serverId, 1, f.taskId, false);
+  });
+  it("supports empty files, multi-chunk writes and restoring the original group/owner", async () => {
+    for (const value of ["", "line\n".repeat(20000)]) {
+      const f = fixture("");
+      await f.prepare();
+      f.options.fail = "owner";
+      expect((await f.save(value)).receipt.phase).toBe("completed");
+      expect(f.files.get(f.path)?.bytes.toString()).toBe(value);
+      expect(f.files.get(f.path)?.uid).toBe(501);
+      f.service.finish(f.serverId, 1, f.taskId, false);
+    }
+  });
+  it("refuses a changed source even when its length and timestamp are unchanged", async () => {
+    const f = fixture();
+    f.original.bytes = Buffer.from("altered!\n");
+    await expect(f.prepare()).rejects.toThrow("SOURCE_CHANGED");
+    expect(f.files.has(f.tempPath)).toBe(false);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(true);
+  });
+  it.each(["parent", "lstat", "open", "fstat", "short", "close"])(
+    "rejects invalid or failed source inspection %s before writing",
+    async (failure) => {
+      const f = fixture();
+      f.options.fail = failure;
+      await expect(f.prepare()).rejects.toThrow();
+      expect(f.files.has(f.tempPath)).toBe(false);
+    },
+  );
+  it.each(["link", "special", "mixed", "cr", "invalid", "large"])(
+    "refuses unsupported source %s",
+    async (kind) => {
+      const f = fixture();
+      if (kind === "link") f.original.link = true;
+      if (kind === "special") f.original.mode |= 0o4000;
+      if (kind === "mixed") f.original.bytes = Buffer.from("a\r\nb\n");
+      if (kind === "cr") {
+        f.original.bytes = Buffer.from("old\rstyle");
+        expect(() =>
+          encodeEditedText("old\rstyle", { hasBOM: false, lineEnding: "lf" }),
+        ).toThrow("TEXT_EDIT_UNSUPPORTED");
+      }
+      if (kind === "invalid") f.original.bytes = Buffer.from([255]);
+      if (kind === "large") f.original.bytes = Buffer.alloc(TEXT_LIMIT + 1);
+      f.baseline.sha256 = createHash("sha256")
+        .update(f.original.bytes)
+        .digest("hex");
+      f.baseline.size = f.original.bytes.length;
+      f.baseline.mode = f.original.mode;
+      await expect(f.prepare()).rejects.toThrow();
+    },
+  );
+  it("binds the temporary name, task identity and generation and rejects a reused preparation", async () => {
+    const f = fixture();
+    await expect(
+      f.service.prepare(f.serverId, 1, f.taskId, f.baseline, "/home/unowned"),
+    ).rejects.toThrow("PATH_UNSUPPORTED");
+    await f.prepare();
+    await expect(f.prepare()).rejects.toThrow("REQUEST_BUSY");
+    expect(() =>
+      f.service.finish(crypto.randomUUID(), 1, f.taskId, false),
+    ).toThrow("TOKEN_EXPIRED");
+    for (const row of [
+      { ...f.receipt, serverId: crypto.randomUUID() },
+      { ...f.receipt, backendEpoch: crypto.randomUUID() },
+      { ...f.receipt, phase: "dispatched" as const },
+      { ...f.receipt, tempPath: "/home/other" },
+      { ...f.receipt, parent: "/other" },
+    ])
+      await expect(f.save("text", row)).rejects.toThrow("INPUT_INVALID");
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    await expect(f.save()).rejects.toThrow("INPUT_INVALID");
+  });
+  it("blocks application path conflicts and releases the claim after an explicit finish", async () => {
+    const f = fixture();
+    f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]);
+    await expect(f.prepare()).rejects.toThrow("REQUEST_BUSY");
+    f.locks.release("other");
+    await f.prepare();
+    f.service.finish(f.serverId, 1, f.taskId, true);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(false);
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(true);
+  });
+  it.each([
+    "create",
+    "write",
+    "chmod",
+    "unsupported",
+    "rename",
+    "final",
+    "lost",
+    "storage",
+  ])(
+    "preserves uncertainty and refuses unsafe fallback on %s failure",
+    async (failure) => {
+      const f = fixture();
+      await f.prepare();
+      f.options.fail = failure;
+      const result = await f.save();
+      expect(result.receipt.phase).not.toBe("completed");
+      if (!["final", "lost"].includes(failure))
+        expect(f.files.get(f.path)?.bytes.toString()).toBe("original\n");
+      if (failure === "unsupported") {
+        expect(result.receipt.errorCode).toBe("ATOMIC_RENAME_UNSUPPORTED");
+        expect(f.renames).toBe(0);
+      }
+      if (failure === "storage") {
+        expect(result.recordError).toBe(true);
+        expect(f.files.has(f.tempPath)).toBe(false);
+      }
+      if (["final", "lost"].includes(failure))
+        expect(result.receipt.phase).toBe("result_unknown");
+    },
+  );
+  it("does not overwrite an already existing temporary path", async () => {
+    const f = fixture();
+    await f.prepare();
+    const other = { ...f.original, bytes: Buffer.from("unowned") };
+    f.files.set(f.tempPath, other);
+    const result = await f.save();
+    expect(result.receipt.phase).toBe("failed");
+    expect(f.files.get(f.tempPath)?.bytes.toString()).toBe("unowned");
+    expect(f.renames).toBe(0);
+  });
+  it.each(["text_temp_verified", "text_replace_intent"])(
+    "rechecks the original after durable %s and retains the new temporary file on conflict",
+    async (stage) => {
+      const f = fixture();
+      await f.prepare();
+      f.options.hook = (value) => {
+        if (value === stage) f.original.bytes = Buffer.from("external\n");
+      };
+      const result = await f.save();
+      expect(result.receipt).toMatchObject({
+        phase: "partial",
+        errorCode: "SOURCE_CHANGED",
+      });
+      expect(f.files.get(f.path)?.bytes.toString()).toBe("external\n");
+      expect(f.files.has(f.tempPath)).toBe(true);
+      expect(f.renames).toBe(0);
+    },
+  );
+  it.each(["bytes", "mode", "owner"])(
+    "detects changed staged %s before publication",
+    async (field) => {
+      const f = fixture();
+      await f.prepare();
+      f.options.hook = (stage) => {
+        if (stage === "text_replace_intent") {
+          const temp = f.files.get(f.tempPath)!;
+          if (field === "bytes") temp.bytes = Buffer.from("injected");
+          if (field === "mode") temp.mode = 0o100777;
+          if (field === "owner") temp.uid = 999;
+        }
+      };
+      expect((await f.save()).receipt).toMatchObject({
+        phase: "partial",
+        errorCode: "VERIFY_MISMATCH",
+      });
+      expect(f.renames).toBe(0);
+    },
+  );
+  it.each([false, true])(
+    "defers finishing an active save with keepRestriction=%s until its callbacks settle",
+    async (keepRestriction) => {
+      const f = fixture();
+      await f.prepare();
+      let resume!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        resume = resolve;
+      });
+      let waiting = true;
+      f.options.hold = () => (waiting ? gate : Promise.resolve());
+      const pending = f.save();
+      await Promise.resolve();
+      f.service.finish(f.serverId, 1, f.taskId, keepRestriction);
+      await expect(f.save()).rejects.toThrow("INPUT_INVALID");
+      expect(
+        f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+      ).toBe(false);
+      waiting = false;
+      resume();
+      expect((await pending).receipt.phase).toBe("completed");
+      await expect(f.save()).rejects.toThrow("INPUT_INVALID");
+      expect(
+        f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+      ).toBe(!keepRestriction);
+      f.service.finish(f.serverId, 1, f.taskId, false);
+      if (keepRestriction)
+        expect(
+          f.locks.acquire("other", f.serverId, [
+            { path: f.path, mode: "write" },
+          ]),
+        ).toBe(true);
+    },
+  );
+  it("honors a later explicit release after a busy unknown-outcome finish without releasing live claims", async () => {
+    const f = fixture();
+    await f.prepare();
+    let resume!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    let waiting = true;
+    f.options.hold = () => (waiting ? gate : Promise.resolve());
+    const pending = f.save();
+    await Promise.resolve();
+    f.service.finish(f.serverId, 1, f.taskId, true);
+    f.service.finish(f.serverId, 1, f.taskId, false);
+    f.service.finish(f.serverId, 1, f.taskId, true);
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(false);
+    waiting = false;
+    resume();
+    expect((await pending).receipt.phase).toBe("completed");
+    expect(
+      f.locks.acquire("other", f.serverId, [{ path: f.path, mode: "write" }]),
+    ).toBe(true);
+  });
+  it("handles loss before save without leaving the task permanently busy", async () => {
+    const f = fixture();
+    await f.prepare();
+    f.disconnect();
+    await expect(f.save()).rejects.toThrow("CONNECTION_LOST");
+    expect(() =>
+      f.service.finish(f.serverId, 1, f.taskId, false),
+    ).not.toThrow();
+  });
 });

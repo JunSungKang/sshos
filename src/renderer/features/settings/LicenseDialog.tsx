@@ -1,0 +1,100 @@
+import { useEffect, useRef, useState } from "react";
+import type { LicenseEntry, LicensePage } from "../../../shared/licenses";
+export function LicenseDialog({ close }: { close: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null),
+    sequence = useRef(0),
+    [entries, setEntries] = useState<LicenseEntry[]>([]),
+    [selected, setSelected] = useState("project"),
+    [page, setPage] = useState<LicensePage | null>(null),
+    [history, setHistory] = useState<number[]>([]),
+    [error, setError] = useState("");
+  useEffect(() => {
+    dialog.current?.showModal();
+    let alive = true;
+    void window.sshOS.settings
+      .showLicenses()
+      .then((value) => {
+        if (alive) setEntries(value);
+      })
+      .catch(() => {
+        if (alive) setError("라이선스 목록을 읽지 못했습니다.");
+      });
+    return () => {
+      alive = false;
+      sequence.current++;
+    };
+  }, []);
+  const read = (id: string, offset: number) => {
+    const current = ++sequence.current;
+    setError("");
+    void window.sshOS.settings
+      .licensePage(id, offset)
+      .then((value) => {
+        if (current === sequence.current) setPage(value);
+      })
+      .catch(() => {
+        if (current === sequence.current)
+          setError("라이선스 내용을 읽지 못했습니다.");
+      });
+  };
+  useEffect(() => {
+    setPage(null);
+    setHistory([]);
+    read(selected, 0);
+  }, [selected]);
+  return (
+    <dialog
+      ref={dialog}
+      className="diagnostics-dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        close();
+      }}
+    >
+      <h3>오픈소스 라이선스</h3>
+      <label>
+        문서{" "}
+        <select
+          value={selected}
+          onChange={(event) => setSelected(event.target.value)}
+        >
+          {entries.map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.title} · {row.license}
+            </option>
+          ))}
+        </select>
+      </label>
+      {error && <p role="alert">{error}</p>}
+      <pre tabIndex={0}>{page?.text ?? "읽는 중"}</pre>
+      <p role="status">
+        {page
+          ? `${page.offset}–${page.nextOffset ?? entries.find((row) => row.id === selected)?.bytes ?? ""} byte`
+          : "문서 준비 중"}
+      </p>
+      <button
+        disabled={history.length === 0}
+        onClick={() => {
+          const next = [...history],
+            offset = next.pop()!;
+          setHistory(next);
+          read(selected, offset);
+        }}
+      >
+        이전
+      </button>
+      <button
+        disabled={page?.nextOffset == null}
+        onClick={() => {
+          if (page?.nextOffset != null) {
+            setHistory([...history, page.offset]);
+            read(selected, page.nextOffset);
+          }
+        }}
+      >
+        다음
+      </button>
+      <button onClick={close}>닫기</button>
+    </dialog>
+  );
+}

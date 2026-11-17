@@ -1,11 +1,11 @@
 # sshOS System Architecture
 
-Last updated:2026-11-15. This describes the implemented process layout. Native target and release acceptance remain separate.
+Last updated:2026-11-17. This describes the implemented process layout. Native target and release acceptance remain separate.
 
 ```mermaid
 flowchart TB
   subgraph PC[Windows or macOS client]
-    UI[React desktop and internal windows<br/>Explorer,viewers,xterm]
+    UI[React desktop and internal windows<br/>Explorer,viewers,xterm,HTML preview]
     P[Named sandboxed preload<br/>Capabilities and bounded streams]
     M[Electron main<br/>Trust,OS vault,native dialogs,JSON writer]
     W[One utility process with ssh2<br/>SFTP,queue,exec,PTY,probe,hash]
@@ -31,17 +31,17 @@ flowchart TB
 
 Main composes restricted controllers, one JSON writer and a utility-process gateway. Renderer has no native authority. Preload exposes named APIs only. Worker owns all SSH sockets/remote operations; its receipt protocol awaits main ACK before effects. Shared modules are pure. Image decode runs in renderer Web Worker, not the SSH loop.
 
-Every operation carries fixed serverId/sessionGeneration/backendEpoch/resource/request/sequence identity. Explicit selected-server control changes the displayed workspace and future defaults; focusing a window never changes its server. Existing work and late-event attribution remain bound. Internal windows are DOM, not BrowserWindows/X11 windows. Home contents and explorer windows use the same bounded SFTP capability pipeline. An independently owned PTY is attached to the Console view and remains allocated while Desktop or a navigation overlay is shown. Main acknowledges the hidden-files preference through the atomic JSON writer before notifying the renderer. xterm renders a remote PTY; node-pty/local shell/WebSocket bridge are unnecessary.
+Every operation carries fixed serverId/sessionGeneration/backendEpoch/resource/request/sequence identity. Explicit selected-server control changes the displayed workspace and future defaults; focusing a window never changes its server. Existing work and late-event attribution remain bound. Internal window chrome is DOM. HTML content alone uses an isolated native WebContentsView positioned inside its DOM window; it is hidden for overlays, inactive windows and Console. No remote GUI forwarding is provided. Home contents and explorer windows use the same bounded SSH-command metadata capability pipeline. An independently owned PTY is attached to the Console view and remains allocated while Desktop or a navigation overlay is shown. Main acknowledges the hidden-files preference through the atomic JSON writer before notifying the renderer. xterm renders a remote PTY; node-pty/local shell/WebSocket bridge are unnecessary.
 
 ## SSH Resource Roles
 
-At most 3 connected servers. Each owns control 1, transfer≤1 and execution≤1; at most 9 sockets including owned closing resources. Each socket verifies the same pinned host trust and selected authentication. Control has 1 serialized metadata SFTP, up to 2 viewer reads and 1 probe; viewer reads 4 globally. Transfers2 globally/1 per server, task-owned SFTP/socket retired at completion. GUI exec+PTY share 4/server and 6/global slots, including opening/closing; idle execution closes after the final channel's actual close.
+At most 3 connected servers. Each owns control 1, transfer≤1 and execution≤1; at most 9 sockets including owned closing resources. Each socket verifies the same pinned host trust and selected authentication. Control has 1 serialized metadata queue shared by command queries/mutations and SFTP transaction checks. At most one metadata command channel, up to 2 viewer reads and 1 probe; viewer reads 4 globally. Transfers2 globally/1 per server, task-owned SFTP/socket retired at completion. GUI exec+PTY share 4/server and 6/global slots, including opening/closing; idle execution closes after the final channel's actual close.
 
 A new rejected resource does not evict existing work. Transfer-only and execution-only failures preserve other roles. Control loss retires the owning generation and auxiliaries; other servers survive. No auto-reconnect/restart/replay.
 
 ## Content and Persistence Flows
 
-Browsing uses structured SFTP metadata. Viewing uses bounded ephemeral SFTP bytes→strict text/header validation→plain content or isolated bitmap canvas. Main relays without generic snapshot/disk content cache.
+Browsing and account home/start/OS discovery use fixed non-PTY SSH commands. Directory enumeration uses GNU find with NUL-delimited fields; stat supplies properties. The worker validates complete records, canonical parents, limits and observed exit. No SFTP metadata fallback is used for Desktop queries. Viewing uses bounded ephemeral SFTP bytes→strict text/header validation→plain content or isolated bitmap canvas. Main relays without generic snapshot/disk content cache.
 
 Execution uses validated source/cwd capabilities→fixed confirmation→POSIX-quoted exec→bounded stdout/stderr/observed exit. PTY has separate sequenced input, resize, paste and restore ACK barriers. Remote strings never choose a new command or local authority.
 
@@ -54,3 +54,17 @@ Main stores checksummed state/receipts using one serialized atomic-replacement w
 Automatic network is selected SSH plus necessary DNS; no management listener, server agent, DB, remote GUI, search/AI/telemetry/updater. Chromium renders the entire local GUI and is subject to offline resource policy. Production fuses and static package integrity do not substitute native launch, OS vault, accessibility, network capture or signing acceptance.
 
 See [Architecture Contract](../../ai-agent/architecture-contract.md),Development Plan (private local material) and Traceability (private local material).
+
+## Feature Boundaries
+
+`main/file-operations` owns file capabilities, confirmation and receipts; `worker/remote-files/metadata` owns the Ubuntu command adapter/parser; `worker/remote-files/mutations` owns verified mutations. `worker/remote-files/sftp-control` is retained for file-content and transactional integrity operations. `main/web-preview` owns isolated sessions, root-scoped protocol resolution and native geometry. `renderer/features` groups desktop, file explorer, viewers, web preview, Console, settings, connections, execution, tasks and transfers. Pure locks/claims/failure classification live under `shared/file-policies`; selected native file inspection lives under `platform/local-files`. Main has no imports from worker internals.
+
+## Command and HTML Limits
+
+A metadata command uses the existing authenticated control socket and a dedicated non-PTY channel, never a Console terminal. Output is bounded to 10 MiB and 60 seconds for listings; a snapshot exposes at most 10,000 entries, 256 entries/192 KiB per page. Byte/entry limits produce an explicit partial listing; malformed complete output fails. Names unsupported by the existing path policy remain display-only. Current folders are enumerated only; hidden-file filtering is local. Directory total disk usage is not computed by basic properties.
+
+Properties include numeric UID/GID, mode, byte size, modification time, device, inode and hardlink count. Inode/dev identity is included in mutation preparation. Remote filesystem checks and a subsequent command are not atomic with external writers. GNU mv must not overwrite and must not fall back to copying. A skipped rename is detected by postconditions. Recursive deletion is permanent, not atomic or reversible; failure can leave a partially removed tree. These operations do not use sudo or retry after uncertainty.
+
+Each HTML preview initially grants only its containing directory. An explicit root change must still contain the selected document and identify a directory. The custom standard protocol maps relative resources into that root; SFTP reads reject symlink files and noncanonical parents. URL origin/root checks do not replace those filesystem checks. Root checks and opening still have an external-writer race; no remote filesystem sandbox or atomic snapshot is claimed. Resources are ephemeral bounded bytes, not a local disk cache. Per-load limits are 512 requests and 64 MiB total, each resource at most 20 MiB. Two web reads run globally, with at most 32 waiting; the worker's existing viewer pool also applies. Reload/root/JavaScript changes dispose the previous WebContents and revalidate revision identity.
+
+The preview has no preload or sshOS bridge. Permission requests, downloads, popups, external origins, local file URLs, nested frames, plugins and workers are denied. JavaScript is disabled by default and can be explicitly enabled for that preview. This renders static files; it does not run PHP, start a server or reproduce server routing.

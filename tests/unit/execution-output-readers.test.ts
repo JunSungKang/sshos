@@ -1,11 +1,122 @@
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { ExecutionOutputReaders } from '../../src/main/execution-output';
-import type { EngineGateway } from '../../src/main/engine-gateway';
-import type { ExecutionOutput } from '../../src/shared/execution-ui';
-afterEach(()=>vi.restoreAllMocks());
-function fixture(){let resolve!:(value:ExecutionOutput)=>void;const gateway={epoch:crypto.randomUUID(),request:vi.fn(()=>new Promise<ExecutionOutput>(done=>{resolve=done;}))} as unknown as EngineGateway;let open=true;const readers=new ExecutionOutputReaders(gateway,()=>{if(!open)throw new Error('TOKEN_EXPIRED');});const ticket=readers.open('window',crypto.randomUUID(),crypto.randomUUID(),1);const batch=(start=0,size=3):ExecutionOutput=>({frames:size ? [{sequence:1,offset:start,stream:'stdout',bytes:new Uint8Array(size).fill(65)}]:[],nextOffset:start+size,endOffset:start+size,omitted:false,gap:false});return {readers,gateway,ticket,batch,reply:(value:ExecutionOutput)=>resolve(value),close:()=>{open=false;}};}
-describe('bounded output consumption and replay',()=>{
- it('has one pending read and one copied replay, advances only by the consumed cursor and polls again at an empty end',async()=>{const clock=vi.spyOn(performance,'now').mockReturnValue(0),f=fixture();const first=f.readers.next(f.ticket.token,1,0);await expect(f.readers.next(f.ticket.token,1,0)).rejects.toThrow('REQUEST_BUSY');f.reply(f.batch());const result=await first;if(result.status!=='data')throw new Error('fixture');result.batch.frames[0]!.bytes.fill(0);clock.mockReturnValue(30);const replay=await f.readers.next(f.ticket.token,1,0);expect(replay.status==='data' && replay.batch.frames[0]!.bytes[0]).toBe(65);expect(f.gateway.request).toHaveBeenCalledTimes(1);clock.mockReturnValue(60);const end=f.readers.next(f.ticket.token,1,3);f.reply(f.batch(3,0));await end;clock.mockReturnValue(90);const appended=f.readers.next(f.ticket.token,1,3);f.reply(f.batch(3,2));expect((await appended).status).toBe('data');expect(f.gateway.request).toHaveBeenCalledTimes(3);await expect(f.readers.next(f.ticket.token,1,99)).rejects.toThrow('INPUT_INVALID');});
- it('limits32KiB packets to1MiB/s and refuses oversized worker output',async()=>{const clock=vi.spyOn(performance,'now').mockReturnValue(0),f=fixture();const next=f.readers.next(f.ticket.token,1,0);f.reply(f.batch(0,32768));await next;clock.mockReturnValue(20);expect(await f.readers.next(f.ticket.token,1,0)).toEqual({status:'waiting'});clock.mockReturnValue(32);expect((await f.readers.next(f.ticket.token,1,0)).status).toBe('data');clock.mockReturnValue(70);const bad=f.readers.next(f.ticket.token,1,32768);f.reply(f.batch(32768,32769));await expect(bad).rejects.toThrow();});
- it('drops late byte results after renderer or window invalidation and cannot reuse old generations',async()=>{const f=fixture(),pending=f.readers.next(f.ticket.token,1,0);f.readers.invalidate();f.reply(f.batch());await expect(pending).rejects.toThrow('TOKEN_EXPIRED');await expect(f.readers.next(f.ticket.token,1,0)).rejects.toThrow('TOKEN_EXPIRED');const second=f.readers.open('window',crypto.randomUUID(),crypto.randomUUID(),1);f.close();await expect(f.readers.next(second.token,second.readGeneration,0)).rejects.toThrow('TOKEN_EXPIRED');});
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ExecutionOutputReaders } from "../../src/main/execution/execution-output";
+import type { EngineGateway } from "../../src/main/engine-gateway";
+import type { ExecutionOutput } from "../../src/shared/execution-ui";
+afterEach(() => vi.restoreAllMocks());
+function fixture() {
+  let resolve!: (value: ExecutionOutput) => void;
+  const gateway = {
+    epoch: crypto.randomUUID(),
+    request: vi.fn(
+      () =>
+        new Promise<ExecutionOutput>((done) => {
+          resolve = done;
+        }),
+    ),
+  } as unknown as EngineGateway;
+  let open = true;
+  const readers = new ExecutionOutputReaders(gateway, () => {
+    if (!open) throw new Error("TOKEN_EXPIRED");
+  });
+  const ticket = readers.open(
+    "window",
+    crypto.randomUUID(),
+    crypto.randomUUID(),
+    1,
+  );
+  const batch = (start = 0, size = 3): ExecutionOutput => ({
+    frames: size
+      ? [
+          {
+            sequence: 1,
+            offset: start,
+            stream: "stdout",
+            bytes: new Uint8Array(size).fill(65),
+          },
+        ]
+      : [],
+    nextOffset: start + size,
+    endOffset: start + size,
+    omitted: false,
+    gap: false,
+  });
+  return {
+    readers,
+    gateway,
+    ticket,
+    batch,
+    reply: (value: ExecutionOutput) => resolve(value),
+    close: () => {
+      open = false;
+    },
+  };
+}
+describe("bounded output consumption and replay", () => {
+  it("has one pending read and one copied replay, advances only by the consumed cursor and polls again at an empty end", async () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0),
+      f = fixture();
+    const first = f.readers.next(f.ticket.token, 1, 0);
+    await expect(f.readers.next(f.ticket.token, 1, 0)).rejects.toThrow(
+      "REQUEST_BUSY",
+    );
+    f.reply(f.batch());
+    const result = await first;
+    if (result.status !== "data") throw new Error("fixture");
+    result.batch.frames[0]!.bytes.fill(0);
+    clock.mockReturnValue(30);
+    const replay = await f.readers.next(f.ticket.token, 1, 0);
+    expect(replay.status === "data" && replay.batch.frames[0]!.bytes[0]).toBe(
+      65,
+    );
+    expect(f.gateway.request).toHaveBeenCalledTimes(1);
+    clock.mockReturnValue(60);
+    const end = f.readers.next(f.ticket.token, 1, 3);
+    f.reply(f.batch(3, 0));
+    await end;
+    clock.mockReturnValue(90);
+    const appended = f.readers.next(f.ticket.token, 1, 3);
+    f.reply(f.batch(3, 2));
+    expect((await appended).status).toBe("data");
+    expect(f.gateway.request).toHaveBeenCalledTimes(3);
+    await expect(f.readers.next(f.ticket.token, 1, 99)).rejects.toThrow(
+      "INPUT_INVALID",
+    );
+  });
+  it("limits32KiB packets to1MiB/s and refuses oversized worker output", async () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0),
+      f = fixture();
+    const next = f.readers.next(f.ticket.token, 1, 0);
+    f.reply(f.batch(0, 32768));
+    await next;
+    clock.mockReturnValue(20);
+    expect(await f.readers.next(f.ticket.token, 1, 0)).toEqual({
+      status: "waiting",
+    });
+    clock.mockReturnValue(32);
+    expect((await f.readers.next(f.ticket.token, 1, 0)).status).toBe("data");
+    clock.mockReturnValue(70);
+    const bad = f.readers.next(f.ticket.token, 1, 32768);
+    f.reply(f.batch(32768, 32769));
+    await expect(bad).rejects.toThrow();
+  });
+  it("drops late byte results after renderer or window invalidation and cannot reuse old generations", async () => {
+    const f = fixture(),
+      pending = f.readers.next(f.ticket.token, 1, 0);
+    f.readers.invalidate();
+    f.reply(f.batch());
+    await expect(pending).rejects.toThrow("TOKEN_EXPIRED");
+    await expect(f.readers.next(f.ticket.token, 1, 0)).rejects.toThrow(
+      "TOKEN_EXPIRED",
+    );
+    const second = f.readers.open(
+      "window",
+      crypto.randomUUID(),
+      crypto.randomUUID(),
+      1,
+    );
+    f.close();
+    await expect(
+      f.readers.next(second.token, second.readGeneration, 0),
+    ).rejects.toThrow("TOKEN_EXPIRED");
+  });
 });

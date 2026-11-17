@@ -1,42 +1,591 @@
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { mkdir,mkdtemp,rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
-import { ExecutionController } from '../../src/main/executions';
-import { DesktopController } from '../../src/main/desktop';
-import { ReceiptRepository } from '../../src/main/persistence/receipts';
-import type { ExecutionPreviews } from '../../src/main/execution-previews';
-import type { ConnectionController } from '../../src/main/connections';
-import type { EngineGateway } from '../../src/main/engine-gateway';
-import type { ExecutionRuntime,ExecutionActionPreview,ExecutionDescriptor } from '../../src/shared/execution-ui';
-import type { WindowModel } from '../../src/shared/windows';
-import { executionReceipt } from '../fixtures/executions';
-const owned:string[]=[];afterEach(async()=>{vi.restoreAllMocks();for(const path of owned.splice(0))await rm(path,{recursive:true});});
-async function fixture(){await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/main-execution-'));owned.push(root);const repo=await ReceiptRepository.open(root),receipt=executionReceipt(),sessionToken=crypto.randomUUID();let connected=true,healthy=true;const requests:{action:string}[]=[];
- const connections={sessionCapability:()=>{if(!connected)throw new Error('TOKEN_EXPIRED');return {serverId:receipt.serverId,generation:1};}} as unknown as ConnectionController;const desktop=new DesktopController(connections);
- const runtime:ExecutionRuntime={receipt:{...receipt,phase:'running',channelAccepted:true},active:true,recordError:false,recordPending:false,cleanupPending:false};
- const gateway={epoch:receipt.backendEpoch,request:vi.fn(async(request:{action:string;receipt?:ReturnType<typeof executionReceipt>})=>{requests.push(request);if(request.action==='execution:start'){const rows=repo.snapshots();expect(rows[0]?.phase).toBe('prepared');expect((desktop.handle('desktop:getWindowSnapshot',undefined) as WindowModel[]).some(row=>row.kind==='execution')).toBe(true);return {...runtime,receipt:{...request.receipt!,phase:'running',channelAccepted:true}};}return undefined;})} as unknown as EngineGateway;
- const previews={consume:()=>({entryToken:crypto.randomUUID(),cwdToken:null,serverId:receipt.serverId,generation:1,sessionToken,epoch:receipt.backendEpoch,spec:{path:receipt.source!,cwd:receipt.cwd!,mode:'direct',argv:['sensitive']},stat:{type:'file',size:10,mtime:1,mode:0o100700},identity:{endpointSnapshot:receipt.endpointSnapshot,hostKeyFingerprint:receipt.hostKeyFingerprint},deadline:performance.now()+60000}),invalidate:vi.fn(),context:vi.fn(async()=>({marker:'context'})),preview:vi.fn(async()=>({marker:'preview'})),release:vi.fn()} as unknown as ExecutionPreviews;
- const controller=new ExecutionController(previews,connections,desktop,gateway,()=>repo,()=>healthy,async()=>{});const start=()=>controller.handle('execution:start',crypto.randomUUID()) as Promise<WindowModel>;
- return {controller,repo,desktop,gateway,requests,runtime,previews,connections,start,disconnect:()=>{connected=false;},fault:()=>{healthy=false;}};
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { resolve } from "node:path";
+import { ExecutionController } from "../../src/main/execution/executions";
+import { DesktopController } from "../../src/main/desktop/desktop";
+import { ReceiptRepository } from "../../src/main/persistence/receipts";
+import type { ExecutionPreviews } from "../../src/main/execution/execution-previews";
+import type { ConnectionController } from "../../src/main/connections/connections";
+import type { EngineGateway } from "../../src/main/engine-gateway";
+import type {
+  ExecutionRuntime,
+  ExecutionActionPreview,
+  ExecutionDescriptor,
+} from "../../src/shared/execution-ui";
+import type { WindowModel } from "../../src/shared/windows";
+import { executionReceipt } from "../fixtures/executions";
+const owned: string[] = [];
+afterEach(async () => {
+  vi.restoreAllMocks();
+  for (const path of owned.splice(0)) await rm(path, { recursive: true });
+});
+async function fixture() {
+  await mkdir(resolve(".local/tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".local/tmp/main-execution-"));
+  owned.push(root);
+  const repo = await ReceiptRepository.open(root),
+    receipt = executionReceipt(),
+    sessionToken = crypto.randomUUID();
+  let connected = true,
+    healthy = true;
+  const requests: { action: string }[] = [];
+  const connections = {
+    sessionCapability: () => {
+      if (!connected) throw new Error("TOKEN_EXPIRED");
+      return { serverId: receipt.serverId, generation: 1 };
+    },
+  } as unknown as ConnectionController;
+  const desktop = new DesktopController(connections);
+  const runtime: ExecutionRuntime = {
+    receipt: { ...receipt, phase: "running", channelAccepted: true },
+    active: true,
+    recordError: false,
+    recordPending: false,
+    cleanupPending: false,
+  };
+  const gateway = {
+    epoch: receipt.backendEpoch,
+    request: vi.fn(
+      async (request: {
+        action: string;
+        receipt?: ReturnType<typeof executionReceipt>;
+      }) => {
+        requests.push(request);
+        if (request.action === "execution:start") {
+          const rows = repo.snapshots();
+          expect(rows[0]?.phase).toBe("prepared");
+          expect(
+            (
+              desktop.handle(
+                "desktop:getWindowSnapshot",
+                undefined,
+              ) as WindowModel[]
+            ).some((row) => row.kind === "execution"),
+          ).toBe(true);
+          return {
+            ...runtime,
+            receipt: {
+              ...request.receipt!,
+              phase: "running",
+              channelAccepted: true,
+            },
+          };
+        }
+        return undefined;
+      },
+    ),
+  } as unknown as EngineGateway;
+  const previews = {
+    consume: () => ({
+      entryToken: crypto.randomUUID(),
+      cwdToken: null,
+      serverId: receipt.serverId,
+      generation: 1,
+      sessionToken,
+      epoch: receipt.backendEpoch,
+      spec: {
+        path: receipt.source!,
+        cwd: receipt.cwd!,
+        mode: "direct",
+        argv: ["sensitive"],
+      },
+      stat: { type: "file", size: 10, mtime: 1, mode: 0o100700 },
+      identity: {
+        endpointSnapshot: receipt.endpointSnapshot,
+        hostKeyFingerprint: receipt.hostKeyFingerprint,
+      },
+      deadline: performance.now() + 60000,
+    }),
+    invalidate: vi.fn(),
+    context: vi.fn(async () => ({ marker: "context" })),
+    preview: vi.fn(async () => ({ marker: "preview" })),
+    release: vi.fn(),
+  } as unknown as ExecutionPreviews;
+  const controller = new ExecutionController(
+    previews,
+    connections,
+    desktop,
+    gateway,
+    () => repo,
+    () => healthy,
+    async () => {},
+  );
+  const start = () =>
+    controller.handle(
+      "execution:start",
+      crypto.randomUUID(),
+    ) as Promise<WindowModel>;
+  return {
+    controller,
+    repo,
+    desktop,
+    gateway,
+    requests,
+    runtime,
+    previews,
+    connections,
+    start,
+    disconnect: () => {
+      connected = false;
+    },
+    fault: () => {
+      healthy = false;
+    },
+  };
 }
-describe('main execution window and task authority',()=>{
- it.each(['changing','repeated','epoch'] as const)('repairs sequence gaps with bounded %s snapshots without replaying execution',async mode=>{const f=await fixture(),window=await f.start(),descriptor=f.controller.descriptor(window.windowId),row=descriptor.runtime,original=vi.mocked(f.gateway.request).getMockImplementation()!;let pages=0;vi.mocked(f.gateway.request).mockImplementation(async request=>{if(request.action!=='execution:snapshot')return original(request);pages++;if(mode==='epoch')(f.gateway as unknown as {epoch:string}).epoch=crypto.randomUUID();return {sequence:mode==='changing'?pages:10,rows:[row],nextOffset:mode==='repeated'?0:mode==='changing'&&request.offset===0?1:null};});f.controller.observe(row,true,1);await vi.waitFor(()=>expect(pages).toBe(mode==='changing'?6:1));expect(f.requests.filter(request=>request.action==='execution:start')).toHaveLength(1);expect(f.controller.descriptor(window.windowId).runtime.receipt.taskId).toBe(row.receipt.taskId);});
- it('keeps an uncertain start visible, resynchronizes it and never retries its SSH command',async()=>{const f=await fixture();vi.mocked(f.gateway.request).mockImplementation(async request=>{f.requests.push(request);if(request.action==='execution:start')throw new Error('CONNECTION_LOST');if(request.action==='execution:snapshot')return {sequence:1,rows:[],nextOffset:null};return undefined;});await expect(f.start()).rejects.toThrow('CONNECTION_LOST');expect(f.controller.overlays()[0]?.recordError).toBe(true);expect((f.desktop.handle('desktop:getWindowSnapshot',undefined) as WindowModel[])).toHaveLength(1);expect(f.requests.filter(request=>request.action==='execution:start')).toHaveLength(1);await f.controller.engineStopped();expect(f.repo.snapshots()[0]?.phase).toBe('cancelled_not_sent');});
- it('removes known rejected starts and retains a storage error if cancellation cannot be saved',async()=>{const f=await fixture();vi.mocked(f.gateway.request).mockRejectedValueOnce(new Error('SESSION_LIMIT'));await expect(f.start()).rejects.toThrow('SESSION_LIMIT');expect(f.repo.snapshots()[0]?.phase).toBe('cancelled_not_sent');expect(f.desktop.handle('desktop:getWindowSnapshot',undefined)).toEqual([]);const g=await fixture(),save=g.repo.save.bind(g.repo);vi.spyOn(g.repo,'save').mockImplementation(async row=>{if(row.phase==='cancelled_not_sent')throw new Error('STORAGE_FAILED');return save(row);});vi.mocked(g.gateway.request).mockRejectedValueOnce(new Error('SESSION_BUSY'));await expect(g.start()).rejects.toThrow('SESSION_BUSY');expect(g.controller.overlays()[0]?.recordError).toBe(true);});
- it('rejects forged start responses and retains the original identity for explicit recovery',async()=>{const f=await fixture(),original=vi.mocked(f.gateway.request).getMockImplementation()!;vi.mocked(f.gateway.request).mockImplementation(async request=>{if(request.action==='execution:snapshot')return {sequence:1,rows:[],nextOffset:null};const response=await original(request);return request.action==='execution:start'?{...(response as object),receipt:{...(response as ExecutionRuntime).receipt,serverId:crypto.randomUUID()}}:response;});await expect(f.start()).rejects.toThrow('INPUT_INVALID');expect(f.controller.overlays()[0]?.recordError).toBe(true);expect(f.requests.filter(request=>request.action==='execution:start')).toHaveLength(1);});
- it('retains completed receipts while worker cleanup fails and tolerates only a stopped worker',async()=>{const f=await fixture(),window=await f.start(),runtime=f.controller.descriptor(window.windowId).runtime,ended={...runtime,active:false,receipt:{...runtime.receipt,phase:'exited' as const,exitObserved:true,channelClosed:true,exitCode:0}};f.controller.observe(ended,false,100);await f.repo.save(ended.receipt);vi.mocked(f.gateway.request).mockRejectedValueOnce(new Error('CONNECTION_LOST'));await expect(f.controller.releaseRecord(ended.receipt)).rejects.toThrow('CONNECTION_LOST');expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(true);vi.mocked(f.gateway.request).mockRejectedValueOnce(new Error('ENGINE_STOPPED'));await f.controller.releaseRecord(ended.receipt);expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(false);});
- it('reserves a visible resource and stores intent before dispatch, without putting arguments in the receipt',async()=>{const f=await fixture(),window=await f.start(),descriptor=f.controller.descriptor(window.windowId);expect(descriptor.outputAvailable).toBe(true);expect(descriptor.runtime.receipt.phase).toBe('running');expect(f.repo.snapshots()).toHaveLength(1);expect(JSON.stringify(f.repo.snapshots())).not.toContain('sensitive');expect(f.controller.needsCloseConfirmation(window.windowId)).toBe(true);expect(f.requests.map(row=>row.action)).toEqual(['execution:start']);});
- it('dispatches nothing after storage failure or a generation loss during intent storage',async()=>{const f=await fixture();vi.spyOn(f.repo,'save').mockRejectedValueOnce(new Error('STORAGE_FAILED'));await expect(f.start()).rejects.toThrow('STORAGE_FAILED');expect(f.requests).toEqual([]);expect(f.desktop.handle('desktop:getWindowSnapshot',undefined)).toEqual([]);const g=await fixture(),save=g.repo.save.bind(g.repo);vi.spyOn(g.repo,'save').mockImplementation(async row=>{await save(row);g.disconnect();});await expect(g.start()).rejects.toThrow('TOKEN_EXPIRED');expect(g.requests).toEqual([]);expect(g.repo.snapshots()[0]?.phase).toBe('cancelled_not_sent');});
- it('binds close/stop to a single-use confirmation; hiding a running window does not rerun or stop the job',async()=>{const f=await fixture(),window=await f.start(),id=window.resourceId!;const preview=await f.controller.handle('execution:previewAction',{id:window.windowId,action:'close_window'}) as ExecutionActionPreview;await f.controller.handle('execution:applyAction',{token:preview.confirmationToken,choice:'hide'});expect(f.desktop.findWindow(window.windowId)).toBeNull();expect(f.controller.isActive(id)).toBe(true);const reopened=await f.controller.handle('execution:reopen',id) as WindowModel;expect(reopened.resourceId).toBe(id);expect(f.requests).toHaveLength(1);await expect(f.controller.handle('execution:applyAction',{token:preview.confirmationToken,choice:'hide'})).rejects.toThrow('TOKEN_EXPIRED');const stop=await f.controller.handle('execution:previewAction',{id,action:'stop'}) as ExecutionActionPreview;f.fault();await f.controller.handle('execution:applyAction',{token:stop.confirmationToken});expect(f.requests.at(-1)?.action).toBe('execution:stop');});
- it('rejects expired actions and stale/foreign runtime updates while preserving newer observations',async()=>{const clock=vi.spyOn(performance,'now').mockReturnValue(0),f=await fixture(),window=await f.start(),id=window.resourceId!,row=f.repo.get(id)!;const observed={...f.runtime,receipt:{...f.runtime.receipt,taskId:id,executionId:id,source:row.source}};f.controller.observe(observed,false,2);f.controller.observe({...observed,receipt:{...observed.receipt,phase:'dispatching'}},false,1);f.controller.observe({...observed,receipt:{...observed.receipt,serverId:crypto.randomUUID(),phase:'dispatching'}},false,3);expect(f.controller.descriptor(window.windowId).runtime.receipt.phase).toBe('running');const action=await f.controller.handle('execution:previewAction',{id,action:'stop'}) as ExecutionActionPreview;clock.mockReturnValue(60000);await expect(f.controller.handle('execution:applyAction',{token:action.confirmationToken})).rejects.toThrow('TOKEN_EXPIRED');});
- it('releases renderer output when the owning server session ends without claiming that the process ended',async()=>{const f=await fixture(),window=await f.start();f.controller.sessionChanged(f.runtime.receipt.serverId,1,false);expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(false);expect(f.controller.isActive(window.resourceId!)).toBe(true);});
- it('opens historical receipts as metadata only and releases terminal memory without executing again',async()=>{const f=await fixture(),row={...executionReceipt(),phase:'exited' as const,channelAccepted:true,channelClosed:true,exitObserved:true,exitCode:0};await f.repo.save(row);const window=await f.controller.handle('execution:reopen',row.taskId) as WindowModel;const descriptor=await f.controller.handle('execution:get',window.windowId) as ExecutionDescriptor;expect(descriptor).toMatchObject({outputAvailable:false,runtime:{receipt:{phase:'exited',exitCode:0}}});expect(f.requests).toEqual([]);await f.controller.releaseRecord(row);expect(f.requests).toEqual([]);});
+describe("main execution window and task authority", () => {
+  it.each(["changing", "repeated", "epoch"] as const)(
+    "repairs sequence gaps with bounded %s snapshots without replaying execution",
+    async (mode) => {
+      const f = await fixture(),
+        window = await f.start(),
+        descriptor = f.controller.descriptor(window.windowId),
+        row = descriptor.runtime,
+        original = vi.mocked(f.gateway.request).getMockImplementation()!;
+      let pages = 0;
+      vi.mocked(f.gateway.request).mockImplementation(async (request) => {
+        if (request.action !== "execution:snapshot") return original(request);
+        pages++;
+        if (mode === "epoch")
+          (f.gateway as unknown as { epoch: string }).epoch =
+            crypto.randomUUID();
+        return {
+          sequence: mode === "changing" ? pages : 10,
+          rows: [row],
+          nextOffset:
+            mode === "repeated"
+              ? 0
+              : mode === "changing" && request.offset === 0
+                ? 1
+                : null,
+        };
+      });
+      f.controller.observe(row, true, 1);
+      await vi.waitFor(() => expect(pages).toBe(mode === "changing" ? 6 : 1));
+      expect(
+        f.requests.filter((request) => request.action === "execution:start"),
+      ).toHaveLength(1);
+      expect(
+        f.controller.descriptor(window.windowId).runtime.receipt.taskId,
+      ).toBe(row.receipt.taskId);
+    },
+  );
+  it("keeps an uncertain start visible, resynchronizes it and never retries its SSH command", async () => {
+    const f = await fixture();
+    vi.mocked(f.gateway.request).mockImplementation(async (request) => {
+      f.requests.push(request);
+      if (request.action === "execution:start")
+        throw new Error("CONNECTION_LOST");
+      if (request.action === "execution:snapshot")
+        return { sequence: 1, rows: [], nextOffset: null };
+      return undefined;
+    });
+    await expect(f.start()).rejects.toThrow("CONNECTION_LOST");
+    expect(f.controller.overlays()[0]?.recordError).toBe(true);
+    expect(
+      f.desktop.handle("desktop:getWindowSnapshot", undefined) as WindowModel[],
+    ).toHaveLength(1);
+    expect(
+      f.requests.filter((request) => request.action === "execution:start"),
+    ).toHaveLength(1);
+    await f.controller.engineStopped();
+    expect(f.repo.snapshots()[0]?.phase).toBe("cancelled_not_sent");
+  });
+  it("removes known rejected starts and retains a storage error if cancellation cannot be saved", async () => {
+    const f = await fixture();
+    vi.mocked(f.gateway.request).mockRejectedValueOnce(
+      new Error("SESSION_LIMIT"),
+    );
+    await expect(f.start()).rejects.toThrow("SESSION_LIMIT");
+    expect(f.repo.snapshots()[0]?.phase).toBe("cancelled_not_sent");
+    expect(f.desktop.handle("desktop:getWindowSnapshot", undefined)).toEqual(
+      [],
+    );
+    const g = await fixture(),
+      save = g.repo.save.bind(g.repo);
+    vi.spyOn(g.repo, "save").mockImplementation(async (row) => {
+      if (row.phase === "cancelled_not_sent") throw new Error("STORAGE_FAILED");
+      return save(row);
+    });
+    vi.mocked(g.gateway.request).mockRejectedValueOnce(
+      new Error("SESSION_BUSY"),
+    );
+    await expect(g.start()).rejects.toThrow("SESSION_BUSY");
+    expect(g.controller.overlays()[0]?.recordError).toBe(true);
+  });
+  it("rejects forged start responses and retains the original identity for explicit recovery", async () => {
+    const f = await fixture(),
+      original = vi.mocked(f.gateway.request).getMockImplementation()!;
+    vi.mocked(f.gateway.request).mockImplementation(async (request) => {
+      if (request.action === "execution:snapshot")
+        return { sequence: 1, rows: [], nextOffset: null };
+      const response = await original(request);
+      return request.action === "execution:start"
+        ? {
+            ...(response as object),
+            receipt: {
+              ...(response as ExecutionRuntime).receipt,
+              serverId: crypto.randomUUID(),
+            },
+          }
+        : response;
+    });
+    await expect(f.start()).rejects.toThrow("INPUT_INVALID");
+    expect(f.controller.overlays()[0]?.recordError).toBe(true);
+    expect(
+      f.requests.filter((request) => request.action === "execution:start"),
+    ).toHaveLength(1);
+  });
+  it("retains completed receipts while worker cleanup fails and tolerates only a stopped worker", async () => {
+    const f = await fixture(),
+      window = await f.start(),
+      runtime = f.controller.descriptor(window.windowId).runtime,
+      ended = {
+        ...runtime,
+        active: false,
+        receipt: {
+          ...runtime.receipt,
+          phase: "exited" as const,
+          exitObserved: true,
+          channelClosed: true,
+          exitCode: 0,
+        },
+      };
+    f.controller.observe(ended, false, 100);
+    await f.repo.save(ended.receipt);
+    vi.mocked(f.gateway.request).mockRejectedValueOnce(
+      new Error("CONNECTION_LOST"),
+    );
+    await expect(f.controller.releaseRecord(ended.receipt)).rejects.toThrow(
+      "CONNECTION_LOST",
+    );
+    expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(true);
+    vi.mocked(f.gateway.request).mockRejectedValueOnce(
+      new Error("ENGINE_STOPPED"),
+    );
+    await f.controller.releaseRecord(ended.receipt);
+    expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(
+      false,
+    );
+  });
+  it("reserves a visible resource and stores intent before dispatch, without putting arguments in the receipt", async () => {
+    const f = await fixture(),
+      window = await f.start(),
+      descriptor = f.controller.descriptor(window.windowId);
+    expect(descriptor.outputAvailable).toBe(true);
+    expect(descriptor.runtime.receipt.phase).toBe("running");
+    expect(f.repo.snapshots()).toHaveLength(1);
+    expect(JSON.stringify(f.repo.snapshots())).not.toContain("sensitive");
+    expect(f.controller.needsCloseConfirmation(window.windowId)).toBe(true);
+    expect(f.requests.map((row) => row.action)).toEqual(["execution:start"]);
+  });
+  it("dispatches nothing after storage failure or a generation loss during intent storage", async () => {
+    const f = await fixture();
+    vi.spyOn(f.repo, "save").mockRejectedValueOnce(new Error("STORAGE_FAILED"));
+    await expect(f.start()).rejects.toThrow("STORAGE_FAILED");
+    expect(f.requests).toEqual([]);
+    expect(f.desktop.handle("desktop:getWindowSnapshot", undefined)).toEqual(
+      [],
+    );
+    const g = await fixture(),
+      save = g.repo.save.bind(g.repo);
+    vi.spyOn(g.repo, "save").mockImplementation(async (row) => {
+      await save(row);
+      g.disconnect();
+    });
+    await expect(g.start()).rejects.toThrow("TOKEN_EXPIRED");
+    expect(g.requests).toEqual([]);
+    expect(g.repo.snapshots()[0]?.phase).toBe("cancelled_not_sent");
+  });
+  it("binds close/stop to a single-use confirmation; hiding a running window does not rerun or stop the job", async () => {
+    const f = await fixture(),
+      window = await f.start(),
+      id = window.resourceId!;
+    const preview = (await f.controller.handle("execution:previewAction", {
+      id: window.windowId,
+      action: "close_window",
+    })) as ExecutionActionPreview;
+    await f.controller.handle("execution:applyAction", {
+      token: preview.confirmationToken,
+      choice: "hide",
+    });
+    expect(f.desktop.findWindow(window.windowId)).toBeNull();
+    expect(f.controller.isActive(id)).toBe(true);
+    const reopened = (await f.controller.handle(
+      "execution:reopen",
+      id,
+    )) as WindowModel;
+    expect(reopened.resourceId).toBe(id);
+    expect(f.requests).toHaveLength(1);
+    await expect(
+      f.controller.handle("execution:applyAction", {
+        token: preview.confirmationToken,
+        choice: "hide",
+      }),
+    ).rejects.toThrow("TOKEN_EXPIRED");
+    const stop = (await f.controller.handle("execution:previewAction", {
+      id,
+      action: "stop",
+    })) as ExecutionActionPreview;
+    f.fault();
+    await f.controller.handle("execution:applyAction", {
+      token: stop.confirmationToken,
+    });
+    expect(f.requests.at(-1)?.action).toBe("execution:stop");
+  });
+  it("rejects expired actions and stale/foreign runtime updates while preserving newer observations", async () => {
+    const clock = vi.spyOn(performance, "now").mockReturnValue(0),
+      f = await fixture(),
+      window = await f.start(),
+      id = window.resourceId!,
+      row = f.repo.get(id)!;
+    const observed = {
+      ...f.runtime,
+      receipt: {
+        ...f.runtime.receipt,
+        taskId: id,
+        executionId: id,
+        source: row.source,
+      },
+    };
+    f.controller.observe(observed, false, 2);
+    f.controller.observe(
+      { ...observed, receipt: { ...observed.receipt, phase: "dispatching" } },
+      false,
+      1,
+    );
+    f.controller.observe(
+      {
+        ...observed,
+        receipt: {
+          ...observed.receipt,
+          serverId: crypto.randomUUID(),
+          phase: "dispatching",
+        },
+      },
+      false,
+      3,
+    );
+    expect(f.controller.descriptor(window.windowId).runtime.receipt.phase).toBe(
+      "running",
+    );
+    const action = (await f.controller.handle("execution:previewAction", {
+      id,
+      action: "stop",
+    })) as ExecutionActionPreview;
+    clock.mockReturnValue(60000);
+    await expect(
+      f.controller.handle("execution:applyAction", {
+        token: action.confirmationToken,
+      }),
+    ).rejects.toThrow("TOKEN_EXPIRED");
+  });
+  it("releases renderer output when the owning server session ends without claiming that the process ended", async () => {
+    const f = await fixture(),
+      window = await f.start();
+    f.controller.sessionChanged(f.runtime.receipt.serverId, 1, false);
+    expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(
+      false,
+    );
+    expect(f.controller.isActive(window.resourceId!)).toBe(true);
+  });
+  it("opens historical receipts as metadata only and releases terminal memory without executing again", async () => {
+    const f = await fixture(),
+      row = {
+        ...executionReceipt(),
+        phase: "exited" as const,
+        channelAccepted: true,
+        channelClosed: true,
+        exitObserved: true,
+        exitCode: 0,
+      };
+    await f.repo.save(row);
+    const window = (await f.controller.handle(
+      "execution:reopen",
+      row.taskId,
+    )) as WindowModel;
+    const descriptor = (await f.controller.handle(
+      "execution:get",
+      window.windowId,
+    )) as ExecutionDescriptor;
+    expect(descriptor).toMatchObject({
+      outputAvailable: false,
+      runtime: { receipt: { phase: "exited", exitCode: 0 } },
+    });
+    expect(f.requests).toEqual([]);
+    await f.controller.releaseRecord(row);
+    expect(f.requests).toEqual([]);
+  });
 });
 
-it('reconciles an engine loss as unknown without replay and preserves record-save failure as an overlay',async()=>{const f=await fixture(),window=await f.start(),id=window.resourceId!;expect(f.controller.hasActive).toBe(true);expect(f.controller.storageContinuity()).toEqual([id]);expect(f.controller.overlays()[0]?.taskId).toBe(id);await f.controller.engineStopped();expect(f.repo.get(id)).toMatchObject({phase:'result_unknown'});expect(f.controller.isActive(id)).toBe(false);expect(f.controller.storageContinuity()).toEqual([]);expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(false);await f.controller.engineStopped();expect(f.requests.map(row=>row.action)).toEqual(['execution:start']);const g=await fixture(),second=await g.start();g.fault();await g.controller.engineStopped();expect(g.controller.overlays().find(row=>row.taskId===second.resourceId)).toMatchObject({phase:'result_unknown',recordError:true});});
+it("reconciles an engine loss as unknown without replay and preserves record-save failure as an overlay", async () => {
+  const f = await fixture(),
+    window = await f.start(),
+    id = window.resourceId!;
+  expect(f.controller.hasActive).toBe(true);
+  expect(f.controller.storageContinuity()).toEqual([id]);
+  expect(f.controller.overlays()[0]?.taskId).toBe(id);
+  await f.controller.engineStopped();
+  expect(f.repo.get(id)).toMatchObject({ phase: "result_unknown" });
+  expect(f.controller.isActive(id)).toBe(false);
+  expect(f.controller.storageContinuity()).toEqual([]);
+  expect(f.controller.descriptor(window.windowId).outputAvailable).toBe(false);
+  await f.controller.engineStopped();
+  expect(f.requests.map((row) => row.action)).toEqual(["execution:start"]);
+  const g = await fixture(),
+    second = await g.start();
+  g.fault();
+  await g.controller.engineStopped();
+  expect(
+    g.controller.overlays().find((row) => row.taskId === second.resourceId),
+  ).toMatchObject({ phase: "result_unknown", recordError: true });
+});
 
-it('closes only matching active execution channels, retains cleanup ownership and releases terminal worker output once',async()=>{const f=await fixture(),window=await f.start(),id=window.resourceId!,row=f.controller.descriptor(window.windowId).runtime;await f.controller.closeForShutdown(crypto.randomUUID(),1);expect(f.requests).toHaveLength(1);await f.controller.closeForShutdown(row.receipt.serverId,999);expect(f.requests).toHaveLength(1);await f.controller.closeForShutdown(row.receipt.serverId,1);expect(f.requests.at(-1)?.action).toBe('execution:close');await expect(f.controller.releaseRecord(row.receipt)).rejects.toThrow('REQUEST_BUSY');const ended={...row,active:false,cleanupPending:true,receipt:{...row.receipt,phase:'exited' as const,channelClosed:true,exitObserved:true,exitCode:0}};f.controller.observe(ended,false,1);expect(f.controller.isActive(id)).toBe(true);ended.cleanupPending=false;await f.repo.save(ended.receipt);f.controller.observe(ended,false,2);expect(f.controller.needsCloseConfirmation(window.windowId)).toBe(false);await f.controller.releaseRecord(ended.receipt);expect(f.requests.at(-1)?.action).toBe('execution:forget');expect(f.controller.descriptor(window.windowId)).toMatchObject({outputAvailable:false,runtime:{active:false,receipt:{phase:'exited'}}});});
+it("closes only matching active execution channels, retains cleanup ownership and releases terminal worker output once", async () => {
+  const f = await fixture(),
+    window = await f.start(),
+    id = window.resourceId!,
+    row = f.controller.descriptor(window.windowId).runtime;
+  await f.controller.closeForShutdown(crypto.randomUUID(), 1);
+  expect(f.requests).toHaveLength(1);
+  await f.controller.closeForShutdown(row.receipt.serverId, 999);
+  expect(f.requests).toHaveLength(1);
+  await f.controller.closeForShutdown(row.receipt.serverId, 1);
+  expect(f.requests.at(-1)?.action).toBe("execution:close");
+  await expect(f.controller.releaseRecord(row.receipt)).rejects.toThrow(
+    "REQUEST_BUSY",
+  );
+  const ended = {
+    ...row,
+    active: false,
+    cleanupPending: true,
+    receipt: {
+      ...row.receipt,
+      phase: "exited" as const,
+      channelClosed: true,
+      exitObserved: true,
+      exitCode: 0,
+    },
+  };
+  f.controller.observe(ended, false, 1);
+  expect(f.controller.isActive(id)).toBe(true);
+  ended.cleanupPending = false;
+  await f.repo.save(ended.receipt);
+  f.controller.observe(ended, false, 2);
+  expect(f.controller.needsCloseConfirmation(window.windowId)).toBe(false);
+  await f.controller.releaseRecord(ended.receipt);
+  expect(f.requests.at(-1)?.action).toBe("execution:forget");
+  expect(f.controller.descriptor(window.windowId)).toMatchObject({
+    outputAvailable: false,
+    runtime: { active: false, receipt: { phase: "exited" } },
+  });
+});
 
-it('routes named preview/output operations, revokes stale display/actions and refuses arbitrary historical IDs',async()=>{const f=await fixture(),token=crypto.randomUUID();expect(await f.controller.handle('execution:context',token)).toEqual({marker:'context'});expect(await f.controller.handle('execution:preview',{entryToken:token})).toEqual({marker:'preview'});await f.controller.handle('execution:releasePreview',token);expect(f.previews.release).toHaveBeenCalledWith(token);const window=await f.start(),descriptor=f.controller.descriptor(window.windowId),id=window.resourceId!;vi.mocked(f.gateway.request).mockResolvedValueOnce({frames:[],nextOffset:0,endOffset:0,omitted:false,gap:false});expect(await f.controller.handle('execution:next',{token:descriptor.outputToken,readGeneration:descriptor.readGeneration,cursor:0})).toMatchObject({status:'data'});const action=await f.controller.handle('execution:previewAction',{id,action:'close_channel'}) as ExecutionActionPreview;f.controller.invalidateRenderer();await expect(f.controller.handle('execution:next',{token:descriptor.outputToken,readGeneration:descriptor.readGeneration,cursor:0})).rejects.toThrow('TOKEN_EXPIRED');await expect(f.controller.handle('execution:applyAction',{token:action.confirmationToken})).rejects.toThrow('TOKEN_EXPIRED');f.controller.detachWindow(window.windowId);expect(f.controller.descriptor(window.windowId).outputToken).not.toBe(descriptor.outputToken);await expect(f.controller.handle('execution:reopen',crypto.randomUUID())).rejects.toThrow('TOKEN_EXPIRED');await expect(f.controller.handle('execution:invalid',undefined)).rejects.toThrow('INPUT_INVALID');});
+it("routes named preview/output operations, revokes stale display/actions and refuses arbitrary historical IDs", async () => {
+  const f = await fixture(),
+    token = crypto.randomUUID();
+  expect(await f.controller.handle("execution:context", token)).toEqual({
+    marker: "context",
+  });
+  expect(
+    await f.controller.handle("execution:preview", { entryToken: token }),
+  ).toEqual({ marker: "preview" });
+  await f.controller.handle("execution:releasePreview", token);
+  expect(f.previews.release).toHaveBeenCalledWith(token);
+  const window = await f.start(),
+    descriptor = f.controller.descriptor(window.windowId),
+    id = window.resourceId!;
+  vi.mocked(f.gateway.request).mockResolvedValueOnce({
+    frames: [],
+    nextOffset: 0,
+    endOffset: 0,
+    omitted: false,
+    gap: false,
+  });
+  expect(
+    await f.controller.handle("execution:next", {
+      token: descriptor.outputToken,
+      readGeneration: descriptor.readGeneration,
+      cursor: 0,
+    }),
+  ).toMatchObject({ status: "data" });
+  const action = (await f.controller.handle("execution:previewAction", {
+    id,
+    action: "close_channel",
+  })) as ExecutionActionPreview;
+  f.controller.invalidateRenderer();
+  await expect(
+    f.controller.handle("execution:next", {
+      token: descriptor.outputToken,
+      readGeneration: descriptor.readGeneration,
+      cursor: 0,
+    }),
+  ).rejects.toThrow("TOKEN_EXPIRED");
+  await expect(
+    f.controller.handle("execution:applyAction", {
+      token: action.confirmationToken,
+    }),
+  ).rejects.toThrow("TOKEN_EXPIRED");
+  f.controller.detachWindow(window.windowId);
+  expect(f.controller.descriptor(window.windowId).outputToken).not.toBe(
+    descriptor.outputToken,
+  );
+  await expect(
+    f.controller.handle("execution:reopen", crypto.randomUUID()),
+  ).rejects.toThrow("TOKEN_EXPIRED");
+  await expect(
+    f.controller.handle("execution:invalid", undefined),
+  ).rejects.toThrow("INPUT_INVALID");
+});
 
-it('requires appropriate close choices, bounds outstanding confirmations and sends each explicit stop/close once',async()=>{const clock=vi.spyOn(performance,'now').mockReturnValue(0),f=await fixture(),window=await f.start(),id=window.resourceId!;for(let i=0;i<20;i++)await f.controller.handle('execution:previewAction',{id,action:'stop'});await expect(f.controller.handle('execution:previewAction',{id,action:'stop'})).rejects.toThrow('REQUEST_BUSY');clock.mockReturnValue(60001);const close=await f.controller.handle('execution:previewAction',{id,action:'close_channel'}) as ExecutionActionPreview;await expect(f.controller.handle('execution:applyAction',{token:close.confirmationToken,choice:'hide'})).rejects.toThrow('INPUT_INVALID');const channel=await f.controller.handle('execution:previewAction',{id,action:'close_channel'}) as ExecutionActionPreview;await f.controller.handle('execution:applyAction',{token:channel.confirmationToken});expect(f.requests.at(-1)?.action).toBe('execution:close');const bad=await f.controller.handle('execution:previewAction',{id:window.windowId,action:'close_window'}) as ExecutionActionPreview;await expect(f.controller.handle('execution:applyAction',{token:bad.confirmationToken})).rejects.toThrow('INPUT_INVALID');const stop=await f.controller.handle('execution:previewAction',{id:window.windowId,action:'close_window'}) as ExecutionActionPreview;await f.controller.handle('execution:applyAction',{token:stop.confirmationToken,choice:'stop'});expect(f.requests.at(-1)?.action).toBe('execution:stop');});
+it("requires appropriate close choices, bounds outstanding confirmations and sends each explicit stop/close once", async () => {
+  const clock = vi.spyOn(performance, "now").mockReturnValue(0),
+    f = await fixture(),
+    window = await f.start(),
+    id = window.resourceId!;
+  for (let i = 0; i < 20; i++)
+    await f.controller.handle("execution:previewAction", {
+      id,
+      action: "stop",
+    });
+  await expect(
+    f.controller.handle("execution:previewAction", { id, action: "stop" }),
+  ).rejects.toThrow("REQUEST_BUSY");
+  clock.mockReturnValue(60001);
+  const close = (await f.controller.handle("execution:previewAction", {
+    id,
+    action: "close_channel",
+  })) as ExecutionActionPreview;
+  await expect(
+    f.controller.handle("execution:applyAction", {
+      token: close.confirmationToken,
+      choice: "hide",
+    }),
+  ).rejects.toThrow("INPUT_INVALID");
+  const channel = (await f.controller.handle("execution:previewAction", {
+    id,
+    action: "close_channel",
+  })) as ExecutionActionPreview;
+  await f.controller.handle("execution:applyAction", {
+    token: channel.confirmationToken,
+  });
+  expect(f.requests.at(-1)?.action).toBe("execution:close");
+  const bad = (await f.controller.handle("execution:previewAction", {
+    id: window.windowId,
+    action: "close_window",
+  })) as ExecutionActionPreview;
+  await expect(
+    f.controller.handle("execution:applyAction", {
+      token: bad.confirmationToken,
+    }),
+  ).rejects.toThrow("INPUT_INVALID");
+  const stop = (await f.controller.handle("execution:previewAction", {
+    id: window.windowId,
+    action: "close_window",
+  })) as ExecutionActionPreview;
+  await f.controller.handle("execution:applyAction", {
+    token: stop.confirmationToken,
+    choice: "stop",
+  });
+  expect(f.requests.at(-1)?.action).toBe("execution:stop");
+});

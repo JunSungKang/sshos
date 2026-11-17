@@ -1,15 +1,221 @@
-import { describe,expect,it } from 'vitest';
-import { connectInputSchema,sessionCredentialsSchema } from '../../src/shared/session-contracts';
-import { probeResultSchema } from '../../src/shared/probes';
-import { terminalFreezeSchema,terminalInputSchema,terminalRuntimeSchema,terminalSize } from '../../src/shared/terminals';
-import { errorCodeOf,userMessage } from '../../src/shared/errors';
-import { executionReceipt } from '../fixtures/executions';
-import {engineRequestSchema} from '../../src/shared/engine-protocol';
-import {mutationReceiptSchema} from '../../src/shared/mutations';
-import {TEXT_LIMIT} from '../../src/shared/viewers/text';
-describe('untrusted stream identity and bounds',()=>{
- it('bounds editor IPC bytes and refuses undeclared fields and incomplete replacement receipts',()=>{const identity={serverId:crypto.randomUUID(),generation:1,backendEpoch:crypto.randomUUID(),requestId:crypto.randomUUID()},now=new Date().toISOString(),receipt={kind:'file_mutation',operation:'edit',taskId:crypto.randomUUID(),serverId:identity.serverId,generation:1,backendEpoch:identity.backendEpoch,endpointSnapshot:{name:'fixture',host:'fixture.invalid',port:22,username:'fixture',endpoint:'fixture.invalid:22'},hostKeyFingerprint:'SHA256:fixture',source:'/home/a',destination:'/home/a',parent:'/home',tempPath:'/home/.sshos-edit.tmp',sourceInitialStat:{type:'file',size:1,mtime:1,mode:0o100600},phase:'prepared',stage:'prepared',lastConfirmedPhase:'prepared',destinationCreated:false,sourceRemovalConfirmed:false,errorCode:null,recoveryUncertain:false,recoveredFromPhase:null,acknowledgedAt:null,createdAt:now,updatedAt:now};for(const length of [0,TEXT_LIMIT])expect(engineRequestSchema.safeParse({...identity,action:'editor:save',receipt,bytes:new Uint8Array(length)}).success).toBe(true);expect(engineRequestSchema.safeParse({...identity,action:'editor:save',receipt,bytes:new Uint8Array(TEXT_LIMIT+1)}).success).toBe(false);expect(engineRequestSchema.safeParse({...identity,action:'editor:save',receipt,bytes:'untrusted'}).success).toBe(false);expect(engineRequestSchema.safeParse({...identity,action:'editor:finish',taskId:receipt.taskId,keepRestriction:false,command:'not allowed'}).success).toBe(false);for(const change of [{tempPath:undefined},{destination:'/different'},{sourceInitialStat:null},{operation:'delete'}])expect(mutationReceiptSchema.safeParse({...receipt,...change}).success).toBe(false);});
- it('refuses probe numbers without successful completion and samples without an exact timestamp',()=>{const identity={serverId:crypto.randomUUID(),sessionGeneration:1,backendEpoch:crypto.randomUUID(),probeEpoch:crypto.randomUUID(),probeId:crypto.randomUUID(),transferActive:false};for(const value of [{status:'sample',elapsedMs:null,measuredAt:new Date().toISOString()},{status:'sample',elapsedMs:5,measuredAt:null},{status:'delayed',elapsedMs:5,measuredAt:null},{status:'paused',elapsedMs:null,measuredAt:new Date().toISOString()},{status:'sample',elapsedMs:5001,measuredAt:new Date().toISOString()}])expect(probeResultSchema.safeParse({...identity,...value}).success).toBe(false);expect(probeResultSchema.safeParse({...identity,status:'sample',elapsedMs:0,measuredAt:new Date().toISOString()}).success).toBe(true);});
- it('bounds credentials by UTF8 bytes and never accepts caller extensions',()=>{const input={host:'host',port:22,username:'u',authentication:'key',trustedHostKey:null};expect(connectInputSchema.safeParse({...input,keyBytes:new Uint8Array(512*1024)}).success).toBe(true);expect(connectInputSchema.safeParse({...input,keyBytes:new Uint8Array(512*1024+1)}).success).toBe(false);for(const field of ['password','passphrase']){expect(sessionCredentialsSchema.safeParse({saveSecret:false,[field]:'한'.repeat(341)}).success).toBe(true);expect(sessionCredentialsSchema.safeParse({saveSecret:false,[field]:'한'.repeat(342)}).success).toBe(false);}expect(connectInputSchema.safeParse({...input,agentForward:true}).success).toBe(false);});
- it('rejects backwards replay snapshots, empty/overlimit input, GUI receipts in PTY state and nonfinite row counts',()=>{const frozen={restoreToken:crypto.randomUUID(),startOffset:2,endOffset:1,omitted:false,nextInputSequence:1};expect(terminalFreezeSchema.safeParse(frozen).success).toBe(false);expect(terminalFreezeSchema.safeParse({...frozen,startOffset:1}).success).toBe(true);for(const length of [0,65537])expect(terminalInputSchema.safeParse(new Uint8Array(length)).success).toBe(false);expect(terminalInputSchema.safeParse(new Uint8Array(65536)).success).toBe(true);expect(terminalRuntimeSchema.safeParse({execution:{receipt:executionReceipt(),active:false,recordPending:false,recordError:false,cleanupPending:false},uiReady:false,inputUncertain:false,inputInFlight:0,nextInputSequence:1}).success).toBe(false);expect(()=>terminalSize(80,Infinity)).toThrow('INPUT_INVALID');expect(userMessage('AUTH_FAILED')).toBe('서버가 로그인을 허용하지 않았습니다.');expect(errorCodeOf(null)).toBe('INTERNAL_ERROR');});
+import { describe, expect, it } from "vitest";
+import {
+  connectInputSchema,
+  sessionCredentialsSchema,
+} from "../../src/shared/session-contracts";
+import { probeResultSchema } from "../../src/shared/probes";
+import {
+  terminalFreezeSchema,
+  terminalInputSchema,
+  terminalRuntimeSchema,
+  terminalSize,
+} from "../../src/shared/terminals";
+import { errorCodeOf, userMessage } from "../../src/shared/errors";
+import { executionReceipt } from "../fixtures/executions";
+import { engineRequestSchema } from "../../src/shared/engine-protocol";
+import { mutationReceiptSchema } from "../../src/shared/mutations";
+import { TEXT_LIMIT } from "../../src/shared/viewers/text";
+describe("untrusted stream identity and bounds", () => {
+  it("bounds editor IPC bytes and refuses undeclared fields and incomplete replacement receipts", () => {
+    const identity = {
+        serverId: crypto.randomUUID(),
+        generation: 1,
+        backendEpoch: crypto.randomUUID(),
+        requestId: crypto.randomUUID(),
+      },
+      now = new Date().toISOString(),
+      receipt = {
+        kind: "file_mutation",
+        operation: "edit",
+        taskId: crypto.randomUUID(),
+        serverId: identity.serverId,
+        generation: 1,
+        backendEpoch: identity.backendEpoch,
+        endpointSnapshot: {
+          name: "fixture",
+          host: "fixture.invalid",
+          port: 22,
+          username: "fixture",
+          endpoint: "fixture.invalid:22",
+        },
+        hostKeyFingerprint: "SHA256:fixture",
+        source: "/home/a",
+        destination: "/home/a",
+        parent: "/home",
+        tempPath: "/home/.sshos-edit.tmp",
+        sourceInitialStat: { type: "file", size: 1, mtime: 1, mode: 0o100600 },
+        phase: "prepared",
+        stage: "prepared",
+        lastConfirmedPhase: "prepared",
+        destinationCreated: false,
+        sourceRemovalConfirmed: false,
+        errorCode: null,
+        recoveryUncertain: false,
+        recoveredFromPhase: null,
+        acknowledgedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+    for (const length of [0, TEXT_LIMIT])
+      expect(
+        engineRequestSchema.safeParse({
+          ...identity,
+          action: "editor:save",
+          receipt,
+          bytes: new Uint8Array(length),
+        }).success,
+      ).toBe(true);
+    expect(
+      engineRequestSchema.safeParse({
+        ...identity,
+        action: "editor:save",
+        receipt,
+        bytes: new Uint8Array(TEXT_LIMIT + 1),
+      }).success,
+    ).toBe(false);
+    expect(
+      engineRequestSchema.safeParse({
+        ...identity,
+        action: "editor:save",
+        receipt,
+        bytes: "untrusted",
+      }).success,
+    ).toBe(false);
+    expect(
+      engineRequestSchema.safeParse({
+        ...identity,
+        action: "editor:finish",
+        taskId: receipt.taskId,
+        keepRestriction: false,
+        command: "not allowed",
+      }).success,
+    ).toBe(false);
+    for (const change of [
+      { tempPath: undefined },
+      { destination: "/different" },
+      { sourceInitialStat: null },
+      { operation: "delete" },
+    ])
+      expect(
+        mutationReceiptSchema.safeParse({ ...receipt, ...change }).success,
+      ).toBe(false);
+  });
+  it("refuses probe numbers without successful completion and samples without an exact timestamp", () => {
+    const identity = {
+      serverId: crypto.randomUUID(),
+      sessionGeneration: 1,
+      backendEpoch: crypto.randomUUID(),
+      probeEpoch: crypto.randomUUID(),
+      probeId: crypto.randomUUID(),
+      transferActive: false,
+    };
+    for (const value of [
+      {
+        status: "sample",
+        elapsedMs: null,
+        measuredAt: new Date().toISOString(),
+      },
+      { status: "sample", elapsedMs: 5, measuredAt: null },
+      { status: "delayed", elapsedMs: 5, measuredAt: null },
+      {
+        status: "paused",
+        elapsedMs: null,
+        measuredAt: new Date().toISOString(),
+      },
+      {
+        status: "sample",
+        elapsedMs: 5001,
+        measuredAt: new Date().toISOString(),
+      },
+    ])
+      expect(
+        probeResultSchema.safeParse({ ...identity, ...value }).success,
+      ).toBe(false);
+    expect(
+      probeResultSchema.safeParse({
+        ...identity,
+        status: "sample",
+        elapsedMs: 0,
+        measuredAt: new Date().toISOString(),
+      }).success,
+    ).toBe(true);
+  });
+  it("bounds credentials by UTF8 bytes and never accepts caller extensions", () => {
+    const input = {
+      host: "host",
+      port: 22,
+      username: "u",
+      authentication: "key",
+      trustedHostKey: null,
+    };
+    expect(
+      connectInputSchema.safeParse({
+        ...input,
+        keyBytes: new Uint8Array(512 * 1024),
+      }).success,
+    ).toBe(true);
+    expect(
+      connectInputSchema.safeParse({
+        ...input,
+        keyBytes: new Uint8Array(512 * 1024 + 1),
+      }).success,
+    ).toBe(false);
+    for (const field of ["password", "passphrase"]) {
+      expect(
+        sessionCredentialsSchema.safeParse({
+          saveSecret: false,
+          [field]: "한".repeat(341),
+        }).success,
+      ).toBe(true);
+      expect(
+        sessionCredentialsSchema.safeParse({
+          saveSecret: false,
+          [field]: "한".repeat(342),
+        }).success,
+      ).toBe(false);
+    }
+    expect(
+      connectInputSchema.safeParse({ ...input, agentForward: true }).success,
+    ).toBe(false);
+  });
+  it("rejects backwards replay snapshots, empty/overlimit input, GUI receipts in PTY state and nonfinite row counts", () => {
+    const frozen = {
+      restoreToken: crypto.randomUUID(),
+      startOffset: 2,
+      endOffset: 1,
+      omitted: false,
+      nextInputSequence: 1,
+    };
+    expect(terminalFreezeSchema.safeParse(frozen).success).toBe(false);
+    expect(
+      terminalFreezeSchema.safeParse({ ...frozen, startOffset: 1 }).success,
+    ).toBe(true);
+    for (const length of [0, 65537])
+      expect(
+        terminalInputSchema.safeParse(new Uint8Array(length)).success,
+      ).toBe(false);
+    expect(terminalInputSchema.safeParse(new Uint8Array(65536)).success).toBe(
+      true,
+    );
+    expect(
+      terminalRuntimeSchema.safeParse({
+        execution: {
+          receipt: executionReceipt(),
+          active: false,
+          recordPending: false,
+          recordError: false,
+          cleanupPending: false,
+        },
+        uiReady: false,
+        inputUncertain: false,
+        inputInFlight: 0,
+        nextInputSequence: 1,
+      }).success,
+    ).toBe(false);
+    expect(() => terminalSize(80, Infinity)).toThrow("INPUT_INVALID");
+    expect(userMessage("AUTH_FAILED")).toBe(
+      "서버가 로그인을 허용하지 않았습니다.",
+    );
+    expect(errorCodeOf(null)).toBe("INTERNAL_ERROR");
+  });
 });

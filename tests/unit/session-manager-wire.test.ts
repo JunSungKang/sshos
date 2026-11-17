@@ -1,14 +1,133 @@
-import { afterEach,describe,expect,it } from 'vitest';
-import { mkdir,mkdtemp,rm,writeFile } from 'node:fs/promises';
-import { join,resolve } from 'node:path';
-import { SessionManager } from '../../src/worker/connection/session-manager';
-import { startSSHFixture } from '../../scripts/fixtures/ssh-server.mjs';
-import type { ConnectInput } from '../../src/shared/session-contracts';
-const cleanup:(()=>Promise<void>)[]=[];afterEach(async()=>{for(const dispose of cleanup.splice(0).reverse())await dispose();});
-async function fixture(os='ID=ubuntu\nVERSION_ID=24.04\n',options:Record<string,unknown>={}){await mkdir(resolve('.local/tmp'),{recursive:true});const root=await mkdtemp(resolve('.local/tmp/session-wire-'));cleanup.push(()=>rm(root,{recursive:true}));await mkdir(join(root,'etc'));await mkdir(join(root,'home/fixture'),{recursive:true});await writeFile(join(root,'etc/os-release'),os);const remote=await startSSHFixture(root,options);cleanup.push(()=>remote.close());const snapshots:unknown[]=[],sessions=new SessionManager(value=>snapshots.push(value));cleanup.push(async()=>{sessions.closeAll();});const serverId=crypto.randomUUID(),input:ConnectInput={host:'127.0.0.1',port:remote.port,username:'fixture',authentication:'password',password:'test-only',trustedHostKey:null};const trust=await sessions.connect(serverId,1,input);if(trust.status!=='awaiting_host_trust')throw new Error('Fixture expected unknown trust');const trusted={...input,trustedHostKey:trust.publicKey};return {remote,sessions,serverId,input:trusted,snapshots};}
-describe('instrumented control-session wire lifecycle',()=>{
- it('rejects unknown host before authentication, inspects Ubuntu/SFTP/home and guards every control generation',async()=>{const f=await fixture();expect(f.remote.metrics.authenticationRequests).toBe(0);const result=await f.sessions.connect(f.serverId,2,f.input);expect(result).toMatchObject({status:'connected',snapshot:{os:'supported',sftp:'available',initialPath:'/home/fixture'}});const access=f.sessions.control(f.serverId,2,true);expect(()=>access.check()).not.toThrow();expect(f.sessions.readClient(f.serverId,2)).toBe(f.sessions.probeAccess(f.serverId,2).client);await expect(f.sessions.withMetadata(f.serverId,2,async()=>42)).resolves.toBe(42);expect(()=>f.sessions.control(f.serverId,1)).toThrow('SESSION_UNAVAILABLE');expect(()=>f.sessions.confirmOS(f.serverId,2)).toThrow('INPUT_INVALID');f.sessions.disconnect(f.serverId,2);expect(()=>access.check()).toThrow('CONNECTION_LOST');expect(()=>f.sessions.probeAccess(f.serverId,2)).toThrow('CONNECTION_LOST');});
- it('retains readonly SFTP on an unsupported OS while refusing write control/auxiliary, and allows explicit unknown-OS confirmation',async()=>{const f=await fixture('ID=ubuntu\nVERSION_ID=22.04\n');await f.sessions.connect(f.serverId,2,f.input);expect(f.sessions.snapshots()[0]).toMatchObject({os:'unsupported',sftp:'available'});expect(()=>f.sessions.control(f.serverId,2)).not.toThrow();expect(()=>f.sessions.control(f.serverId,2,true)).toThrow('OS_UNSUPPORTED');expect(()=>f.sessions.auxiliary(f.serverId,2,'execution')).toThrow('OS_UNSUPPORTED');const g=await fixture('not an OS release');await g.sessions.connect(g.serverId,2,g.input);expect(()=>g.sessions.control(g.serverId,2,true)).toThrow('OS_UNKNOWN');g.sessions.confirmOS(g.serverId,2);expect(()=>g.sessions.control(g.serverId,2,true)).not.toThrow();expect(g.sessions.snapshots()[0]?.osConfirmed).toBe(true);});
- it('keeps unavailable OS inspection separate from SFTP and never guesses a password failure for host-key change',async()=>{const f=await fixture(undefined,{denyRead:(path:string)=>path==='/etc/os-release'});await f.sessions.connect(f.serverId,2,f.input);expect(f.sessions.snapshots()[0]).toMatchObject({status:'connected',os:'unknown',sftp:'available'});f.sessions.disconnect(f.serverId,2);const before=f.remote.metrics.authenticationRequests;await expect(f.sessions.connect(f.serverId,3,{...f.input,trustedHostKey:Buffer.from('different-key').toString('base64')})).rejects.toThrow('HOST_KEY_CHANGED');expect(f.remote.metrics.authenticationRequests).toBe(before);});
- it('reports wrong credentials without fallback and quarantines the owning control/auxiliary only',async()=>{const f=await fixture();await expect(f.sessions.connect(f.serverId,2,{...f.input,password:'wrong'})).rejects.toThrow('AUTH_FAILED');expect(f.remote.metrics.authenticationRequests).toBe(1);await f.sessions.connect(f.serverId,3,f.input);const lease=f.sessions.auxiliary(f.serverId,3,'execution');await lease.ready;const access=f.sessions.control(f.serverId,3);access.quarantine();await lease.closed;expect(f.sessions.snapshots()[0]).toMatchObject({status:'failed',errorCode:'IO_TIMEOUT'});expect(()=>access.check()).toThrow('CONNECTION_LOST');});
+import { afterEach, describe, expect, it } from "vitest";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { SessionManager } from "../../src/worker/connections/session-manager";
+import { startSSHFixture } from "../../scripts/fixtures/ssh-server.mjs";
+import type { ConnectInput } from "../../src/shared/session-contracts";
+const cleanup: (() => Promise<void>)[] = [];
+afterEach(async () => {
+  for (const dispose of cleanup.splice(0).reverse()) await dispose();
+});
+async function fixture(
+  os = "ID=ubuntu\nVERSION_ID=24.04\n",
+  options: Record<string, unknown> = {},
+) {
+  await mkdir(resolve(".local/tmp"), { recursive: true });
+  const root = await mkdtemp(resolve(".local/tmp/session-wire-"));
+  cleanup.push(() => rm(root, { recursive: true }));
+  await mkdir(join(root, "etc"));
+  await mkdir(join(root, "home/fixture"), { recursive: true });
+  await writeFile(join(root, "etc/os-release"), os);
+  const remote = await startSSHFixture(root, options);
+  cleanup.push(() => remote.close());
+  const snapshots: unknown[] = [],
+    sessions = new SessionManager((value) => snapshots.push(value));
+  cleanup.push(async () => {
+    sessions.closeAll();
+  });
+  const serverId = crypto.randomUUID(),
+    input: ConnectInput = {
+      host: "127.0.0.1",
+      port: remote.port,
+      username: "fixture",
+      authentication: "password",
+      password: "test-only",
+      trustedHostKey: null,
+    };
+  const trust = await sessions.connect(serverId, 1, input);
+  if (trust.status !== "awaiting_host_trust")
+    throw new Error("Fixture expected unknown trust");
+  const trusted = { ...input, trustedHostKey: trust.publicKey };
+  return { remote, sessions, serverId, input: trusted, snapshots };
+}
+describe("instrumented control-session wire lifecycle", () => {
+  it("rejects unknown host before authentication, inspects Ubuntu/SFTP/home and guards every control generation", async () => {
+    const f = await fixture();
+    expect(f.remote.metrics.authenticationRequests).toBe(0);
+    const result = await f.sessions.connect(f.serverId, 2, f.input);
+    expect(result).toMatchObject({
+      status: "connected",
+      snapshot: {
+        os: "supported",
+        sftp: "available",
+        initialPath: "/home/fixture",
+      },
+    });
+    const access = f.sessions.control(f.serverId, 2, true);
+    expect(() => access.check()).not.toThrow();
+    expect(f.sessions.readClient(f.serverId, 2)).toBe(
+      f.sessions.probeAccess(f.serverId, 2).client,
+    );
+    await expect(
+      f.sessions.withMetadata(f.serverId, 2, async () => 42),
+    ).resolves.toBe(42);
+    expect(() => f.sessions.control(f.serverId, 1)).toThrow(
+      "SESSION_UNAVAILABLE",
+    );
+    expect(() => f.sessions.confirmOS(f.serverId, 2)).toThrow("INPUT_INVALID");
+    f.sessions.disconnect(f.serverId, 2);
+    expect(() => access.check()).toThrow("CONNECTION_LOST");
+    expect(() => f.sessions.probeAccess(f.serverId, 2)).toThrow(
+      "CONNECTION_LOST",
+    );
+  });
+  it("retains readonly SFTP on an unsupported OS while refusing write control/auxiliary, and allows explicit unknown-OS confirmation", async () => {
+    const f = await fixture("ID=ubuntu\nVERSION_ID=22.04\n");
+    await f.sessions.connect(f.serverId, 2, f.input);
+    expect(f.sessions.snapshots()[0]).toMatchObject({
+      os: "unsupported",
+      sftp: "available",
+    });
+    expect(() => f.sessions.control(f.serverId, 2)).not.toThrow();
+    expect(() => f.sessions.control(f.serverId, 2, true)).toThrow(
+      "OS_UNSUPPORTED",
+    );
+    expect(() => f.sessions.auxiliary(f.serverId, 2, "execution")).toThrow(
+      "OS_UNSUPPORTED",
+    );
+    const g = await fixture("not an OS release");
+    await g.sessions.connect(g.serverId, 2, g.input);
+    expect(() => g.sessions.control(g.serverId, 2, true)).toThrow("OS_UNKNOWN");
+    g.sessions.confirmOS(g.serverId, 2);
+    expect(() => g.sessions.control(g.serverId, 2, true)).not.toThrow();
+    expect(g.sessions.snapshots()[0]?.osConfirmed).toBe(true);
+  });
+  it("keeps unavailable OS inspection separate from SFTP and never guesses a password failure for host-key change", async () => {
+    const f = await fixture(undefined, {
+      denyRead: (path: string) => path === "/etc/os-release",
+    });
+    await f.sessions.connect(f.serverId, 2, f.input);
+    expect(f.sessions.snapshots()[0]).toMatchObject({
+      status: "connected",
+      os: "unknown",
+      sftp: "available",
+    });
+    f.sessions.disconnect(f.serverId, 2);
+    const before = f.remote.metrics.authenticationRequests;
+    await expect(
+      f.sessions.connect(f.serverId, 3, {
+        ...f.input,
+        trustedHostKey: Buffer.from("different-key").toString("base64"),
+      }),
+    ).rejects.toThrow("HOST_KEY_CHANGED");
+    expect(f.remote.metrics.authenticationRequests).toBe(before);
+  });
+  it("reports wrong credentials without fallback and quarantines the owning control/auxiliary only", async () => {
+    const f = await fixture();
+    await expect(
+      f.sessions.connect(f.serverId, 2, { ...f.input, password: "wrong" }),
+    ).rejects.toThrow("AUTH_FAILED");
+    expect(f.remote.metrics.authenticationRequests).toBe(1);
+    await f.sessions.connect(f.serverId, 3, f.input);
+    const lease = f.sessions.auxiliary(f.serverId, 3, "execution");
+    await lease.ready;
+    const access = f.sessions.control(f.serverId, 3);
+    access.quarantine();
+    await lease.closed;
+    expect(f.sessions.snapshots()[0]).toMatchObject({
+      status: "failed",
+      errorCode: "IO_TIMEOUT",
+    });
+    expect(() => access.check()).toThrow("CONNECTION_LOST");
+  });
 });

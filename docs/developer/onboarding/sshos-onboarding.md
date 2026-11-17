@@ -10,9 +10,12 @@ The current manifest pins Node 24.22.3 for development, Electron 45.3.2, React 1
 
 - `src/main/index.ts`: pre-ready policy, paths, process composition and lifecycle.
 - `src/preload/index.ts`: named renderer bridge.
-- `src/renderer/DesktopShell.tsx`: desktop, internal windows and taskbar.
+- `src/renderer/features/desktop/DesktopShell.tsx`: desktop, internal windows and taskbar.
 - `src/worker/index.ts`: utility-process command dispatch and SSH operations.
-- `src/shared`: pure schemas, states and budgets.
+- `src/shared`: pure schemas, states, budgets and cross-process file policies.
+- `src/platform/local-files`: native file selection inspection; main never imports worker internals.
+- `src/worker/remote-files/metadata`: fixed Ubuntu SSH commands and response parsing.
+- `src/main/web-preview`: isolated Chromium sessions, root-scoped SFTP resources and view geometry.
 - `tests/unit`: unit/state/boundary tests; `scripts/*-smoke.mjs`: actual-process fixture scenarios.
 - `scripts/install.mjs`, `launch.mjs`, `verify.mjs`, `package.mjs`: setup, launch, verification and development artifacts.
 - `docs/ai-agent`: procedures; `docs/developer`: human documentation; `evidence`: immutable dated reports; `.local`: ignored caches/runtime/artifacts.

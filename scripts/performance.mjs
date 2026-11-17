@@ -7,7 +7,7 @@ import { cpus,totalmem,release } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { strict as assert } from 'node:assert';
 import { root,localPath,runtimeEnvironment,closeTestApplication } from './environment.mjs';
-const require=createRequire(import.meta.url),{ReceiptRepository}=require(join(root,'dist/main/persistence/receipts.js')),{TransferController}=require(join(root,'dist/main/transfers.js'));
+const require=createRequire(import.meta.url),{ReceiptRepository}=require(join(root,'dist/main/persistence/receipts.js')),{TransferController}=require(join(root,'dist/main/transfers/transfers.js'));
 const destination=localPath(`performance/local-${Date.now()}`),owned=[],registration=[],launch=[],ui=[],memory=[];let application;
 const nearest=(values,p)=>[...values].sort((a,b)=>a-b)[Math.ceil(values.length*p)-1];
 async function hashes(directory){const result={};for(const row of await readdir(join(root,directory),{withFileTypes:true})){const path=`${directory}/${row.name}`;if(row.isDirectory())Object.assign(result,await hashes(path));else if(row.isFile())result[path]=createHash('sha256').update(await readFile(join(root,path))).digest('hex');}return result;}

@@ -1,37 +1,361 @@
-import {describe,it,expect,vi} from 'vitest';
-import {TextEditorController} from '../../src/main/text-editor';
-import type {ViewerController} from '../../src/main/viewers';
-import type {ConnectionController} from '../../src/main/connections';
-import type {EngineGateway} from '../../src/main/engine-gateway';
-import type {ReceiptRepository} from '../../src/main/persistence/receipts';
-import {mutationReceiptSchema,type MutationReceipt} from '../../src/shared/mutations';
-function fixture(){
- const serverId=crypto.randomUUID(),windowId=crypto.randomUUID(),token=crypto.randomUUID(),epoch=crypto.randomUUID(),target={windowId,serverId,generation:1,sessionToken:crypto.randomUUID(),epoch,viewerId:crypto.randomUUID(),path:'/home/file.txt',parent:'/home'};
- const snapshot={name:'fixture',host:'fixture.invalid',port:22,username:'fixture',endpoint:'fixture.invalid:22'},disk=new Map<string,MutationReceipt>();
- const options:{healthy:boolean;faulted:boolean;storage:boolean;sftp:string;os:string;confirmed:boolean;missing?:boolean;cap?:string;storeFailure?:boolean;workerThrow?:boolean;recordError?:boolean;phase?:MutationReceipt['phase'];nullError?:boolean;mismatch?:boolean;hold?:Promise<void>;prepareHook?:()=>void}={healthy:true,faulted:false,storage:true,sftp:'available',os:'supported',confirmed:false};
- const viewers={editTarget:(input:string,generation:number)=>{if(input!==token || generation!==1)throw new Error('TOKEN_EXPIRED');return target;}} as unknown as ViewerController;
- const connections={sessionCapability:()=>({serverId:options.cap??serverId,generation:1}),views:()=>options.missing?[]:[{serverId,generation:1,sftp:options.sftp,os:options.os,osConfirmed:options.confirmed}],sessionIdentity:()=>({endpointSnapshot:snapshot,hostKeyFingerprint:'SHA256:fixture'})} as unknown as ConnectionController;
- const save=vi.fn(async(row:MutationReceipt)=>{if(options.storeFailure)throw new Error('STORAGE_FAILED');const before=disk.get(row.taskId);if(before && ['completed','failed','partial','result_unknown'].includes(before.phase) && row.phase!==before.phase)throw new Error('INPUT_INVALID');disk.set(row.taskId,structuredClone(row));});
- const repository={get faulted(){return options.faulted;},get:(id:string)=>disk.get(id),save,checkNew:vi.fn()} as unknown as ReceiptRepository;
- const request=vi.fn(async(command:{action:string;receipt?:MutationReceipt;bytes?:Uint8Array})=>{
-  if(command.action==='editor:prepare'){options.prepareHook?.();return {stat:{type:'file',size:8,mtime:1,mode:0o100640}};}
-  if(command.action==='editor:save'){if(options.hold)await options.hold;if(options.workerThrow)throw new Error('IO_TIMEOUT');const receipt={...command.receipt!,phase:options.recordError?'result_unknown' as const:options.phase??'completed',stage:options.recordError?'text_replace_intent':'text_saved',lastConfirmedPhase:'text_saved',errorCode:options.nullError?null:options.phase?'SOURCE_CHANGED':null};if(!options.recordError)await save(receipt);return {receipt:{...receipt,...(options.mismatch?{generation:2}:{})},recordError:Boolean(options.recordError)};}
-  return undefined;
- });
- const gateway={epoch,request} as unknown as EngineGateway,controller=new TextEditorController(viewers,connections,gateway,()=>options.storage?repository:null,()=>options.healthy);
- const input={token,readGeneration:1,text:'edited\n'};return {controller,target,options,input,request,repository,save,disk,windowId,serverId};
+import { describe, it, expect, vi } from "vitest";
+import { TextEditorController } from "../../src/main/file-operations/text-editor";
+import type { ViewerController } from "../../src/main/file-operations/viewers";
+import type { ConnectionController } from "../../src/main/connections/connections";
+import type { EngineGateway } from "../../src/main/engine-gateway";
+import type { ReceiptRepository } from "../../src/main/persistence/receipts";
+import {
+  mutationReceiptSchema,
+  type MutationReceipt,
+} from "../../src/shared/mutations";
+function fixture() {
+  const serverId = crypto.randomUUID(),
+    windowId = crypto.randomUUID(),
+    token = crypto.randomUUID(),
+    epoch = crypto.randomUUID(),
+    target = {
+      windowId,
+      serverId,
+      generation: 1,
+      sessionToken: crypto.randomUUID(),
+      epoch,
+      viewerId: crypto.randomUUID(),
+      path: "/home/file.txt",
+      parent: "/home",
+    };
+  const snapshot = {
+      name: "fixture",
+      host: "fixture.invalid",
+      port: 22,
+      username: "fixture",
+      endpoint: "fixture.invalid:22",
+    },
+    disk = new Map<string, MutationReceipt>();
+  const options: {
+    healthy: boolean;
+    faulted: boolean;
+    storage: boolean;
+    sftp: string;
+    os: string;
+    confirmed: boolean;
+    missing?: boolean;
+    cap?: string;
+    storeFailure?: boolean;
+    workerThrow?: boolean;
+    recordError?: boolean;
+    phase?: MutationReceipt["phase"];
+    nullError?: boolean;
+    mismatch?: boolean;
+    hold?: Promise<void>;
+    prepareHook?: () => void;
+  } = {
+    healthy: true,
+    faulted: false,
+    storage: true,
+    sftp: "available",
+    os: "supported",
+    confirmed: false,
+  };
+  const viewers = {
+    editTarget: (input: string, generation: number) => {
+      if (input !== token || generation !== 1) throw new Error("TOKEN_EXPIRED");
+      return target;
+    },
+  } as unknown as ViewerController;
+  const connections = {
+    sessionCapability: () => ({
+      serverId: options.cap ?? serverId,
+      generation: 1,
+    }),
+    views: () =>
+      options.missing
+        ? []
+        : [
+            {
+              serverId,
+              generation: 1,
+              sftp: options.sftp,
+              os: options.os,
+              osConfirmed: options.confirmed,
+            },
+          ],
+    sessionIdentity: () => ({
+      endpointSnapshot: snapshot,
+      hostKeyFingerprint: "SHA256:fixture",
+    }),
+  } as unknown as ConnectionController;
+  const save = vi.fn(async (row: MutationReceipt) => {
+    if (options.storeFailure) throw new Error("STORAGE_FAILED");
+    const before = disk.get(row.taskId);
+    if (
+      before &&
+      ["completed", "failed", "partial", "result_unknown"].includes(
+        before.phase,
+      ) &&
+      row.phase !== before.phase
+    )
+      throw new Error("INPUT_INVALID");
+    disk.set(row.taskId, structuredClone(row));
+  });
+  const repository = {
+    get faulted() {
+      return options.faulted;
+    },
+    get: (id: string) => disk.get(id),
+    save,
+    checkNew: vi.fn(),
+  } as unknown as ReceiptRepository;
+  const request = vi.fn(
+    async (command: {
+      action: string;
+      receipt?: MutationReceipt;
+      bytes?: Uint8Array;
+    }) => {
+      if (command.action === "editor:prepare") {
+        options.prepareHook?.();
+        return { stat: { type: "file", size: 8, mtime: 1, mode: 0o100640 } };
+      }
+      if (command.action === "editor:save") {
+        if (options.hold) await options.hold;
+        if (options.workerThrow) throw new Error("IO_TIMEOUT");
+        const receipt = {
+          ...command.receipt!,
+          phase: options.recordError
+            ? ("result_unknown" as const)
+            : (options.phase ?? "completed"),
+          stage: options.recordError ? "text_replace_intent" : "text_saved",
+          lastConfirmedPhase: "text_saved",
+          errorCode: options.nullError
+            ? null
+            : options.phase
+              ? "SOURCE_CHANGED"
+              : null,
+        };
+        if (!options.recordError) await save(receipt);
+        return {
+          receipt: {
+            ...receipt,
+            ...(options.mismatch ? { generation: 2 } : {}),
+          },
+          recordError: Boolean(options.recordError),
+        };
+      }
+      return undefined;
+    },
+  );
+  const gateway = { epoch, request } as unknown as EngineGateway,
+    controller = new TextEditorController(
+      viewers,
+      connections,
+      gateway,
+      () => (options.storage ? repository : null),
+      () => options.healthy,
+    );
+  const input = { token, readGeneration: 1, text: "edited\n" };
+  return {
+    controller,
+    target,
+    options,
+    input,
+    request,
+    repository,
+    save,
+    disk,
+    windowId,
+    serverId,
+  };
 }
-describe('main text save authority and durable ownership',()=>{
- it('saves only its bound completed viewer, exposes no file content in receipts and releases task/window ownership',async()=>{const f=fixture();await f.controller.save(f.input);expect(f.controller.hasActive).toBe(false);expect(f.controller.windowBusy(f.windowId)).toBe(false);expect(f.controller.overlays()).toEqual([]);const row=[...f.disk.values()][0]!;expect(row.operation).toBe('edit');expect(row.phase).toBe('completed');expect(row.source).toBe('/home/file.txt');expect(JSON.stringify(row)).not.toContain('edited');expect(mutationReceiptSchema.safeParse(row).success).toBe(true);await f.controller.releaseRecord(row);await f.controller.releaseRecord({...row,operation:'delete',tempPath:undefined});await f.controller.reconcileStorage(f.repository);});
- it.each(['healthy','faulted','storage','sftp','missing','unknown','unsupported','cap','epoch'])('blocks invalid %s authority before remote preparation',async condition=>{const f=fixture();if(condition==='healthy')f.options.healthy=false;if(condition==='faulted')f.options.faulted=true;if(condition==='storage')f.options.storage=false;if(condition==='sftp')f.options.sftp='unavailable';if(condition==='missing')f.options.missing=true;if(condition==='unknown')f.options.os='unknown';if(condition==='unsupported')f.options.os='unsupported';if(condition==='cap')f.options.cap=crypto.randomUUID();if(condition==='epoch')f.target.epoch=crypto.randomUUID();await expect(f.controller.save(f.input)).rejects.toThrow();expect(f.request).not.toHaveBeenCalled();});
- it('requires valid text/identity shapes and permits explicitly confirmed unknown OS',async()=>{const f=fixture();for(const input of [{...f.input,token:crypto.randomUUID()},{...f.input,readGeneration:2},{...f.input,extra:'path'},{...f.input,text:'\ud800'},{...f.input,text:'\0'}])await expect(f.controller.save(input)).rejects.toThrow();f.options.os='unknown';f.options.confirmed=true;await f.controller.save(f.input);});
- it('reserves one save per window and reports an active task until the worker settles',async()=>{const f=fixture();let resume!:()=>void;f.options.hold=new Promise(resolve=>{resume=resolve;});const operation=f.controller.save(f.input);await vi.waitFor(()=>expect(f.request.mock.calls.some(([r])=>r.action==='editor:save')).toBe(true));expect(f.controller.hasActive).toBe(true);expect(f.controller.windowBusy(f.windowId)).toBe(true);const id=[...f.disk.keys()][0]!;expect(f.controller.isActive(id)).toBe(true);await expect(f.controller.save(f.input)).rejects.toThrow('REQUEST_BUSY');resume();await f.controller.settled();await operation;expect(f.controller.isActive(id)).toBe(false);});
- it('revalidates the session after preparation and never dispatches without a durable prepared record',async()=>{const f=fixture();f.options.prepareHook=()=>{f.options.healthy=false;};await expect(f.controller.save(f.input)).rejects.toThrow('STORAGE_FAILED');expect(f.request.mock.calls.map(([r])=>r.action)).toEqual(['editor:prepare','editor:finish']);expect(f.disk.size).toBe(0);const g=fixture();g.options.storeFailure=true;await expect(g.controller.save(g.input)).rejects.toThrow('STORAGE_FAILED');expect(g.controller.overlays()).toEqual([]);expect(g.request.mock.calls.some(([r])=>r.action==='editor:save')).toBe(false);});
- it('records an uncertain RPC failure without retrying the remote request',async()=>{const f=fixture();f.options.workerThrow=true;await expect(f.controller.save(f.input)).rejects.toThrow('IO_TIMEOUT');expect([...f.disk.values()][0]?.phase).toBe('result_unknown');expect(f.request.mock.calls.filter(([r])=>r.action==='editor:save')).toHaveLength(1);expect(f.request.mock.calls.at(-1)?.[0]).toMatchObject({action:'editor:finish',keepRestriction:true});});
- it('keeps a truthful failure code if session validation fails after the prepared record is durable',async()=>{const f=fixture();f.save.mockImplementationOnce(async row=>{f.disk.set(row.taskId,structuredClone(row));f.options.cap=crypto.randomUUID();});await expect(f.controller.save(f.input)).rejects.toThrow('TOKEN_EXPIRED');expect([...f.disk.values()][0]?.errorCode).toBe('TOKEN_EXPIRED');expect(f.request.mock.calls.some(([r])=>r.action==='editor:save')).toBe(false);});
- it.each(['partial','failed','result_unknown'] as const)('reports worker %s and retains a durable terminal record',async phase=>{const f=fixture();f.options.phase=phase;await expect(f.controller.save(f.input)).rejects.toThrow('SOURCE_CHANGED');expect([...f.disk.values()][0]?.phase).toBe(phase);});
- it('uses a fixed unknown error for a failed result without an error code',async()=>{const f=fixture();f.options.phase='failed';f.options.nullError=true;await expect(f.controller.save(f.input)).rejects.toThrow('RESULT_UNKNOWN');});
- it('reconciles a failed receipt ACK only through verified storage without replay',async()=>{const f=fixture();f.options.recordError=true;await expect(f.controller.save(f.input)).rejects.toThrow('STORAGE_FAILED');expect(f.controller.overlays()[0]?.recordError).toBe(true);await f.controller.reconcileStorage(f.repository);expect(f.controller.overlays()).toEqual([]);expect([...f.disk.values()][0]?.phase).toBe('result_unknown');expect(f.request.mock.calls.filter(([r])=>r.action==='editor:save')).toHaveLength(1);});
- it.each(['missing','identity','terminal','completed'])('validates %s storage continuity before clearing a memory overlay',async kind=>{const f=fixture();f.options.recordError=true;await expect(f.controller.save(f.input)).rejects.toThrow('STORAGE_FAILED');const [id,row]=[...f.disk.entries()][0]!;if(kind==='missing')f.disk.delete(id);else if(kind==='identity')f.disk.set(id,{...row,source:'/other'});else if(kind==='terminal')f.disk.set(id,{...row,phase:'failed'});else f.disk.set(id,{...row,phase:'completed',lastConfirmedPhase:'text_saved'});if(kind==='completed'){await f.controller.reconcileStorage(f.repository);expect(f.controller.overlays()).toEqual([]);}else await expect(f.controller.reconcileStorage(f.repository)).rejects.toThrow('STORAGE_FAILED');});
- it('rejects mismatched result identity and preserves a valid already-committed receipt',async()=>{const f=fixture();f.options.mismatch=true;await expect(f.controller.save(f.input)).rejects.toThrow('INPUT_INVALID');expect(f.controller.overlays()[0]?.recordError).toBe(true);await f.controller.reconcileStorage(f.repository);expect([...f.disk.values()][0]?.phase).toBe('completed');});
+describe("main text save authority and durable ownership", () => {
+  it("saves only its bound completed viewer, exposes no file content in receipts and releases task/window ownership", async () => {
+    const f = fixture();
+    await f.controller.save(f.input);
+    expect(f.controller.hasActive).toBe(false);
+    expect(f.controller.windowBusy(f.windowId)).toBe(false);
+    expect(f.controller.overlays()).toEqual([]);
+    const row = [...f.disk.values()][0]!;
+    expect(row.operation).toBe("edit");
+    expect(row.phase).toBe("completed");
+    expect(row.source).toBe("/home/file.txt");
+    expect(JSON.stringify(row)).not.toContain("edited");
+    expect(mutationReceiptSchema.safeParse(row).success).toBe(true);
+    await f.controller.releaseRecord(row);
+    await f.controller.releaseRecord({
+      ...row,
+      operation: "delete",
+      tempPath: undefined,
+    });
+    await f.controller.reconcileStorage(f.repository);
+  });
+  it.each([
+    "healthy",
+    "faulted",
+    "storage",
+    "sftp",
+    "missing",
+    "unknown",
+    "unsupported",
+    "cap",
+    "epoch",
+  ])(
+    "blocks invalid %s authority before remote preparation",
+    async (condition) => {
+      const f = fixture();
+      if (condition === "healthy") f.options.healthy = false;
+      if (condition === "faulted") f.options.faulted = true;
+      if (condition === "storage") f.options.storage = false;
+      if (condition === "sftp") f.options.sftp = "unavailable";
+      if (condition === "missing") f.options.missing = true;
+      if (condition === "unknown") f.options.os = "unknown";
+      if (condition === "unsupported") f.options.os = "unsupported";
+      if (condition === "cap") f.options.cap = crypto.randomUUID();
+      if (condition === "epoch") f.target.epoch = crypto.randomUUID();
+      await expect(f.controller.save(f.input)).rejects.toThrow();
+      expect(f.request).not.toHaveBeenCalled();
+    },
+  );
+  it("requires valid text/identity shapes and permits explicitly confirmed unknown OS", async () => {
+    const f = fixture();
+    for (const input of [
+      { ...f.input, token: crypto.randomUUID() },
+      { ...f.input, readGeneration: 2 },
+      { ...f.input, extra: "path" },
+      { ...f.input, text: "\ud800" },
+      { ...f.input, text: "\0" },
+    ])
+      await expect(f.controller.save(input)).rejects.toThrow();
+    f.options.os = "unknown";
+    f.options.confirmed = true;
+    await f.controller.save(f.input);
+  });
+  it("reserves one save per window and reports an active task until the worker settles", async () => {
+    const f = fixture();
+    let resume!: () => void;
+    f.options.hold = new Promise((resolve) => {
+      resume = resolve;
+    });
+    const operation = f.controller.save(f.input);
+    await vi.waitFor(() =>
+      expect(
+        f.request.mock.calls.some(([r]) => r.action === "editor:save"),
+      ).toBe(true),
+    );
+    expect(f.controller.hasActive).toBe(true);
+    expect(f.controller.windowBusy(f.windowId)).toBe(true);
+    const id = [...f.disk.keys()][0]!;
+    expect(f.controller.isActive(id)).toBe(true);
+    await expect(f.controller.save(f.input)).rejects.toThrow("REQUEST_BUSY");
+    resume();
+    await f.controller.settled();
+    await operation;
+    expect(f.controller.isActive(id)).toBe(false);
+  });
+  it("revalidates the session after preparation and never dispatches without a durable prepared record", async () => {
+    const f = fixture();
+    f.options.prepareHook = () => {
+      f.options.healthy = false;
+    };
+    await expect(f.controller.save(f.input)).rejects.toThrow("STORAGE_FAILED");
+    expect(f.request.mock.calls.map(([r]) => r.action)).toEqual([
+      "editor:prepare",
+      "editor:finish",
+    ]);
+    expect(f.disk.size).toBe(0);
+    const g = fixture();
+    g.options.storeFailure = true;
+    await expect(g.controller.save(g.input)).rejects.toThrow("STORAGE_FAILED");
+    expect(g.controller.overlays()).toEqual([]);
+    expect(g.request.mock.calls.some(([r]) => r.action === "editor:save")).toBe(
+      false,
+    );
+  });
+  it("records an uncertain RPC failure without retrying the remote request", async () => {
+    const f = fixture();
+    f.options.workerThrow = true;
+    await expect(f.controller.save(f.input)).rejects.toThrow("IO_TIMEOUT");
+    expect([...f.disk.values()][0]?.phase).toBe("result_unknown");
+    expect(
+      f.request.mock.calls.filter(([r]) => r.action === "editor:save"),
+    ).toHaveLength(1);
+    expect(f.request.mock.calls.at(-1)?.[0]).toMatchObject({
+      action: "editor:finish",
+      keepRestriction: true,
+    });
+  });
+  it("keeps a truthful failure code if session validation fails after the prepared record is durable", async () => {
+    const f = fixture();
+    f.save.mockImplementationOnce(async (row) => {
+      f.disk.set(row.taskId, structuredClone(row));
+      f.options.cap = crypto.randomUUID();
+    });
+    await expect(f.controller.save(f.input)).rejects.toThrow("TOKEN_EXPIRED");
+    expect([...f.disk.values()][0]?.errorCode).toBe("TOKEN_EXPIRED");
+    expect(f.request.mock.calls.some(([r]) => r.action === "editor:save")).toBe(
+      false,
+    );
+  });
+  it.each(["partial", "failed", "result_unknown"] as const)(
+    "reports worker %s and retains a durable terminal record",
+    async (phase) => {
+      const f = fixture();
+      f.options.phase = phase;
+      await expect(f.controller.save(f.input)).rejects.toThrow(
+        "SOURCE_CHANGED",
+      );
+      expect([...f.disk.values()][0]?.phase).toBe(phase);
+    },
+  );
+  it("uses a fixed unknown error for a failed result without an error code", async () => {
+    const f = fixture();
+    f.options.phase = "failed";
+    f.options.nullError = true;
+    await expect(f.controller.save(f.input)).rejects.toThrow("RESULT_UNKNOWN");
+  });
+  it("reconciles a failed receipt ACK only through verified storage without replay", async () => {
+    const f = fixture();
+    f.options.recordError = true;
+    await expect(f.controller.save(f.input)).rejects.toThrow("STORAGE_FAILED");
+    expect(f.controller.overlays()[0]?.recordError).toBe(true);
+    await f.controller.reconcileStorage(f.repository);
+    expect(f.controller.overlays()).toEqual([]);
+    expect([...f.disk.values()][0]?.phase).toBe("result_unknown");
+    expect(
+      f.request.mock.calls.filter(([r]) => r.action === "editor:save"),
+    ).toHaveLength(1);
+  });
+  it.each(["missing", "identity", "terminal", "completed"])(
+    "validates %s storage continuity before clearing a memory overlay",
+    async (kind) => {
+      const f = fixture();
+      f.options.recordError = true;
+      await expect(f.controller.save(f.input)).rejects.toThrow(
+        "STORAGE_FAILED",
+      );
+      const [id, row] = [...f.disk.entries()][0]!;
+      if (kind === "missing") f.disk.delete(id);
+      else if (kind === "identity")
+        f.disk.set(id, { ...row, source: "/other" });
+      else if (kind === "terminal") f.disk.set(id, { ...row, phase: "failed" });
+      else
+        f.disk.set(id, {
+          ...row,
+          phase: "completed",
+          lastConfirmedPhase: "text_saved",
+        });
+      if (kind === "completed") {
+        await f.controller.reconcileStorage(f.repository);
+        expect(f.controller.overlays()).toEqual([]);
+      } else
+        await expect(
+          f.controller.reconcileStorage(f.repository),
+        ).rejects.toThrow("STORAGE_FAILED");
+    },
+  );
+  it("rejects mismatched result identity and preserves a valid already-committed receipt", async () => {
+    const f = fixture();
+    f.options.mismatch = true;
+    await expect(f.controller.save(f.input)).rejects.toThrow("INPUT_INVALID");
+    expect(f.controller.overlays()[0]?.recordError).toBe(true);
+    await f.controller.reconcileStorage(f.repository);
+    expect([...f.disk.values()][0]?.phase).toBe("completed");
+  });
 });

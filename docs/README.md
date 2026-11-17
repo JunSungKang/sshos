@@ -27,3 +27,5 @@ Documentation is organized by audience and purpose, following the same directory
 - Review the user guide, troubleshooting and security policy together when authentication or outcome handling changes.
 - Keep product acceptance separate from unit tests, loopback integration, static package checks and public-release approval.
 - Preserve the original dates, source revisions, measurements and limitations of historical evidence. Translation and relocation do not rerun tests.
+
+Desktop file-command, context-menu and isolated HTML-preview ownership is documented in [System Architecture](developer/architecture/system-architecture.md) and [User Guide](developer/guides/user-guide.md).

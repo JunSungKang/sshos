@@ -1,9 +1,112 @@
-import { errorCodeOf } from '../shared/errors';
-import { ErrorPanel } from './ErrorPanel';
-import { useEffect,useRef,useState } from 'react';
-import type { ExecutionActionPreview } from '../shared/execution-ui';
-export function ExecutionActionDialog({preview,close,hidden}:{preview:ExecutionActionPreview;close():void;hidden?():void}) {
- const dialog=useRef<HTMLDialogElement>(null);const [busy,setBusy]=useState(false),[error,setError]=useState('');useEffect(()=>{dialog.current?.showModal();},[]);
- const apply=async(choice?:'hide'|'stop')=>{if(busy)return;setBusy(true);try{await window.sshOS.execution.applyAction(preview.confirmationToken,choice);if(choice === 'hide')hidden?.();close();}catch(failure){setError(errorCodeOf(failure));}finally{setBusy(false);}};
- return <dialog ref={dialog} className="connection-dialog" aria-label={preview.action === 'close_window' ? '실행 출력 창 닫기':preview.action === 'stop' ? '실행 중지 확인':'실행 채널 닫기 확인'} onCancel={event=>{event.preventDefault();if(!busy)close();}}><h2>{preview.action === 'close_window' ? '실행 출력 창 닫기':preview.action === 'stop' ? '중지 요청':'채널 닫기'}</h2><p>{preview.serverName} · {preview.endpoint}</p><code>{preview.path}</code><p>{preview.action === 'close_window' ? '창만 닫아도 실행과 출력 수집은 계속됩니다. 전체 작업에서 출력 창을 다시 열 수 있습니다.':preview.action === 'stop' ? '이 실행 채널에 TERM 신호를 한 번 보냅니다. 서버 프로그램이 무시할 수 있으며 자동 KILL은 보내지 않습니다.':'로컬 실행 채널을 닫습니다. 원격 프로그램과 자식 프로세스의 종료는 보장하지 않으며 종료 정보가 없으면 결과 불명으로 남습니다.'}</p>{error && <ErrorPanel error={error} phase={preview.phase} target={preview.path}/>}{preview.action === 'close_window' ? <><button disabled={busy} onClick={()=>{void apply('hide');}}>창만 닫고 계속 실행</button><button disabled={busy || !preview.canStop} onClick={()=>{void apply('stop');}}>중지 요청</button><button disabled={busy} onClick={close}>창 유지</button></> : <><button disabled={busy} onClick={()=>{void apply();}}>{preview.action === 'stop' ? 'TERM 중지 요청':'채널 닫기'}</button><button disabled={busy} onClick={close}>취소</button></>}</dialog>;
+import { errorCodeOf } from "../shared/errors";
+import { ErrorPanel } from "./ErrorPanel";
+import { useEffect, useRef, useState } from "react";
+import type { ExecutionActionPreview } from "../shared/execution-ui";
+export function ExecutionActionDialog({
+  preview,
+  close,
+  hidden,
+}: {
+  preview: ExecutionActionPreview;
+  close(): void;
+  hidden?(): void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  const apply = async (choice?: "hide" | "stop") => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await window.sshOS.execution.applyAction(
+        preview.confirmationToken,
+        choice,
+      );
+      if (choice === "hide") hidden?.();
+      close();
+    } catch (failure) {
+      setError(errorCodeOf(failure));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <dialog
+      ref={dialog}
+      className="connection-dialog"
+      aria-label={
+        preview.action === "close_window"
+          ? "실행 출력 창 닫기"
+          : preview.action === "stop"
+            ? "실행 중지 확인"
+            : "실행 채널 닫기 확인"
+      }
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!busy) close();
+      }}
+    >
+      <h2>
+        {preview.action === "close_window"
+          ? "실행 출력 창 닫기"
+          : preview.action === "stop"
+            ? "중지 요청"
+            : "채널 닫기"}
+      </h2>
+      <p>
+        {preview.serverName} · {preview.endpoint}
+      </p>
+      <code>{preview.path}</code>
+      <p>
+        {preview.action === "close_window"
+          ? "창만 닫아도 실행과 출력 수집은 계속됩니다. 전체 작업에서 출력 창을 다시 열 수 있습니다."
+          : preview.action === "stop"
+            ? "이 실행 채널에 TERM 신호를 한 번 보냅니다. 서버 프로그램이 무시할 수 있으며 자동 KILL은 보내지 않습니다."
+            : "로컬 실행 채널을 닫습니다. 원격 프로그램과 자식 프로세스의 종료는 보장하지 않으며 종료 정보가 없으면 결과 불명으로 남습니다."}
+      </p>
+      {error && (
+        <ErrorPanel error={error} phase={preview.phase} target={preview.path} />
+      )}
+      {preview.action === "close_window" ? (
+        <>
+          <button
+            disabled={busy}
+            onClick={() => {
+              void apply("hide");
+            }}
+          >
+            창만 닫고 계속 실행
+          </button>
+          <button
+            disabled={busy || !preview.canStop}
+            onClick={() => {
+              void apply("stop");
+            }}
+          >
+            중지 요청
+          </button>
+          <button disabled={busy} onClick={close}>
+            창 유지
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            disabled={busy}
+            onClick={() => {
+              void apply();
+            }}
+          >
+            {preview.action === "stop" ? "TERM 중지 요청" : "채널 닫기"}
+          </button>
+          <button disabled={busy} onClick={close}>
+            취소
+          </button>
+        </>
+      )}
+    </dialog>
+  );
 }

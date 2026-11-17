@@ -65,7 +65,7 @@ export async function checkPackagedSSH(path) {
     assert.ok(fixture.metrics.authenticationRequests > 0);
     assert.deepEqual(listing.entries.map(row => [row.name, row.type]), [['folder', 'directory'], ['hello.txt', 'file']]);
     assert.equal(fixture.metrics.mutations.length, 0);
-    return { status: 'pass', assertions: ['archived worker host-key observation without authentication', 'pinned password authentication', 'SFTP home/OS inspection and directory enumeration'], runtime: { platform: process.platform, architecture: process.arch }, scope: 'Host development Electron with actual target ASAR and loopback ssh2 fixture; target executable launch and real OpenSSH remain untested.' };
+    return { status: 'pass', assertions: ['archived worker host-key observation without authentication', 'pinned password authentication', 'SSH command home/OS inspection and directory enumeration'], runtime: { platform: process.platform, architecture: process.arch }, scope: 'Host development Electron with actual target ASAR and loopback ssh2 fixture; target executable launch and real OpenSSH remain untested.' };
   } finally {
     try { if (application) await closeTestApplication(application); }
     finally {

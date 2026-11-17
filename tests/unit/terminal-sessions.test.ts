@@ -1,35 +1,514 @@
-import { EventEmitter } from 'node:events';
-import { afterEach,describe,expect,it,vi } from 'vitest';
-import { PassThrough } from 'node:stream';
-import type { Client,ClientChannel } from 'ssh2';
-import type { AuxiliaryLease } from '../../src/worker/connection/auxiliary-sockets';
-import type { SessionManager } from '../../src/worker/connection/session-manager';
-import { ExecutionChannels } from '../../src/worker/execution/channels';
-import { TerminalSessions } from '../../src/worker/terminal/sessions';
-import type { FileReceipt } from '../../src/shared/receipts';
-import { executionReceipt } from '../fixtures/executions';
-afterEach(()=>vi.useRealTimers());const tick=async()=>{for(let i=0;i<60;i++)await Promise.resolve();};
-function fixture(options:{storageFailure?:boolean}={}){const template=executionReceipt(),row={...template,kind:'pty' as const,executionId:null,terminalId:template.taskId,source:null,cwd:null};const saved:FileReceipt[]=[],windows:unknown[]=[];let accept!:(error:Error|undefined,channel:ClientChannel)=>void,resolveClosed!:()=>void,closing=false;
- const client=Object.assign(new EventEmitter(),{shell:(window:unknown,callback:typeof accept)=>{windows.push(window);accept=callback;}}) as unknown as Client;const lease:AuxiliaryLease={ready:Promise.resolve(client),closed:new Promise(done=>{resolveClosed=done;}),get closing(){return closing;},close:()=>{closing=true;}};const sessions={auxiliary:()=>lease} as unknown as Pick<SessionManager,'auxiliary'>,pool=new ExecutionChannels(sessions),writer={faulted:false,persist:async(receipt:FileReceipt)=>{if(options.storageFailure)throw new Error('STORAGE_FAILED');saved.push(structuredClone(receipt));}};
- const terminal=new TerminalSessions(row.backendEpoch,pool,writer,()=>{}),channel=new PassThrough() as unknown as ClientChannel;channel.stderr=new PassThrough();channel.close=vi.fn(()=>channel);channel.setWindow=vi.fn();const ready=()=>{terminal.start(row);return tick();};const restore=()=>{const token=crypto.randomUUID(),frozen=terminal.freeze(row.serverId,1,row.taskId,token);let offset=frozen.startOffset;while(offset<frozen.endOffset)offset=terminal.read(row.serverId,1,row.taskId,offset).nextOffset;terminal.acknowledge(row.serverId,1,row.taskId,token,offset);};
- return {row,terminal,pool,writer,saved,windows,channel,ready,restore,reject:()=>accept(new Error('remote refusal'),undefined as unknown as ClientChannel),accept:()=>accept(undefined,channel),closed:()=>{channel.emit('close');resolveClosed();},socketClosed:()=>{client.emit('close');resolveClosed();},snapshot:()=>terminal.snapshot(row.serverId,1).rows[0]!};}
-describe('PTY channel owner and input I/O lifetime',()=>{
- it('refuses stale/duplicate/start receipts and storage faults before requesting a shell',async()=>{const f=fixture();for(const row of [{...f.row,backendEpoch:crypto.randomUUID()},{...f.row,phase:'running' as const},{...f.row,errorCode:'AUTH_FAILED'}])expect(()=>f.terminal.start(row)).toThrow('INPUT_INVALID');f.writer.faulted=true;expect(()=>f.terminal.start(f.row)).toThrow('STORAGE_FAILED');f.writer.faulted=false;await f.ready();expect(()=>f.terminal.start(f.row)).toThrow('INPUT_INVALID');f.reject();f.socketClosed();await tick();expect(f.snapshot().execution.receipt.phase).toBe('rejected');});
- it('keeps pool capacity on accepted starts and cleans a failed fifth terminal reservation',async()=>{const f=fixture();for(let i=0;i<4;i++){const id=crypto.randomUUID();f.terminal.start({...f.row,taskId:id,terminalId:id});}const id=crypto.randomUUID();expect(()=>f.terminal.start({...f.row,taskId:id,terminalId:id})).toThrow('SESSION_LIMIT');expect(f.terminal.snapshot(f.row.serverId,1).rows).toHaveLength(4);f.socketClosed();await tick();});
- it('refuses foreign tokens, forget while active and resize before channel acceptance',async()=>{const f=fixture();await f.ready();expect(()=>f.terminal.read(f.row.serverId,2,f.row.taskId,0)).toThrow('TOKEN_EXPIRED');expect(()=>f.terminal.resize(f.row.serverId,1,f.row.taskId,{cols:80,rows:24})).toThrow('TOKEN_EXPIRED');await expect(f.terminal.forget(f.row.serverId,1,f.row.taskId)).rejects.toThrow('REQUEST_BUSY');f.accept();await tick();f.restore();f.terminal.pause(f.row.serverId,1,f.row.taskId);await expect(f.terminal.input(f.row.serverId,1,f.row.taskId,1,Uint8Array.of(65),'key')).rejects.toThrow('RESTORE_REQUIRED');f.closed();await tick();f.terminal.close(f.row.serverId,1,f.row.taskId);});
- it('accepts bounded exit signals, ignores invalid metadata and treats channel errors as unknown',async()=>{const f=fixture();await f.ready();f.accept();await tick();for(const code of [NaN,-1,0x100000000])f.channel.emit('exit',code,'bad signal');expect(f.snapshot().execution.receipt.exitObserved).toBe(false);f.channel.emit('exit',null,'TERM');f.channel.emit('error',new Error('untrusted error text'));f.closed();await tick();expect(f.snapshot().execution.receipt).toMatchObject({phase:'result_unknown',exitSignal:'TERM',exitCode:null});});
- it('retains uncertain input after synchronous write failure until actual channel close',async()=>{const f=fixture();await f.ready();f.accept();await tick();f.restore();let bytes!:Buffer;vi.spyOn(f.channel,'write').mockImplementation(((value:Buffer)=>{bytes=value;throw new Error('socket write failed');}) as typeof f.channel.write);await expect(f.terminal.input(f.row.serverId,1,f.row.taskId,1,Uint8Array.of(65),'key')).rejects.toThrow('INPUT_RESULT_UNKNOWN');expect([...bytes]).toEqual([65]);expect(f.snapshot()).toMatchObject({inputInFlight:1,inputUncertain:true});f.closed();await tick();expect([...bytes]).toEqual([0]);await f.terminal.forget(f.row.serverId,1,f.row.taskId);});
- it('maps a write callback error to uncertain input, clears history explicitly and publishes bounded progress',async()=>{vi.useFakeTimers();const f=fixture();await f.ready();f.accept();await tick();f.restore();vi.spyOn(f.channel,'write').mockImplementation(((_bytes:Buffer,done:(error:Error)=>void)=>{done(new Error('write failed'));return true;}) as typeof f.channel.write);await expect(f.terminal.input(f.row.serverId,1,f.row.taskId,1,Uint8Array.of(65),'key')).rejects.toThrow('INPUT_RESULT_UNKNOWN');expect(f.snapshot().inputInFlight).toBe(0);const token=crypto.randomUUID(),frozen=f.terminal.freeze(f.row.serverId,1,f.row.taskId,token,true);f.terminal.acknowledge(f.row.serverId,1,f.row.taskId,token,frozen.endOffset);await vi.advanceTimersByTimeAsync(251);f.terminal.sessionChanged(crypto.randomUUID(),1,false);f.terminal.sessionChanged(f.row.serverId,1,true);expect(f.terminal.hasActive).toBe(true);f.closed();await f.terminal.settled();expect(f.terminal.hasActive).toBe(false);await f.terminal.forget(f.row.serverId,1,f.row.taskId);});
- it('opens xterm80x24 only after durable intent, gates input through restore and records exit/close separately',async()=>{const f=fixture();await f.ready();expect(f.windows).toEqual([{term:'xterm-256color',cols:80,rows:24,width:0,height:0}]);expect(f.saved[0]).toMatchObject({phase:'dispatching',kind:'pty'});f.accept();await tick();await expect(f.terminal.input(f.row.serverId,1,f.row.taskId,1,new Uint8Array([65]),'key')).rejects.toThrow('RESTORE_REQUIRED');f.restore();f.terminal.resize(f.row.serverId,1,f.row.taskId,{cols:120,rows:36});expect(f.channel.setWindow).toHaveBeenCalledExactlyOnceWith(36,120,0,0);f.channel.emit('data',Buffer.from('prompt'));const first=f.terminal.read(f.row.serverId,1,f.row.taskId,0);expect(new TextDecoder().decode(first.frames[0]!.bytes)).toBe('prompt');f.channel.emit('exit',0);expect(f.snapshot().execution.receipt.phase).toBe('running');f.closed();await tick();expect(f.snapshot().execution).toMatchObject({receipt:{phase:'exited',exitCode:0,channelClosed:true},active:false,recordPending:false});expect(JSON.stringify(f.saved)).not.toContain('prompt');});
- it('retains pending input bytes after a10s callback timeout and never zeros or resends a still-owned buffer',async()=>{vi.useFakeTimers();const f=fixture();await f.ready();f.accept();await tick();f.restore();let callback!:()=>void,held!:Buffer;const write=vi.spyOn(f.channel,'write').mockImplementation(((bytes:Buffer,done:()=>void)=>{held=bytes;callback=done;return false;}) as typeof f.channel.write);const pending=f.terminal.input(f.row.serverId,1,f.row.taskId,1,new Uint8Array([65,66]),'key');const failure=expect(pending).rejects.toThrow('INPUT_RESULT_UNKNOWN');await vi.advanceTimersByTimeAsync(10000);await failure;expect([...held]).toEqual([65,66]);expect(f.snapshot()).toMatchObject({inputInFlight:2,inputUncertain:true,uiReady:false,nextInputSequence:2});const token=crypto.randomUUID(),freeze=f.terminal.freeze(f.row.serverId,1,f.row.taskId,token);expect(()=>f.terminal.acknowledge(f.row.serverId,1,f.row.taskId,token,freeze.endOffset)).toThrow('REQUEST_BUSY');callback();expect([...held]).toEqual([0,0]);expect(f.snapshot().inputInFlight).toBe(0);f.terminal.acknowledge(f.row.serverId,1,f.row.taskId,token,freeze.endOffset);expect(write).toHaveBeenCalledOnce();f.closed();await tick();});
- it('settles abandoned input ownership when the execution socket closes even without a channel-close callback',async()=>{const f=fixture();await f.ready();f.accept();await tick();f.restore();let held!:Buffer;vi.spyOn(f.channel,'write').mockImplementation(((bytes:Buffer)=>{held=bytes;return false;}) as typeof f.channel.write);const pending=f.terminal.input(f.row.serverId,1,f.row.taskId,1,new Uint8Array([3]),'key');const failure=expect(pending).rejects.toThrow('INPUT_RESULT_UNKNOWN');f.socketClosed();await failure;await tick();expect([...held]).toEqual([0]);expect(f.snapshot()).toMatchObject({execution:{active:false,receipt:{phase:'result_unknown'}},inputInFlight:0,uiReady:false});});
- it('never requests a shell on storage failure and preserves unknown after an explicit local close',async()=>{const f=fixture({storageFailure:true});await f.ready();await tick();expect(f.windows).toEqual([]);f.socketClosed();await tick();expect(f.snapshot().execution).toMatchObject({receipt:{phase:'cancelled_not_sent'},recordError:true,active:false});const g=fixture();await g.ready();g.accept();await tick();g.restore();g.terminal.close(g.row.serverId,1,g.row.taskId);expect(g.channel.close).toHaveBeenCalledOnce();g.channel.emit('exit',0);g.closed();await tick();expect(g.snapshot().execution.receipt).toMatchObject({phase:'result_unknown',exitCode:0});await g.terminal.forget(g.row.serverId,1,g.row.taskId);g.channel.emit('data',Buffer.from('late ignored'));expect(g.terminal.snapshot(g.row.serverId,1).rows).toEqual([]);});
+import { EventEmitter } from "node:events";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { PassThrough } from "node:stream";
+import type { Client, ClientChannel } from "ssh2";
+import type { AuxiliaryLease } from "../../src/worker/connections/auxiliary-sockets";
+import type { SessionManager } from "../../src/worker/connections/session-manager";
+import { ExecutionChannels } from "../../src/worker/execution/channels";
+import { TerminalSessions } from "../../src/worker/terminal/sessions";
+import type { FileReceipt } from "../../src/shared/receipts";
+import { executionReceipt } from "../fixtures/executions";
+afterEach(() => vi.useRealTimers());
+const tick = async () => {
+  for (let i = 0; i < 60; i++) await Promise.resolve();
+};
+function fixture(options: { storageFailure?: boolean } = {}) {
+  const template = executionReceipt(),
+    row = {
+      ...template,
+      kind: "pty" as const,
+      executionId: null,
+      terminalId: template.taskId,
+      source: null,
+      cwd: null,
+    };
+  const saved: FileReceipt[] = [],
+    windows: unknown[] = [];
+  let accept!: (error: Error | undefined, channel: ClientChannel) => void,
+    resolveClosed!: () => void,
+    closing = false;
+  const client = Object.assign(new EventEmitter(), {
+    shell: (window: unknown, callback: typeof accept) => {
+      windows.push(window);
+      accept = callback;
+    },
+  }) as unknown as Client;
+  const lease: AuxiliaryLease = {
+    ready: Promise.resolve(client),
+    closed: new Promise((done) => {
+      resolveClosed = done;
+    }),
+    get closing() {
+      return closing;
+    },
+    close: () => {
+      closing = true;
+    },
+  };
+  const sessions = { auxiliary: () => lease } as unknown as Pick<
+      SessionManager,
+      "auxiliary"
+    >,
+    pool = new ExecutionChannels(sessions),
+    writer = {
+      faulted: false,
+      persist: async (receipt: FileReceipt) => {
+        if (options.storageFailure) throw new Error("STORAGE_FAILED");
+        saved.push(structuredClone(receipt));
+      },
+    };
+  const terminal = new TerminalSessions(
+      row.backendEpoch,
+      pool,
+      writer,
+      () => {},
+    ),
+    channel = new PassThrough() as unknown as ClientChannel;
+  channel.stderr = new PassThrough();
+  channel.close = vi.fn(() => channel);
+  channel.setWindow = vi.fn();
+  const ready = () => {
+    terminal.start(row);
+    return tick();
+  };
+  const restore = () => {
+    const token = crypto.randomUUID(),
+      frozen = terminal.freeze(row.serverId, 1, row.taskId, token);
+    let offset = frozen.startOffset;
+    while (offset < frozen.endOffset)
+      offset = terminal.read(row.serverId, 1, row.taskId, offset).nextOffset;
+    terminal.acknowledge(row.serverId, 1, row.taskId, token, offset);
+  };
+  return {
+    row,
+    terminal,
+    pool,
+    writer,
+    saved,
+    windows,
+    channel,
+    ready,
+    restore,
+    reject: () =>
+      accept(
+        new Error("remote refusal"),
+        undefined as unknown as ClientChannel,
+      ),
+    accept: () => accept(undefined, channel),
+    closed: () => {
+      channel.emit("close");
+      resolveClosed();
+    },
+    socketClosed: () => {
+      client.emit("close");
+      resolveClosed();
+    },
+    snapshot: () => terminal.snapshot(row.serverId, 1).rows[0]!,
+  };
+}
+describe("PTY channel owner and input I/O lifetime", () => {
+  it("refuses stale/duplicate/start receipts and storage faults before requesting a shell", async () => {
+    const f = fixture();
+    for (const row of [
+      { ...f.row, backendEpoch: crypto.randomUUID() },
+      { ...f.row, phase: "running" as const },
+      { ...f.row, errorCode: "AUTH_FAILED" },
+    ])
+      expect(() => f.terminal.start(row)).toThrow("INPUT_INVALID");
+    f.writer.faulted = true;
+    expect(() => f.terminal.start(f.row)).toThrow("STORAGE_FAILED");
+    f.writer.faulted = false;
+    await f.ready();
+    expect(() => f.terminal.start(f.row)).toThrow("INPUT_INVALID");
+    f.reject();
+    f.socketClosed();
+    await tick();
+    expect(f.snapshot().execution.receipt.phase).toBe("rejected");
+  });
+  it("keeps pool capacity on accepted starts and cleans a failed fifth terminal reservation", async () => {
+    const f = fixture();
+    for (let i = 0; i < 4; i++) {
+      const id = crypto.randomUUID();
+      f.terminal.start({ ...f.row, taskId: id, terminalId: id });
+    }
+    const id = crypto.randomUUID();
+    expect(() =>
+      f.terminal.start({ ...f.row, taskId: id, terminalId: id }),
+    ).toThrow("SESSION_LIMIT");
+    expect(f.terminal.snapshot(f.row.serverId, 1).rows).toHaveLength(4);
+    f.socketClosed();
+    await tick();
+  });
+  it("refuses foreign tokens, forget while active and resize before channel acceptance", async () => {
+    const f = fixture();
+    await f.ready();
+    expect(() => f.terminal.read(f.row.serverId, 2, f.row.taskId, 0)).toThrow(
+      "TOKEN_EXPIRED",
+    );
+    expect(() =>
+      f.terminal.resize(f.row.serverId, 1, f.row.taskId, {
+        cols: 80,
+        rows: 24,
+      }),
+    ).toThrow("TOKEN_EXPIRED");
+    await expect(
+      f.terminal.forget(f.row.serverId, 1, f.row.taskId),
+    ).rejects.toThrow("REQUEST_BUSY");
+    f.accept();
+    await tick();
+    f.restore();
+    f.terminal.pause(f.row.serverId, 1, f.row.taskId);
+    await expect(
+      f.terminal.input(
+        f.row.serverId,
+        1,
+        f.row.taskId,
+        1,
+        Uint8Array.of(65),
+        "key",
+      ),
+    ).rejects.toThrow("RESTORE_REQUIRED");
+    f.closed();
+    await tick();
+    f.terminal.close(f.row.serverId, 1, f.row.taskId);
+  });
+  it("accepts bounded exit signals, ignores invalid metadata and treats channel errors as unknown", async () => {
+    const f = fixture();
+    await f.ready();
+    f.accept();
+    await tick();
+    for (const code of [NaN, -1, 0x100000000])
+      f.channel.emit("exit", code, "bad signal");
+    expect(f.snapshot().execution.receipt.exitObserved).toBe(false);
+    f.channel.emit("exit", null, "TERM");
+    f.channel.emit("error", new Error("untrusted error text"));
+    f.closed();
+    await tick();
+    expect(f.snapshot().execution.receipt).toMatchObject({
+      phase: "result_unknown",
+      exitSignal: "TERM",
+      exitCode: null,
+    });
+  });
+  it("retains uncertain input after synchronous write failure until actual channel close", async () => {
+    const f = fixture();
+    await f.ready();
+    f.accept();
+    await tick();
+    f.restore();
+    let bytes!: Buffer;
+    vi.spyOn(f.channel, "write").mockImplementation(((value: Buffer) => {
+      bytes = value;
+      throw new Error("socket write failed");
+    }) as typeof f.channel.write);
+    await expect(
+      f.terminal.input(
+        f.row.serverId,
+        1,
+        f.row.taskId,
+        1,
+        Uint8Array.of(65),
+        "key",
+      ),
+    ).rejects.toThrow("INPUT_RESULT_UNKNOWN");
+    expect([...bytes]).toEqual([65]);
+    expect(f.snapshot()).toMatchObject({
+      inputInFlight: 1,
+      inputUncertain: true,
+    });
+    f.closed();
+    await tick();
+    expect([...bytes]).toEqual([0]);
+    await f.terminal.forget(f.row.serverId, 1, f.row.taskId);
+  });
+  it("maps a write callback error to uncertain input, clears history explicitly and publishes bounded progress", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.ready();
+    f.accept();
+    await tick();
+    f.restore();
+    vi.spyOn(f.channel, "write").mockImplementation(((
+      _bytes: Buffer,
+      done: (error: Error) => void,
+    ) => {
+      done(new Error("write failed"));
+      return true;
+    }) as typeof f.channel.write);
+    await expect(
+      f.terminal.input(
+        f.row.serverId,
+        1,
+        f.row.taskId,
+        1,
+        Uint8Array.of(65),
+        "key",
+      ),
+    ).rejects.toThrow("INPUT_RESULT_UNKNOWN");
+    expect(f.snapshot().inputInFlight).toBe(0);
+    const token = crypto.randomUUID(),
+      frozen = f.terminal.freeze(f.row.serverId, 1, f.row.taskId, token, true);
+    f.terminal.acknowledge(
+      f.row.serverId,
+      1,
+      f.row.taskId,
+      token,
+      frozen.endOffset,
+    );
+    await vi.advanceTimersByTimeAsync(251);
+    f.terminal.sessionChanged(crypto.randomUUID(), 1, false);
+    f.terminal.sessionChanged(f.row.serverId, 1, true);
+    expect(f.terminal.hasActive).toBe(true);
+    f.closed();
+    await f.terminal.settled();
+    expect(f.terminal.hasActive).toBe(false);
+    await f.terminal.forget(f.row.serverId, 1, f.row.taskId);
+  });
+  it("opens xterm80x24 only after durable intent, gates input through restore and records exit/close separately", async () => {
+    const f = fixture();
+    await f.ready();
+    expect(f.windows).toEqual([
+      { term: "xterm-256color", cols: 80, rows: 24, width: 0, height: 0 },
+    ]);
+    expect(f.saved[0]).toMatchObject({ phase: "dispatching", kind: "pty" });
+    f.accept();
+    await tick();
+    await expect(
+      f.terminal.input(
+        f.row.serverId,
+        1,
+        f.row.taskId,
+        1,
+        new Uint8Array([65]),
+        "key",
+      ),
+    ).rejects.toThrow("RESTORE_REQUIRED");
+    f.restore();
+    f.terminal.resize(f.row.serverId, 1, f.row.taskId, { cols: 120, rows: 36 });
+    expect(f.channel.setWindow).toHaveBeenCalledExactlyOnceWith(36, 120, 0, 0);
+    f.channel.emit("data", Buffer.from("prompt"));
+    const first = f.terminal.read(f.row.serverId, 1, f.row.taskId, 0);
+    expect(new TextDecoder().decode(first.frames[0]!.bytes)).toBe("prompt");
+    f.channel.emit("exit", 0);
+    expect(f.snapshot().execution.receipt.phase).toBe("running");
+    f.closed();
+    await tick();
+    expect(f.snapshot().execution).toMatchObject({
+      receipt: { phase: "exited", exitCode: 0, channelClosed: true },
+      active: false,
+      recordPending: false,
+    });
+    expect(JSON.stringify(f.saved)).not.toContain("prompt");
+  });
+  it("retains pending input bytes after a10s callback timeout and never zeros or resends a still-owned buffer", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    await f.ready();
+    f.accept();
+    await tick();
+    f.restore();
+    let callback!: () => void, held!: Buffer;
+    const write = vi.spyOn(f.channel, "write").mockImplementation(((
+      bytes: Buffer,
+      done: () => void,
+    ) => {
+      held = bytes;
+      callback = done;
+      return false;
+    }) as typeof f.channel.write);
+    const pending = f.terminal.input(
+      f.row.serverId,
+      1,
+      f.row.taskId,
+      1,
+      new Uint8Array([65, 66]),
+      "key",
+    );
+    const failure = expect(pending).rejects.toThrow("INPUT_RESULT_UNKNOWN");
+    await vi.advanceTimersByTimeAsync(10000);
+    await failure;
+    expect([...held]).toEqual([65, 66]);
+    expect(f.snapshot()).toMatchObject({
+      inputInFlight: 2,
+      inputUncertain: true,
+      uiReady: false,
+      nextInputSequence: 2,
+    });
+    const token = crypto.randomUUID(),
+      freeze = f.terminal.freeze(f.row.serverId, 1, f.row.taskId, token);
+    expect(() =>
+      f.terminal.acknowledge(
+        f.row.serverId,
+        1,
+        f.row.taskId,
+        token,
+        freeze.endOffset,
+      ),
+    ).toThrow("REQUEST_BUSY");
+    callback();
+    expect([...held]).toEqual([0, 0]);
+    expect(f.snapshot().inputInFlight).toBe(0);
+    f.terminal.acknowledge(
+      f.row.serverId,
+      1,
+      f.row.taskId,
+      token,
+      freeze.endOffset,
+    );
+    expect(write).toHaveBeenCalledOnce();
+    f.closed();
+    await tick();
+  });
+  it("settles abandoned input ownership when the execution socket closes even without a channel-close callback", async () => {
+    const f = fixture();
+    await f.ready();
+    f.accept();
+    await tick();
+    f.restore();
+    let held!: Buffer;
+    vi.spyOn(f.channel, "write").mockImplementation(((bytes: Buffer) => {
+      held = bytes;
+      return false;
+    }) as typeof f.channel.write);
+    const pending = f.terminal.input(
+      f.row.serverId,
+      1,
+      f.row.taskId,
+      1,
+      new Uint8Array([3]),
+      "key",
+    );
+    const failure = expect(pending).rejects.toThrow("INPUT_RESULT_UNKNOWN");
+    f.socketClosed();
+    await failure;
+    await tick();
+    expect([...held]).toEqual([0]);
+    expect(f.snapshot()).toMatchObject({
+      execution: { active: false, receipt: { phase: "result_unknown" } },
+      inputInFlight: 0,
+      uiReady: false,
+    });
+  });
+  it("never requests a shell on storage failure and preserves unknown after an explicit local close", async () => {
+    const f = fixture({ storageFailure: true });
+    await f.ready();
+    await tick();
+    expect(f.windows).toEqual([]);
+    f.socketClosed();
+    await tick();
+    expect(f.snapshot().execution).toMatchObject({
+      receipt: { phase: "cancelled_not_sent" },
+      recordError: true,
+      active: false,
+    });
+    const g = fixture();
+    await g.ready();
+    g.accept();
+    await tick();
+    g.restore();
+    g.terminal.close(g.row.serverId, 1, g.row.taskId);
+    expect(g.channel.close).toHaveBeenCalledOnce();
+    g.channel.emit("exit", 0);
+    g.closed();
+    await tick();
+    expect(g.snapshot().execution.receipt).toMatchObject({
+      phase: "result_unknown",
+      exitCode: 0,
+    });
+    await g.terminal.forget(g.row.serverId, 1, g.row.taskId);
+    g.channel.emit("data", Buffer.from("late ignored"));
+    expect(g.terminal.snapshot(g.row.serverId, 1).rows).toEqual([]);
+  });
 });
 
-it('keeps PTY input alive through record failure and reconciles metadata without creating or promoting a shell',async()=>{
- const options={storageFailure:false},f=fixture(options);await f.ready();f.accept();await tick();f.restore();options.storageFailure=true;f.channel.emit('exit',3);await tick();expect(f.snapshot().execution.recordError).toBe(true);await f.terminal.input(f.row.serverId,1,f.row.taskId,1,new Uint8Array([65]),'key');options.storageFailure=false;await f.terminal.reconcileStorage([]);expect(f.snapshot().execution).toMatchObject({receipt:{phase:'running',exitCode:3},recordError:false,active:true});await f.terminal.reconcileStorage([{taskId:f.row.taskId,fromPhase:'running'}]);await f.terminal.input(f.row.serverId,1,f.row.taskId,2,new Uint8Array([66]),'key');f.closed();await tick();expect(f.snapshot().execution.receipt).toMatchObject({phase:'result_unknown',recoveryUncertain:true,exitCode:3});expect(f.windows).toHaveLength(1);
+it("keeps PTY input alive through record failure and reconciles metadata without creating or promoting a shell", async () => {
+  const options = { storageFailure: false },
+    f = fixture(options);
+  await f.ready();
+  f.accept();
+  await tick();
+  f.restore();
+  options.storageFailure = true;
+  f.channel.emit("exit", 3);
+  await tick();
+  expect(f.snapshot().execution.recordError).toBe(true);
+  await f.terminal.input(
+    f.row.serverId,
+    1,
+    f.row.taskId,
+    1,
+    new Uint8Array([65]),
+    "key",
+  );
+  options.storageFailure = false;
+  await f.terminal.reconcileStorage([]);
+  expect(f.snapshot().execution).toMatchObject({
+    receipt: { phase: "running", exitCode: 3 },
+    recordError: false,
+    active: true,
+  });
+  await f.terminal.reconcileStorage([
+    { taskId: f.row.taskId, fromPhase: "running" },
+  ]);
+  await f.terminal.input(
+    f.row.serverId,
+    1,
+    f.row.taskId,
+    2,
+    new Uint8Array([66]),
+    "key",
+  );
+  f.closed();
+  await tick();
+  expect(f.snapshot().execution.receipt).toMatchObject({
+    phase: "result_unknown",
+    recoveryUncertain: true,
+    exitCode: 3,
+  });
+  expect(f.windows).toHaveLength(1);
 });
 
-it('does not mistake ssh2 socket-loss close notification for an observed PTY channel close',async()=>{const f=fixture();await f.ready();f.accept();await tick();f.restore();f.channel.emit('exit',0);f.socketClosed();f.channel.emit('close');await tick();expect(f.snapshot().execution).toMatchObject({receipt:{phase:'result_unknown',exitCode:0,exitObserved:true,channelClosed:false},active:false});});
+it("does not mistake ssh2 socket-loss close notification for an observed PTY channel close", async () => {
+  const f = fixture();
+  await f.ready();
+  f.accept();
+  await tick();
+  f.restore();
+  f.channel.emit("exit", 0);
+  f.socketClosed();
+  f.channel.emit("close");
+  await tick();
+  expect(f.snapshot().execution).toMatchObject({
+    receipt: {
+      phase: "result_unknown",
+      exitCode: 0,
+      exitObserved: true,
+      channelClosed: false,
+    },
+    active: false,
+  });
+});
 
-it('discards PTY history at session end and rejects stale display restoration and late output',async()=>{const f=fixture();await f.ready();f.accept();await tick();f.restore();f.channel.emit('data',Buffer.from('ephemeral screen'));expect(f.terminal.read(f.row.serverId,1,f.row.taskId,0).frames).toHaveLength(1);f.terminal.sessionChanged(f.row.serverId,1,false);f.channel.emit('data',Buffer.from('late secret'));expect(()=>f.terminal.freeze(f.row.serverId,1,f.row.taskId,crypto.randomUUID())).toThrow('TOKEN_EXPIRED');expect(()=>f.terminal.read(f.row.serverId,1,f.row.taskId,0)).toThrow('TOKEN_EXPIRED');expect(f.snapshot().uiReady).toBe(false);f.closed();await tick();await f.terminal.forget(f.row.serverId,1,f.row.taskId);});
+it("discards PTY history at session end and rejects stale display restoration and late output", async () => {
+  const f = fixture();
+  await f.ready();
+  f.accept();
+  await tick();
+  f.restore();
+  f.channel.emit("data", Buffer.from("ephemeral screen"));
+  expect(
+    f.terminal.read(f.row.serverId, 1, f.row.taskId, 0).frames,
+  ).toHaveLength(1);
+  f.terminal.sessionChanged(f.row.serverId, 1, false);
+  f.channel.emit("data", Buffer.from("late secret"));
+  expect(() =>
+    f.terminal.freeze(f.row.serverId, 1, f.row.taskId, crypto.randomUUID()),
+  ).toThrow("TOKEN_EXPIRED");
+  expect(() => f.terminal.read(f.row.serverId, 1, f.row.taskId, 0)).toThrow(
+    "TOKEN_EXPIRED",
+  );
+  expect(f.snapshot().uiReady).toBe(false);
+  f.closed();
+  await tick();
+  await f.terminal.forget(f.row.serverId, 1, f.row.taskId);
+});

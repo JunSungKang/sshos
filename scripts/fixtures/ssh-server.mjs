@@ -1,3 +1,4 @@
+import {metadataCommand} from './metadata-commands.mjs';
 import { fixtureKey } from './keys.mjs';
 import ssh2 from 'ssh2';
 import * as fs from 'node:fs/promises';
@@ -19,7 +20,7 @@ export async function startSSHFixture(directory, options = {}) {
   };
   const status = ssh2.utils.sftp.STATUS_CODE; const host = fixtureKey();
   const pending=new Set();
-  const connections = new Set(); const metrics = { authenticationRequests: 0, writes:0,renames:0,commands: [], ptyRequests:[],shells:0,windowChanges:[],readDirs: 0, openedPaths: [], mutations:[] };
+  const connections = new Set(); const metrics = { authenticationRequests: 0, writes:0,renames:0,commands: [], metadataCommands:[], ptyRequests:[],shells:0,windowChanges:[],readDirRequests:0,readDirs: 0, openedPaths: [], mutations:[] };
   const server = new ssh2.Server({ hostKeys: [host.private] }, connection => {
     connections.add(connection); connection.on('close', () => connections.delete(connection)); connection.on('error', () => {});
     connection.on('authentication', ctx => { metrics.authenticationRequests++; if (ctx.method === 'password' && ctx.username === 'fixture' && ctx.password === 'test-only') ctx.accept(); else ctx.reject(['password']); });
@@ -28,7 +29,7 @@ export async function startSSHFixture(directory, options = {}) {
       session.on('pty',(acceptPTY,rejectPTY,info)=>{metrics.ptyRequests.push(info);if(options.shell)acceptPTY();else rejectPTY();});
       session.on('window-change',(acceptWindow,_rejectWindow,info)=>{metrics.windowChanges.push(info);acceptWindow?.();});
       session.on('shell',(acceptShell,rejectShell)=>{metrics.shells++;if(options.shell)options.shell({accept:acceptShell,reject:rejectShell,session});else rejectShell();});
-      session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(info.command==="u=$(id -u) && printf '%s\\n' \"$u\" && getent passwd \"$u\"" && !options.denyHome){const stream=acceptExec();stream.write('1000\nfixture:x:1000:1000::/home/fixture:/bin/sh\n');stream.exit(0);stream.end();return;}if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
+      session.on('exec',(acceptExec,rejectExec,info)=>{metrics.commands.push(info.command);if(info.command==="u=$(id -u) && printf '%s\\n' \"$u\" && getent passwd \"$u\"" && !options.denyHome){const stream=acceptExec();stream.write('1000\nfixture:x:1000:1000::/home/fixture:/bin/sh\n');stream.exit(0);stream.end();return;}const action=metadataCommand(info.command,resolveRemote,options,metrics);if(action){metrics.metadataCommands.push(info.command);const stream=acceptExec();const operation=(async()=>{if(options.metadataDelayMs)await new Promise(resolve=>setTimeout(resolve,options.metadataDelayMs));return action();})().then(bytes=>{stream.write(bytes);stream.exit(0);stream.end();},()=>{stream.stderr.write('fixture command failed');stream.exit(1);stream.end();}).finally(()=>pending.delete(operation));pending.add(operation);return;}if(options.exec)options.exec({command:info.command,accept:acceptExec,reject:rejectExec,session});else rejectExec();});
       session.on('sftp', acceptSFTP => {
         const stream = acceptSFTP(); const handles = new Map();
         if (options.hardlink || options.atomicRename) {
@@ -57,6 +58,7 @@ export async function startSSHFixture(directory, options = {}) {
         for (const [name,method] of [['LSTAT','lstat'],['STAT','stat']]) stream.on(name,(id,path) => run(id,async () => stream.attrs(id,attrs(await fs[method](resolveRemote(path))))));
         stream.on('OPENDIR',(id,path) => run(id,async () => { metrics.readDirs++; stream.handle(id,addHandle({ kind:'dir', path:resolveRemote(path), dir:await fs.opendir(resolveRemote(path)) })); }));
         stream.on('READDIR',(id,handle) => run(id,async () => {
+          metrics.readDirRequests++;if(options.metadataDelayMs)await new Promise(resolve=>setTimeout(resolve,options.metadataDelayMs));
           const value = getHandle(handle); if (value.kind !== 'dir') throw new Error('Wrong handle');
           const names = [];
           for (let i=0;i<64;i++) { const entry = await value.dir.read(); if (!entry) break; const stat = await fs.lstat(resolve(value.path,entry.name)); names.push({ filename:entry.name, longname:'', attrs:attrs(stat) }); }
