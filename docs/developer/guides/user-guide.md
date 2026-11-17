@@ -4,7 +4,9 @@ The application UI currently uses Korean labels. English descriptions below expl
 
 ## Connect
 
-Open the connection manager, register a display name, host, port, username and authentication method, then connect. Use a password or a supported private-key file; enter its passphrase if encrypted. Credential storage is off by default.
+Open Connect to see saved servers as cards. Choose `서버 추가` to open the registration popup, enter a display name, host, port, username and authentication method, then save. Use a password or a supported private-key file; enter its passphrase when connecting if encrypted. Credential storage is off by default. The grid shows three to five cards per row according to window width; scroll to reach additional rows. Up to ten profiles can be saved. `목록 새로고침` rereads local saved profiles and does not connect to a server.
+
+Each card identifies its endpoint, account, authentication method and observed connection state. Choose Connect on a disconnected card; a connected card offers `작업 공간 열기` and a separate Disconnect action. Edit opens the same popup with saved values. Cancel or Escape discards the popup draft without changing saved information. Save errors retain the draft; an in-progress save must finish before the popup closes. While connected, only the display name can be edited. Deleting a profile requires confirmation and never deletes remote files; live connections and unresolved work continue to restrict profile changes.
 
 For a new endpoint, compare the displayed SHA-256 host fingerprint with a trusted source before approving. sshOS closes the observation socket before authentication, saves approved trust and reconnects to verify it. A changed host key blocks authentication. Review and remove old trust in Settings only after confirming why it changed; there is no ignore-key-change connection mode.
 
@@ -12,7 +14,7 @@ The initial supported server is Ubuntu 24.04. If the OS cannot be read, a sessio
 
 ## Desktop and Files
 
-Use Connect, sFTP and Settings in the left sidebar. Choose Desktop or Console at the top right. The bottom-left area identifies the selected server and its SSH response state. Select another server explicitly in the header; existing operations retain their original target.
+Use Connect, sFTP and Settings in the left sidebar. Choose Desktop or Console at the top right. Select a server in the sidebar's `작업 공간` list; its button highlights and the header identifies the current account and endpoint. The clear button deselects the workspace while retaining connections and existing work. Switching servers retains the current mode and existing terminals/transfers; it does not connect, inject shell input or retarget accepted operations. The bottom-left area identifies the selected server and its SSH response state.
 
 After authentication, Desktop shows the actual account home contents as icons. Double-click a folder or select it and press Enter to open an explorer window. Inside that explorer, activate a folder to navigate. Desktop remains at home. A denied or unmappable home lookup explains the failure and offers an explicit SSH-start-directory fallback, labeled as such. Use the task strip to restore file/viewer/output windows. Minimizing a view does not cancel its operation.
 

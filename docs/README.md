@@ -15,7 +15,7 @@ Documentation is organized by audience and purpose, following the same directory
 - [Developer Guide](developer/README.md): recommended reading order.
 - [sshOS Onboarding](developer/onboarding/sshos-onboarding.md): stack, commands and code entry points.
 - [System Architecture](developer/architecture/system-architecture.md): process boundaries, SSH roles and data flows.
-- [Desktop Interaction](developer/architecture/desktop-interaction.md): window, focus and server identity rules.
+- [Desktop Interaction](developer/architecture/desktop-interaction.md): connection cards, profile popups, workspace selection, window focus and server identity rules.
 - [Installation](developer/guides/installation.md), [User Guide](developer/guides/user-guide.md), [Operation](developer/guides/operation.md) and [Troubleshooting](developer/guides/troubleshooting.md).
 - [Documentation Maintenance](developer/guides/documentation-maintenance.md): ownership, migration and validation.
 

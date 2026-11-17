@@ -7,9 +7,10 @@ This area explains product behavior, implementation boundaries, local developmen
 ## Recommended Reading Order
 
 1. [sshOS Onboarding](onboarding/sshos-onboarding.md)
-3. [System Architecture](architecture/system-architecture.md)
+2. [System Architecture](architecture/system-architecture.md)
+3. [Desktop Interaction](architecture/desktop-interaction.md): saved connection cards, profile dialogs and sidebar workspace selection.
 4. [Installation](guides/installation.md) and [User Guide](guides/user-guide.md)
-7. [Packaging](guides/packaging.md), [Operation](guides/operation.md) and [Troubleshooting](guides/troubleshooting.md)
+5. [Packaging](guides/packaging.md), [Operation](guides/operation.md) and [Troubleshooting](guides/troubleshooting.md)
 
 ## Developer Checklist
 
