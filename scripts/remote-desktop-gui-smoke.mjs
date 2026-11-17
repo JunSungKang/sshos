@@ -1,3 +1,5 @@
+import { checkWebRTCIsolation } from "./fixtures/webrtc-canary.mjs";
+import { deflateSync } from "node:zlib";
 import { _electron as electron, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
@@ -15,10 +17,65 @@ const base = localPath(`fixtures/remote-desktop-${randomUUID()}`),
 Object.assign(process.env, env);
 const { default: executablePath } = await import("electron");
 let application, fixture;
-const png = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5mQAAAAASUVORK5CYII=",
-  "base64",
-);
+function crc(bytes) {
+  let value = 0xffffffff;
+  for (const byte of bytes) {
+    value ^= byte;
+    for (let bit = 0; bit < 8; bit++)
+      value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
+function chunk(name, data) {
+  const prefix = Buffer.alloc(8);
+  prefix.writeUInt32BE(data.length);
+  prefix.write(name, 4);
+  const sum = Buffer.alloc(4);
+  sum.writeUInt32BE(crc(Buffer.concat([Buffer.from(name), data])));
+  return Buffer.concat([prefix, data, sum]);
+}
+function makePNG(width, height, quadrants = false, noise = false) {
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  header[9] = 6;
+  const row = width * 4 + 1;
+  const pixels = Buffer.alloc(row * height);
+  let seed = 0x12345678;
+  const random = () => {
+    seed ^= seed << 13;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    return seed >>> 24;
+  };
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const p = y * row + x * 4 + 1;
+      const color = noise
+        ? [random(), random(), random()]
+        : quadrants
+          ? [
+              [227, 0, 0],
+              [0, 160, 0],
+              [0, 0, 227],
+              [227, 227, 0],
+            ][Number(y >= height / 2) * 2 + Number(x >= width / 2)]
+          : [8, 127, 120];
+      pixels[p] = color[0];
+      pixels[p + 1] = color[1];
+      pixels[p + 2] = color[2];
+      pixels[p + 3] = 255;
+    }
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(pixels)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+const png = makePNG(1, 1);
 try {
   await fs.mkdir(join(base, "etc"), { recursive: true });
   await fs.writeFile(
@@ -43,6 +100,11 @@ try {
     join(base, "home/fixture/site/index.html"),
     '<html><head><link rel="stylesheet" href="assets/style.css"></head><body><h1>Remote document</h1><p id="script">script off</p><p id="authority"></p><img id="local" src="assets/picture.png"><img id="outside" src="../shared.png"><script src="assets/main.js"></script></body></html>',
   );
+  await fs.writeFile(join(base, "home/fixture/photo.html"), png);
+  await fs.writeFile(
+    join(base, "home/fixture/large.json"),
+    Buffer.alloc(17 * 1024 * 1024, 65),
+  );
   fixture = await startSSHFixture(base, {
     shell: ({ accept }) => {
       const stream = accept();
@@ -59,7 +121,9 @@ try {
   });
   const page = await application.firstWindow();
   page.setDefaultTimeout(15000);
-  await application.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1600,1000));
+  await application.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0].setContentSize(1600, 1000),
+  );
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page
     .getByTestId("engine-state")
@@ -124,6 +188,12 @@ try {
     fixture.metrics.commands.filter((c) => c.startsWith("/usr/bin/rm ")).length,
     1,
   );
+  await item("photo.html").dblclick();
+  const imageWindow = page.getByRole("region", {
+    name: /^이미지.*Remote Desktop$/,
+  });
+  await expect(imageWindow.locator("canvas")).toBeVisible();
+  await imageWindow.getByRole("button", { name: /^이미지.*닫기$/ }).click();
   await item("site").dblclick();
   const explorer = page.getByRole("region", {
     name: "파일 · Remote Desktop",
@@ -257,6 +327,34 @@ try {
   await expect
     .poll(async () => (await visible()).some((v) => v.visible))
     .toBe(true);
+  await expect.poll(() => inspect("document.readyState")).toBe("complete");
+  await expect
+    .poll(() => inspect("document.body.dataset.network"))
+    .toBe("blocked");
+  const beforeBudget = fixture.metrics.readBytes;
+  const budgetStatuses = await inspect(
+    `Promise.all(Array.from({length:4},()=>fetch('/large.json').then(async response=>{const bytes=await response.arrayBuffer();return {status:response.status,bytes:bytes.byteLength};})))`,
+  );
+  assert.equal(budgetStatuses.filter((row) => row.status === 200).length, 3);
+  assert.equal(budgetStatuses.filter((row) => row.status === 403).length, 1);
+  const afterBudget = fixture.metrics.readBytes;
+  assert.equal(afterBudget - beforeBudget, 51 * 1024 * 1024);
+  const denied = await inspect(
+    `Promise.all(Array.from({length:12},()=>fetch('/large.json').then(async response=>{await response.arrayBuffer();return response.status;})))`,
+  );
+  assert.ok(denied.every((status) => status === 403));
+  assert.equal(fixture.metrics.readBytes, afterBudget);
+  const webBudget = {
+    admittedBytes: afterBudget - beforeBudget,
+    repeatedDeniedWithoutContentIO: denied.length,
+  };
+  const targetURL = await application.evaluate(({ webContents }) =>
+    webContents
+      .getAllWebContents()
+      .find((row) => row.getURL().startsWith("sshos-web:"))
+      .getURL(),
+  );
+  const webRTC = await checkWebRTCIsolation(application, targetURL);
   assert.equal(fixture.metrics.readDirs, 0);
   assert.ok(
     fixture.metrics.openedPaths.includes("/home/fixture/site/assets/style.css"),
@@ -278,6 +376,8 @@ try {
     .toBe(false);
   const report = {
     status: "pass",
+    webRTC,
+    webBudget,
     assertions: [
       "Desktop right-click Open/Delete/Rename/Properties menu",
       "live SSH properties",

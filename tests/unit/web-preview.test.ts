@@ -1,10 +1,16 @@
+import { WebReadBudget } from "../../src/main/web-preview/read-budget";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   resourcePath,
   previewURL,
 } from "../../src/main/web-preview/resource-path";
 import { WebContentReader } from "../../src/main/web-preview/content-reader";
-const state = vi.hoisted(() => ({ views: [] as any[], sessions: [] as any[] }));
+const state = vi.hoisted(() => ({
+  views: [] as any[],
+  sessions: [] as any[],
+  policyFailure: false,
+  policyBarrier: null as Promise<void> | null,
+}));
 vi.mock("electron", async () => {
   const { EventEmitter } = await import("node:events");
   class WebContentsView {
@@ -16,6 +22,17 @@ vi.mock("electron", async () => {
         setWindowOpenHandler(fn: any) {
           this.open = fn;
         },
+        debugger: Object.assign(new EventEmitter(), {
+          attach: vi.fn(),
+          isAttached: () => true,
+          sendCommand: vi.fn(async () => {
+            if (state.policyFailure) throw Error("failure");
+            if (state.policyBarrier) await state.policyBarrier;
+            return { identifier: "policy" };
+          }),
+        }),
+        setWebRTCIPHandlingPolicy: vi.fn(),
+        isDestroyed: () => false,
         loadURL: vi.fn().mockResolvedValue(undefined),
         close: vi.fn(),
         open: null,
@@ -87,6 +104,7 @@ function fixture() {
   const id = crypto.randomUUID(),
     token = crypto.randomUUID();
   const connections: any = {
+    views: () => [{ serverId: id, generation: 1, sftp: "available" }],
     sessionCapability: (input: string) => {
       if (!connected || input !== token) throw Error("CONNECTION_LOST");
       return { serverId: id, generation: 1 };
@@ -122,6 +140,7 @@ function fixture() {
   );
   return {
     service,
+    connections,
     gateway,
     desktop,
     id,
@@ -136,6 +155,8 @@ function fixture() {
   };
 }
 beforeEach(() => {
+  state.policyFailure = false;
+  state.policyBarrier = null;
   state.views.length = 0;
   state.sessions.length = 0;
   vi.restoreAllMocks();
@@ -202,7 +223,7 @@ describe("isolated remote web resource resolution", () => {
     await f.open();
     const ses = state.sessions[0],
       view = state.views[0],
-      url = view.webContents.loadURL.mock.calls[0][0];
+      url = view.webContents.loadURL.mock.calls.at(-1)[0];
     const done = vi.fn();
     ses.filter({ url }, done);
     expect(done).toHaveBeenLastCalledWith({ cancel: false });
@@ -223,7 +244,7 @@ describe("isolated remote web resource resolution", () => {
     const f = fixture();
     await f.open();
     const ses = state.sessions[0],
-      url = state.views[0].webContents.loadURL.mock.calls[0][0];
+      url = state.views[0].webContents.loadURL.mock.calls.at(-1)[0];
     vi.spyOn(WebContentReader.prototype, "read").mockResolvedValue(
       Buffer.from("<h1>remote</h1>"),
     );
@@ -255,7 +276,7 @@ describe("isolated remote web resource resolution", () => {
       win = await f.open(),
       old = state.views[0],
       ses = state.sessions[0],
-      url = old.webContents.loadURL.mock.calls[0][0];
+      url = old.webContents.loadURL.mock.calls.at(-1)[0];
     await expect(
       f.service.handle("web:configure", {
         id: win.windowId,
@@ -364,7 +385,7 @@ describe("isolated remote web resource resolution", () => {
     const f = fixture();
     await f.open();
     const ses = state.sessions[0],
-      url = state.views[0].webContents.loadURL.mock.calls[0][0];
+      url = state.views[0].webContents.loadURL.mock.calls.at(-1)[0];
     vi.spyOn(WebContentReader.prototype, "read").mockResolvedValue(
       Buffer.alloc(0),
     );
@@ -375,60 +396,92 @@ describe("isolated remote web resource resolution", () => {
     const g = fixture();
     await g.open();
     const current = state.sessions.at(-1),
-      ownURL = state.views.at(-1).webContents.loadURL.mock.calls[0][0];
-    vi.mocked(WebContentReader.prototype.read).mockResolvedValue(
-      Buffer.alloc(17 * 1024 * 1024),
-    );
-    for (let i = 0; i < 3; i++)
+      ownURL = state.views.at(-1).webContents.loadURL.mock.calls.at(-1)[0];
+    vi.mocked(WebContentReader.prototype.read)
+      .mockClear()
+      .mockImplementation(async (_s, _g, _p, _a, _c, budget) => {
+        budget!.reserve(16 * 1024 * 1024);
+        return Buffer.alloc(16 * 1024 * 1024);
+      });
+    for (let i = 0; i < 4; i++)
       expect((await current.handler(new Request(ownURL))).status).toBe(200);
     expect((await current.handler(new Request(ownURL))).status).toBe(403);
+    expect(WebContentReader.prototype.read).toHaveBeenCalledTimes(4);
     g.service.destroy();
   });
 });
-describe("SFTP web resource reader identity and backpressure", () => {
-  it("reads sequenced bounded frames, waits for the shared pool, and always cancels its lease", async () => {
-    let n = 0;
-    const gateway = {
-      request: vi.fn(async (r) =>
-        r.action === "viewer:next"
-          ? ++n === 1
-            ? {
-                viewerId: r.viewerId,
-                readGeneration: 1,
-                sequence: 0,
-                status: "waiting",
-                phase: "queued",
-              }
-            : n === 2
-              ? {
-                  viewerId: r.viewerId,
-                  readGeneration: 1,
-                  sequence: 0,
-                  status: "chunk",
-                  bytes: Buffer.from("hello"),
-                  metadata: {
-                    path: "/home/a.html",
-                    size: 5,
-                    mtime: 1,
-                    readAt: null,
-                  },
-                }
-              : {
-                  viewerId: r.viewerId,
-                  readGeneration: 1,
-                  sequence: 1,
-                  status: "end",
-                  metadata: {
-                    path: "/home/a.html",
-                    size: 5,
-                    mtime: 1,
-                    readAt: new Date().toISOString(),
-                  },
-                }
-          : undefined,
-      ),
-    } as unknown as EngineGateway;
-    const reader = new WebContentReader(gateway);
+function resourceGateway(
+  size: number,
+  options: {
+    wait?: boolean;
+    failure?: boolean;
+    growth?: boolean;
+    barrier?: Promise<void>;
+    onOpen?: () => void;
+    onClose?: () => void;
+  } = {},
+) {
+  const rows = new Map<string, { offset: number }>();
+  let waiting = options.wait ?? false;
+  let actualBytes = 0;
+  const metadata = { path: "/home/a.html", size, mtime: 1, readAt: null };
+  const request = vi.fn(async (r: any) => {
+    if (r.action === "viewer:open") {
+      options.onOpen?.();
+      await options.barrier;
+      rows.set(r.viewerId, { offset: 0 });
+      return;
+    }
+    if (r.action === "viewer:cancel") {
+      options.onClose?.();
+      rows.delete(r.viewerId);
+      return;
+    }
+    if (r.action === "viewer:peek") {
+      if (waiting) {
+        waiting = false;
+        return null;
+      }
+      return metadata;
+    }
+    if (r.action === "viewer:next") {
+      if (options.failure) throw Error("CONNECTION_LOST");
+      const row = rows.get(r.viewerId)!;
+      const remaining = size + (options.growth ? 1 : 0) - row.offset;
+      if (remaining <= 0)
+        return {
+          viewerId: r.viewerId,
+          readGeneration: 1,
+          sequence: r.sequence,
+          status: "end",
+          metadata,
+        };
+      const count = Math.min(65536, remaining);
+      row.offset += count;
+      actualBytes += count;
+      return {
+        viewerId: r.viewerId,
+        readGeneration: 1,
+        sequence: r.sequence,
+        status: "chunk",
+        bytes: Buffer.alloc(count, 65),
+        metadata,
+      };
+    }
+  });
+  return {
+    gateway: { request } as unknown as EngineGateway,
+    request,
+    get actualBytes() {
+      return actualBytes;
+    },
+  };
+}
+describe("SFTP resource admission and shared byte reservations", () => {
+  it("waits for metadata without consuming data and reserves bytes before first next", async () => {
+    const f = resourceGateway(5, { wait: true }),
+      reader = new WebContentReader(f.gateway),
+      budget = new WebReadBudget(5);
     expect(
       await reader.read(
         "s",
@@ -436,15 +489,161 @@ describe("SFTP web resource reader identity and backpressure", () => {
         "/home/a.html",
         new AbortController().signal,
         () => {},
+        budget,
       ),
-    ).toEqual(Buffer.from("hello"));
-    expect(gateway.request).toHaveBeenLastCalledWith(
+    ).toEqual(Buffer.alloc(5, 65));
+    expect(f.actualBytes).toBe(5);
+    const opens = f.request.mock.calls.length;
+    await expect(
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+        budget,
+      ),
+    ).rejects.toThrow("FILE_LIMIT");
+    expect(f.request).toHaveBeenCalledTimes(opens);
+  });
+  it("atomically reserves shared remaining bytes across concurrent reads and blocks all later file IO", async () => {
+    const f = resourceGateway(4),
+      reader = new WebContentReader(f.gateway),
+      budget = new WebReadBudget(4);
+    const results = await Promise.allSettled(
+      [1, 2].map(() =>
+        reader.read(
+          "s",
+          1,
+          "/home/a.html",
+          new AbortController().signal,
+          () => {},
+          budget,
+        ),
+      ),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(f.actualBytes).toBe(4);
+    const before = f.request.mock.calls.length;
+    for (let i = 0; i < 20; i++)
+      await expect(
+        reader.read(
+          "s",
+          1,
+          "/home/a.html",
+          new AbortController().signal,
+          () => {},
+          budget,
+        ),
+      ).rejects.toThrow("FILE_LIMIT");
+    expect(f.request).toHaveBeenCalledTimes(before);
+  });
+  it("never reads content for a file larger than the remaining load budget or file limit", async () => {
+    for (const size of [6, 21 * 1024 * 1024]) {
+      const f = resourceGateway(size),
+        reader = new WebContentReader(f.gateway);
+      await expect(
+        reader.read(
+          "s",
+          1,
+          "/home/a.html",
+          new AbortController().signal,
+          () => {},
+          new WebReadBudget(5),
+        ),
+      ).rejects.toThrow("FILE_LIMIT");
+      expect(f.actualBytes).toBe(0);
+      expect(
+        f.request.mock.calls.some(([r]) => r.action === "viewer:next"),
+      ).toBe(false);
+      expect(f.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: "viewer:cancel" }),
+      );
+    }
+  });
+  it("keeps failed reservations charged and cancels the opened reader without replay", async () => {
+    const f = resourceGateway(4, { failure: true }),
+      reader = new WebContentReader(f.gateway),
+      budget = new WebReadBudget(4);
+    await expect(
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+        budget,
+      ),
+    ).rejects.toThrow("CONNECTION_LOST");
+    const before = f.request.mock.calls.length;
+    await expect(
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+        budget,
+      ),
+    ).rejects.toThrow("FILE_LIMIT");
+    expect(f.request).toHaveBeenCalledTimes(before);
+  });
+  it("rejects bytes beyond the reserved metadata size", async () => {
+    const f = resourceGateway(4, { growth: true }),
+      reader = new WebContentReader(f.gateway);
+    await expect(
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+      ),
+    ).rejects.toThrow("FILE_LIMIT");
+    expect(f.request).toHaveBeenLastCalledWith(
       expect.objectContaining({ action: "viewer:cancel" }),
     );
   });
-  it("rejects cancellation/stale authority before dispatch without opening a remote file", async () => {
-    const gateway = { request: vi.fn() } as unknown as EngineGateway,
-      reader = new WebContentReader(gateway),
+  it("bounds active reads and pending requests without evicting existing work", async () => {
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => (release = resolve));
+    let active = 0,
+      maximum = 0;
+    const f = resourceGateway(0, {
+        barrier,
+        onOpen: () => {
+          active++;
+          maximum = Math.max(active, maximum);
+        },
+        onClose: () => active--,
+      }),
+      reader = new WebContentReader(f.gateway);
+    const pending = Array.from({ length: 34 }, () =>
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+      ),
+    );
+    await expect(
+      reader.read(
+        "s",
+        1,
+        "/home/a.html",
+        new AbortController().signal,
+        () => {},
+      ),
+    ).rejects.toThrow("REQUEST_BUSY");
+    release();
+    await Promise.all(pending);
+    expect(maximum).toBe(2);
+    expect(active).toBe(0);
+  });
+  it("refuses aborted/stale work before file open and validates reservation numbers", async () => {
+    const f = resourceGateway(0),
+      reader = new WebContentReader(f.gateway),
       abort = new AbortController();
     abort.abort();
     await expect(
@@ -455,79 +654,10 @@ describe("SFTP web resource reader identity and backpressure", () => {
         throw Error("TOKEN_EXPIRED");
       }),
     ).rejects.toThrow("TOKEN_EXPIRED");
-    expect(gateway.request).not.toHaveBeenCalled();
+    expect(f.request).not.toHaveBeenCalled();
+    for (const n of [-1, NaN, Infinity, 1.5, 9])
+      expect(() => new WebReadBudget(8).reserve(n)).toThrow("FILE_LIMIT");
   });
-});
-it("queues at most 32 waiting web resources and reserves two actual reads", async () => {
-  let release!: () => void;
-  const barrier = new Promise<void>((resolve) => (release = resolve));
-  let active = 0,
-    maximum = 0;
-  const gateway = {
-    request: vi.fn(async (r) => {
-      if (r.action === "viewer:open") {
-        active++;
-        maximum = Math.max(maximum, active);
-        await barrier;
-      }
-      if (r.action === "viewer:cancel") active--;
-      if (r.action === "viewer:next")
-        return {
-          viewerId: r.viewerId,
-          readGeneration: 1,
-          sequence: 0,
-          status: "end",
-          metadata: { path: "/home/a.html", size: 0, mtime: 1, readAt: null },
-        };
-    }),
-  } as unknown as EngineGateway;
-  const reader = new WebContentReader(gateway),
-    pending = Array.from({ length: 34 }, () =>
-      reader.read(
-        "s",
-        1,
-        "/home/a.html",
-        new AbortController().signal,
-        () => {},
-      ),
-    );
-  await expect(
-    reader.read("s", 1, "/home/a.html", new AbortController().signal, () => {}),
-  ).rejects.toThrow("REQUEST_BUSY");
-  release();
-  await Promise.all(pending);
-  expect(maximum).toBe(2);
-  expect(active).toBe(0);
-});
-it("cancels a started SFTP resource on read failure and rejects a stream over the byte budget", async () => {
-  let size = 0;
-  const gateway = {
-    request: vi.fn(async (r) => {
-      if (r.action === "viewer:next") {
-        size += 65536;
-        return {
-          viewerId: r.viewerId,
-          readGeneration: 1,
-          sequence: r.sequence,
-          status: "chunk",
-          bytes: Buffer.alloc(65536),
-          metadata: {
-            path: "/home/a.html",
-            size: 21 * 1024 * 1024,
-            mtime: 1,
-            readAt: null,
-          },
-        };
-      }
-    }),
-  } as unknown as EngineGateway;
-  const reader = new WebContentReader(gateway);
-  await expect(
-    reader.read("s", 1, "/home/a.html", new AbortController().signal, () => {}),
-  ).rejects.toThrow("FILE_LIMIT");
-  expect(gateway.request).toHaveBeenLastCalledWith(
-    expect.objectContaining({ action: "viewer:cancel" }),
-  );
 });
 
 it("restores the last presentation only while its capability remains valid", async () => {
@@ -568,4 +698,200 @@ it("restores an explicitly visible presentation after host focus and ignores ret
   expect(state.views[0].visible).toBe(true);
   f.service.closeWindow(win.windowId);
   expect(() => f.service.restore()).not.toThrow();
+});
+
+it("reports SFTP unavailability before opening a content preview without revoking SSH metadata", async () => {
+  const f = fixture();
+  f.connections.views = () => [
+    { serverId: f.id, generation: 1, sftp: "unavailable" },
+  ];
+  await expect(f.open()).rejects.toThrow("SFTP_UNAVAILABLE");
+  expect(state.views).toHaveLength(0);
+});
+
+it("fails closed on network-policy setup, removes failed desktop registration and closes detached/crashed previews", async () => {
+  const f = fixture();
+  state.policyFailure = true;
+  await expect(f.open()).rejects.toThrow("ASSET_DENIED");
+  expect(f.desktop.handle("desktop:getWindowSnapshot", undefined)).toEqual([]);
+  state.policyFailure = false;
+  const win = await f.open(),
+    view = state.views.at(-1);
+  view.webContents.debugger.emit("detach");
+  expect(view.webContents.close).toHaveBeenCalled();
+  expect(view.webContents.loadURL).toHaveBeenCalledTimes(2);
+  await f.service.handle("web:reload", win.windowId);
+  const next = state.views.at(-1);
+  next.webContents.emit("render-process-gone");
+  expect(next.webContents.close).toHaveBeenCalled();
+  f.service.destroy();
+});
+
+it("serializes reload/configure setup and prevents a closed setup from loading or disposing a replacement", async () => {
+  const f = fixture(),
+    first = await f.open();
+  let release!: () => void;
+  state.policyBarrier = new Promise<void>((resolve) => (release = resolve));
+  const old = f.service.handle("web:reload", first.windowId);
+  await vi.waitFor(() => expect(state.views.length).toBe(2));
+  await expect(f.service.handle("web:reload", first.windowId)).rejects.toThrow(
+    "REQUEST_BUSY",
+  );
+  await expect(
+    f.service.handle("web:configure", {
+      id: first.windowId,
+      root: "/home",
+      javascript: true,
+    }),
+  ).rejects.toThrow("REQUEST_BUSY");
+  f.desktop.handle("desktop:closeWindow", first.windowId);
+  f.service.closeWindow(first.windowId);
+  const rejected = expect(old).rejects.toThrow("ASSET_DENIED");
+  const replacement = f.open();
+  release();
+  await rejected;
+  const next = await replacement;
+  expect(state.views.at(-1).webContents.loadURL.mock.calls.at(-1)[0]).toContain(
+    "sshos-web:",
+  );
+  expect(await f.service.handle("web:get", next.windowId)).toMatchObject({
+    javascript: false,
+  });
+  f.service.destroy();
+});
+it("validates frame authority and waits without consuming reserved bytes on a waiting frame", async () => {
+  for (const fault of ["waiting", "identity", "path", "aborted"] as const) {
+    const f = resourceGateway(4),
+      original = f.request.getMockImplementation()!,
+      abort = new AbortController();
+    let waited = false;
+    f.request.mockImplementation(async (request) => {
+      if (request.action === "viewer:open" && fault === "aborted") {
+        const value = await original(request);
+        abort.abort();
+        return value;
+      }
+      if (request.action === "viewer:next" && fault === "waiting" && !waited) {
+        waited = true;
+        return {
+          viewerId: request.viewerId,
+          readGeneration: 1,
+          sequence: request.sequence,
+          status: "waiting",
+          phase: "reading",
+        };
+      }
+      const value: any = await original(request);
+      if (request.action === "viewer:next" && value && fault === "identity")
+        value.viewerId = crypto.randomUUID();
+      if (request.action === "viewer:next" && value && fault === "path")
+        value.metadata = { ...value.metadata, path: "/other" };
+      return value;
+    });
+    const promise = new WebContentReader(f.gateway).read(
+      "s",
+      1,
+      "/home/a.html",
+      abort.signal,
+      () => {},
+    );
+    if (fault === "waiting") expect(await promise).toEqual(Buffer.alloc(4, 65));
+    else
+      await expect(promise).rejects.toThrow(
+        fault === "identity"
+          ? "TOKEN_EXPIRED"
+          : fault === "path"
+            ? "PATH_CHANGED"
+            : "REQUEST_CANCELLED",
+      );
+  }
+});
+it("checks bound session identity and serves enabled-script CSP only after current read authority validation", async () => {
+  const f = fixture(),
+    win = await f.open();
+  await f.service.handle("web:configure", {
+    id: win.windowId,
+    root: "/home",
+    javascript: true,
+  });
+  vi.spyOn(WebContentReader.prototype, "read").mockImplementation(
+    async (_s, _g, _p, _a, check, budget) => {
+      check();
+      budget!.reserve(1);
+      return Buffer.from("x");
+    },
+  );
+  const ses = state.sessions.at(-1),
+    url = state.views.at(-1).webContents.loadURL.mock.calls.at(-1)[0],
+    response = await ses.handler(new Request(url));
+  expect(response.headers.get("Content-Security-Policy")).toContain(
+    "script-src 'self' 'unsafe-inline'",
+  );
+  f.connections.sessionCapability = () => ({
+    serverId: crypto.randomUUID(),
+    generation: 1,
+  });
+  await expect(f.service.handle("web:get", win.windowId)).rejects.toThrow(
+    "CONNECTION_LOST",
+  );
+  f.service.destroy();
+});
+it("rejects a late resource after revision change and restores prior configuration when policy setup fails", async () => {
+  const f = fixture(),
+    win = await f.open(),
+    ses = state.sessions[0],
+    url = state.views[0].webContents.loadURL.mock.calls.at(-1)[0];
+  const deferred = Promise.withResolvers<Buffer>();
+  vi.spyOn(WebContentReader.prototype, "read").mockImplementation(
+    async (_s, _g, _p, _a, check) => {
+      await deferred.promise;
+      check();
+      return Buffer.from("old");
+    },
+  );
+  const old = ses.handler(new Request(url));
+  await f.service.handle("web:reload", win.windowId);
+  deferred.resolve(Buffer.from("old"));
+  expect((await old).status).toBe(403);
+  state.policyFailure = true;
+  await expect(
+    f.service.handle("web:configure", {
+      id: win.windowId,
+      root: "/home",
+      javascript: true,
+    }),
+  ).rejects.toThrow("ASSET_DENIED");
+  expect(await f.service.handle("web:get", win.windowId)).toMatchObject({
+    javascript: false,
+    root: "/home",
+  });
+  state.policyFailure = false;
+  await f.service.handle("web:reload", win.windowId);
+  f.service.destroy();
+});
+it("bounds native renderer initialization and removes failed registration without loading remote content", async () => {
+  vi.useFakeTimers();
+  try {
+    const f = fixture();
+    const initial = state.views.length;
+    const open = f.open();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(state.views.length).toBe(initial + 1);
+    await open;
+    const win = (
+      f.desktop.handle("desktop:getWindowSnapshot", undefined) as any[]
+    )[0];
+    state.policyBarrier = new Promise(() => {});
+    const pending = f.service.handle("web:reload", win.windowId),
+      rejected = expect(pending).rejects.toThrow("ASSET_DENIED");
+    await vi.advanceTimersByTimeAsync(10001);
+    await rejected;
+    expect(state.views.at(-1).webContents.loadURL.mock.calls).toHaveLength(1);
+    f.service.destroy();
+    expect(f.desktop.handle("desktop:getWindowSnapshot", undefined)).toEqual(
+      [],
+    );
+  } finally {
+    vi.useRealTimers();
+  }
 });

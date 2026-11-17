@@ -30,6 +30,14 @@ export const engineRequestSchema = z.discriminatedUnion("action", [
   z
     .object({
       ...identity,
+      action: z.literal("viewer:peek"),
+      viewerId: z.uuid(),
+      readGeneration: z.int().positive(),
+    })
+    .strict(),
+  z
+    .object({
+      ...identity,
       action: z.literal("file:properties"),
       path: remotePathSchema,
     })

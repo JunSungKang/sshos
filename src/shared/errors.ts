@@ -18,6 +18,8 @@ export const errorMessages = {
   PATH_UNSUPPORTED: "이 이름 또는 파일 종류는 지원하지 않습니다.",
   PERMISSION_DENIED: "이 경로에서 요청한 작업을 수행할 권한이 없습니다.",
   NAME_CONFLICT: "같은 이름의 항목이 이미 있습니다.",
+  NOREPLACE_UNSUPPORTED:
+    "이 서버 환경에서는 덮어쓰기 없는 이름 변경을 확인할 수 없어 실행하지 않았습니다.",
   HARDLINK_UNSUPPORTED:
     "이 위치에서는 기존 파일을 보존하는 확정 방식을 사용할 수 없습니다.",
   SOURCE_CHANGED: "선택한 이후 원본 파일이 변경됐습니다.",

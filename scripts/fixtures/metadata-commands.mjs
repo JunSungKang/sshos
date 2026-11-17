@@ -9,6 +9,7 @@ const {
   OS_COMMAND,
   START_COMMAND,
   quotePath,
+  renameEnvironmentCommand,
 } = require("../../dist/worker/remote-files/metadata/ubuntu-commands.js");
 // Test adapter only. Decode a tiny shell quoting grammar, then match the entire
 // command against production templates. Never execute received commands locally.
@@ -76,6 +77,14 @@ export function metadataCommand(command, resolveRemote, options, metrics) {
     return async () => Buffer.from("/home/fixture\0");
   for (const path of paths) {
     const local = resolveRemote(path);
+    if (command === renameEnvironmentCommand(path))
+      return async () => {
+        if (options.denyRenameEnvironment) throw Error("Unavailable");
+        return Buffer.from(
+          options.renameEnvironment ??
+            "Linux 6.8.0-generic\nef53\nSeccomp:\t0\n",
+        );
+      };
     if (command === directoryCommand(path))
       return async () => {
         const st = await fs.lstat(local);

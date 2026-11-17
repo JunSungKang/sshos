@@ -11,7 +11,10 @@ import {
 import { errorCodeOf } from "../../shared/errors";
 import { UbuntuMetadata } from "./metadata/ubuntu-metadata";
 import { runCommand, type CommandAccess } from "./metadata/command-runner";
-import { quotePath } from "./metadata/ubuntu-commands";
+import {
+  quotePath,
+  renameEnvironmentCommand,
+} from "./metadata/ubuntu-commands";
 type Prepared = {
   serverId: string;
   generation: number;
@@ -50,6 +53,34 @@ export class FileMutations {
     if (spec.source && spec.source === spec.destination)
       throw new Error("NAME_CONFLICT");
     return spec;
+  }
+  private async verifyRenameSupport(access: CommandAccess, parent: string) {
+    // GNU mv's renameatu fallback can race on unsupported filesystems/kernels.
+    // Fail closed for unverified mounts and syscall-filtered processes instead
+    // of silently weakening the destination-preservation policy.
+    try {
+      const response = await runCommand(
+        access,
+        renameEnvironmentCommand(parent),
+        1024,
+        15000,
+      );
+      const match =
+        /^Linux ([0-9]{1,3})\.([0-9]{1,3})(?:[.-][0-9A-Za-z.+_-]+)?\n(ef53|9123683e|1021994|58465342)\nSeccomp:[ \t]+0\n$/u.exec(
+          response.bytes.toString("utf8"),
+        );
+      if (
+        response.code !== 0 ||
+        response.stderr ||
+        response.truncated ||
+        !match ||
+        Number(match[1]) < 6 ||
+        (Number(match[1]) === 6 && Number(match[2]) < 8)
+      )
+        throw new Error("NOREPLACE_UNSUPPORTED");
+    } catch {
+      throw new Error("NOREPLACE_UNSUPPORTED");
+    }
   }
   private async inspectWith(
     access: CommandAccess,
@@ -147,6 +178,8 @@ export class FileMutations {
       const now = await this.inspectWith(access, spec);
       if (JSON.stringify(now) !== JSON.stringify(task.stat))
         throw new Error("SOURCE_CHANGED");
+      if (spec.operation === "rename")
+        await this.verifyRenameSupport(access, spec.parent);
       const src = spec.source ? quotePath(spec.source) : "",
         dst = spec.destination ? quotePath(spec.destination) : "";
       const command =

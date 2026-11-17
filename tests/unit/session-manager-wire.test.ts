@@ -131,3 +131,27 @@ describe("instrumented control-session wire lifecycle", () => {
     expect(() => access.check()).toThrow("CONNECTION_LOST");
   });
 });
+it("keeps command-backed Desktop listing available when the server denies SFTP", async () => {
+  const f = await fixture(undefined, { denySftp: true });
+  const result = await f.sessions.connect(f.serverId, 2, f.input);
+  expect(result).toMatchObject({
+    status: "connected",
+    snapshot: {
+      os: "supported",
+      sftp: "unavailable",
+      metadata: "available",
+      homePath: "/home/fixture",
+    },
+  });
+  const { FileBrowser } = await import("../../src/worker/remote-files/browser");
+  const browser = new FileBrowser((id, generation) =>
+    f.sessions.commandAccess(id, generation),
+  );
+  expect(
+    await browser.list(f.serverId, 2, crypto.randomUUID(), "/home/fixture"),
+  ).toMatchObject({ total: 0 });
+  expect(() => f.sessions.readClient(f.serverId, 2)).toThrow(
+    "SFTP_UNAVAILABLE",
+  );
+  expect(f.sessions.snapshots()[0]?.status).toBe("connected");
+});

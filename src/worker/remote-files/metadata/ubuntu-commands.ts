@@ -29,3 +29,6 @@ export function propertiesCommand(path: string): string {
 }
 export const OS_COMMAND = "/usr/bin/head -c 16385 -- /etc/os-release";
 export const START_COMMAND = "/usr/bin/realpath -ze -- .";
+export function renameEnvironmentCommand(parent: string): string {
+  return `LC_ALL=C; export LC_ALL; /usr/bin/uname -sr && /usr/bin/stat -f --printf='%t\\n' -- ${quotePath(parent)} && /usr/bin/grep '^Seccomp:' /proc/self/status`;
+}

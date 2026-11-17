@@ -73,6 +73,45 @@ const rename: MutationSpec = {
   type: "file",
 };
 describe("command-backed non-overwriting remote mutations", () => {
+  it.each([
+    "Linux 6.8.0-generic\nef53\nSeccomp:\t0\n",
+    "Linux 6.17.0-generic\n9123683e\nSeccomp:\t0\n",
+    "Linux 7.0.0\n1021994\nSeccomp:\t0\n",
+    "Linux 6.8.0\n58465342\nSeccomp:\t0\n",
+  ])(
+    "permits verified native rename environments: %s",
+    async (renameEnvironment) => {
+      const f = await fixture({ renameEnvironment });
+      expect(await f.run(rename)).toMatchObject({ phase: "completed" });
+    },
+  );
+  it.each([
+    { renameEnvironment: "Linux 5.15.0\nef53\nSeccomp:\t0\n" },
+    { renameEnvironment: "Linux 6.7.0\nef53\nSeccomp:\t0\n" },
+    { renameEnvironment: "Linux 6.8.0\n6969\nSeccomp:\t0\n" },
+    { renameEnvironment: "Linux 6.8.0\nef53\nSeccomp:\t2\n" },
+    { renameEnvironment: "Linux 6.8.0\nef53\nSeccomp:\t0\nextra" },
+    { renameEnvironment: "" },
+    { renameEnvironment: "A".repeat(2048) },
+    { denyRenameEnvironment: true },
+  ])(
+    "refuses unverified rename environments without any mv dispatch: %j",
+    async (options) => {
+      const f = await fixture(options);
+      expect(await f.run(rename)).toMatchObject({
+        phase: "failed",
+        errorCode: "NOREPLACE_UNSUPPORTED",
+      });
+      expect(
+        f.remote.metrics.commands.some((command: string) =>
+          command.startsWith("/usr/bin/mv "),
+        ),
+      ).toBe(false);
+      expect(await readFile(join(f.root, "home/fixture/source"), "utf8")).toBe(
+        "original",
+      );
+    },
+  );
   it("renames files and nonempty folders without SFTP traversal", async () => {
     const f = await fixture();
     expect(await f.run(rename)).toMatchObject({

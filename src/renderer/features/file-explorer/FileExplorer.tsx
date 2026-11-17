@@ -373,14 +373,6 @@ export function FileExplorer({
       } else void load(() => window.sshOS.file.enter(row.entryToken!));
       return;
     }
-    if (/\.html?$/iu.test(row.name)) {
-      try {
-        await openViewer(row.entryToken, "web");
-      } catch (e) {
-        setError(explain(e));
-      }
-      return;
-    }
     openingBusy.current = true;
     setOpening(true);
     setError("");
@@ -425,6 +417,8 @@ export function FileExplorer({
         offset += bytes.length;
       }
       if (imageSignature(signature)) await openViewer(row.entryToken, "image");
+      else if (/\.html?$/iu.test(row.name))
+        await openViewer(row.entryToken, "web");
       else if (/\.(txt|md|log|json|yaml|yml|ini|conf|csv|sh)$/iu.test(row.name))
         await openViewer(row.entryToken, "text");
       else

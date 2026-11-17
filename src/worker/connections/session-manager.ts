@@ -146,10 +146,11 @@ export class SessionManager {
     if (
       !entry ||
       entry.snapshot.generation !== generation ||
-      entry.snapshot.status !== "connected" ||
-      entry.snapshot.sftp !== "available"
+      entry.snapshot.status !== "connected"
     )
       throw new Error("CONNECTION_LOST");
+    if (entry.snapshot.sftp !== "available")
+      throw new Error("SFTP_UNAVAILABLE");
     return entry.client;
   }
   control(serverId: string, generation: number, write = false): ControlAccess {

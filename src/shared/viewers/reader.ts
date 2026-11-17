@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { remotePathSchema } from "../files";
-export const viewerReadKindSchema = z.enum(["probe", "text", "image"]);
+export const viewerReadKindSchema = z.enum(["probe", "text", "image", "web"]);
 export type ViewerReadKind = z.infer<typeof viewerReadKindSchema>;
 export const viewerMetadataSchema = z
   .object({

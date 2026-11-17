@@ -1,3 +1,5 @@
+import { enforcePreviewNetworkPolicy } from "./network-policy";
+import { WebReadBudget } from "./read-budget";
 import {
   BrowserWindow,
   WebContentsView,
@@ -33,7 +35,7 @@ type Resource = {
   session: Session | null;
   abort: AbortController;
   revision: number;
-  bytes: number;
+  busy: boolean;
   requests: number;
 };
 export class WebPreviewController {
@@ -95,18 +97,19 @@ export class WebPreviewController {
     };
   }
   private disposeView(row: Resource) {
-    if (row.view) {
-      this.host()?.contentView.removeChildView(row.view);
-      row.view.webContents.close();
-      row.view = null;
+    const view = row.view;
+    row.view = null;
+    if (view) {
+      this.host()?.contentView.removeChildView(view);
+      if (!view.webContents.isDestroyed()) view.webContents.close();
     }
     row.session?.protocol.unhandle("sshos-web");
     row.session = null;
   }
-  private createView(row: Resource) {
+  private async createView(row: Resource): Promise<void> {
     this.disposeView(row);
     const revision = ++row.revision;
-    row.bytes = 0;
+    const readBudget = new WebReadBudget();
     row.requests = 0;
     const ses = session.fromPartition(`sshos-web-${row.token}-${revision}`, {
       cache: false,
@@ -135,6 +138,7 @@ export class WebPreviewController {
           ++row.requests > 512
         )
           throw new Error("ASSET_DENIED");
+        readBudget.assertAvailable();
         const { path, mime } = resourcePath(request.url, row.token, row.root);
         const bytes = await this.reader.read(
           row.serverId,
@@ -145,9 +149,8 @@ export class WebPreviewController {
             this.check(row);
             if (row.revision !== revision) throw new Error("TOKEN_EXPIRED");
           },
+          readBudget,
         );
-        row.bytes += bytes.length;
-        if (row.bytes > 64 * 1024 * 1024) throw new Error("FILE_LIMIT");
         const csp = `default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src ${row.javascript ? "'self' 'unsafe-inline'" : "'none'"}; connect-src ${row.javascript ? "'self'" : "'none'"}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'; worker-src 'none'`;
         return new Response(
           request.method === "HEAD" ? null : new Uint8Array(bytes),
@@ -206,6 +209,39 @@ export class WebPreviewController {
     });
     this.host()?.contentView.addChildView(view);
     view.setVisible(false);
+    let deadline: ReturnType<typeof setTimeout> | null = null;
+    try {
+      await Promise.race([
+        (async () => {
+          // Initialize only an inert owned document so the renderer can ACK CDP.
+          await view.webContents.loadURL("about:blank");
+          this.check(row);
+          if (row.view !== view || row.revision !== revision)
+            throw new Error("ASSET_DENIED");
+          await enforcePreviewNetworkPolicy(view.webContents, () => {
+            if (row.view === view && row.revision === revision) {
+              row.revision++;
+              this.disposeView(row);
+            }
+          });
+          this.check(row);
+          if (
+            row.view !== view ||
+            row.revision !== revision ||
+            view.webContents.isDestroyed()
+          )
+            throw new Error("ASSET_DENIED");
+        })(),
+        new Promise<never>((_resolve, reject) => {
+          deadline = setTimeout(() => reject(new Error("IO_TIMEOUT")), 10000);
+        }),
+      ]);
+    } catch {
+      if (row.view === view) this.disposeView(row);
+      throw new Error("ASSET_DENIED");
+    } finally {
+      if (deadline) clearTimeout(deadline);
+    }
     void view.webContents
       .loadURL(previewURL(row.token, row.root, row.path))
       .catch(() => {});
@@ -243,8 +279,12 @@ export class WebPreviewController {
       }
   }
   destroy() {
-    for (const row of [...this.resources.values()])
-      this.closeWindow(row.windowId!);
+    for (const row of [...this.resources.values()]) {
+      if (row.windowId) {
+        this.closeWindow(row.windowId);
+        this.desktop.handle("desktop:closeWindow", row.windowId);
+      }
+    }
   }
   async handle(action: string, payload: unknown): Promise<unknown> {
     if (action === "web:open") {
@@ -252,6 +292,14 @@ export class WebPreviewController {
       const entry = this.files.resolveEntry(z.uuid().parse(payload));
       if (entry.type !== "file" || !/\.html?$/i.test(entry.rawName))
         throw new Error("PATH_UNSUPPORTED");
+      const session = this.connections
+        .views()
+        .find(
+          (row) =>
+            row.serverId === entry.browser.serverId &&
+            row.generation === entry.browser.generation,
+        );
+      if (session?.sftp !== "available") throw new Error("SFTP_UNAVAILABLE");
       const row: Resource = {
         token: randomUUID(),
         windowId: null,
@@ -267,7 +315,7 @@ export class WebPreviewController {
         session: null,
         abort: new AbortController(),
         revision: 0,
-        bytes: 0,
+        busy: true,
         requests: 0,
       };
       this.resources.set(row.token, row);
@@ -277,11 +325,14 @@ export class WebPreviewController {
           resourceToken: row.token,
         }) as import("../../shared/windows").WindowModel;
         row.windowId = win.windowId;
-        this.createView(row);
+        await this.createView(row);
+        row.busy = false;
         return win;
       } catch (e) {
         this.disposeView(row);
         this.resources.delete(row.token);
+        if (row.windowId)
+          this.desktop.handle("desktop:closeWindow", row.windowId);
         throw e;
       }
     }
@@ -334,24 +385,42 @@ export class WebPreviewController {
       const row = this.row(input.id);
       if (input.root !== "/" && !row.path.startsWith(input.root + "/"))
         throw new Error("PATH_UNSUPPORTED");
-      const prop = filePropertiesSchema.parse(
-        await this.gateway.request({
-          action: "file:properties",
-          serverId: row.serverId,
-          generation: row.generation,
-          path: input.root,
-        }),
-      );
-      this.check(row);
-      if (prop.type !== "directory") throw new Error("PATH_UNSUPPORTED");
-      row.root = input.root;
-      row.javascript = input.javascript;
-      this.createView(row);
+      if (row.busy) throw new Error("REQUEST_BUSY");
+      row.busy = true;
+      try {
+        const prop = filePropertiesSchema.parse(
+          await this.gateway.request({
+            action: "file:properties",
+            serverId: row.serverId,
+            generation: row.generation,
+            path: input.root,
+          }),
+        );
+        this.check(row);
+        if (prop.type !== "directory") throw new Error("PATH_UNSUPPORTED");
+        const previous = { root: row.root, javascript: row.javascript };
+        row.root = input.root;
+        row.javascript = input.javascript;
+        try {
+          await this.createView(row);
+        } catch (e) {
+          Object.assign(row, previous);
+          throw e;
+        }
+      } finally {
+        row.busy = false;
+      }
       return this.descriptor(row);
     }
     if (action === "web:reload") {
       const row = this.row(z.uuid().parse(payload));
-      this.createView(row);
+      if (row.busy) throw new Error("REQUEST_BUSY");
+      row.busy = true;
+      try {
+        await this.createView(row);
+      } finally {
+        row.busy = false;
+      }
       return this.descriptor(row);
     }
     throw new Error("INPUT_INVALID");

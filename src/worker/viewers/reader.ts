@@ -263,6 +263,17 @@ export class ViewerReader {
       throw new Error("TOKEN_EXPIRED");
     return entry;
   }
+  peek(
+    serverId: string,
+    generation: number,
+    viewerId: string,
+    readGeneration: number,
+  ): ViewerMetadata | null {
+    const entry = this.entry(serverId, generation, viewerId, readGeneration);
+    if (entry.errorCode) throw new Error(entry.errorCode);
+    this.connectedClient(serverId, generation);
+    return entry.metadata ? { ...entry.metadata } : null;
+  }
   async next(
     serverId: string,
     generation: number,
@@ -328,6 +339,9 @@ export class ViewerReader {
     const wanted = Math.min(
       bytes.length,
       limit - sourceOffset + (entry.kind === "probe" ? 0 : 1),
+      entry.kind === "web"
+        ? Math.max(1, metadata.size - sourceOffset + 1)
+        : 65536,
     );
     const firstLength = Math.min(32768, wanted),
       secondLength = wanted - firstLength;
@@ -369,6 +383,8 @@ export class ViewerReader {
     const filled = first + second;
     entry.offset += filled;
     if (entry.offset > limit) throw new Error("VIEW_LIMIT");
+    if (entry.kind === "web" && entry.offset > metadata.size)
+      throw new Error("SOURCE_CHANGED");
     entry.hash.update(bytes.subarray(0, filled));
     const eof =
       first < firstLength ||

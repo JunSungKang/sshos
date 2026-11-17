@@ -20,6 +20,8 @@ Show hidden files defaults off. Change it in Settings to update Desktop and all 
 
 The file explorer combines tree and list. Open folders to navigate; double-clicking a regular file opens a supported read-only viewer or a format choice. It never runs the file. Text is UTF-8, at most 2 MiB; static PNG/JPEG/WebP images are at most 20 MiB compressed and 40,000,000 pixels with each edge at most 16,384 pixels. Text opens read-only and offers explicit Edit/Save; see the editing section below.
 
+Desktop lists, properties and confirmed file/folder changes use SSH commands. Opening file contents, HTML resources, saving text and transferring files require SFTP separately. Unavailable SFTP does not disable command-backed browsing.
+
 Use Refresh to see external changes. Viewers require an explicit reread; they do not watch the server. The last listing/content can remain visible read-only after disconnect, with its read time.
 
 ## Transfers and File Changes
@@ -29,6 +31,8 @@ Select upload files or a download folder using the native dialog, review the ser
 The persistent shelf separates byte transfer from full content verification. Upload read-back adds download traffic and time. A completed byte bar does not mean finalization has finished. At most two transfers run globally and one per server; at most 100 wait. Closing the explorer does not stop an accepted transfer.
 
 Right-click an operable file or folder for Open, Delete, Rename and Properties. Rename stays within the same parent and never replaces an existing destination. Delete permanently removes the item and all descendants after confirmation; there is no trash or undo. It uses one server recursive command, not client-side per-entry deletion. A failed deletion may be partial; a disconnect can leave the result unknown. Basic properties refresh the selected item and show numeric owner/group IDs, permissions, size and times. Folder size is the directory entry size, not recursive disk usage. Recursive transfers, permission editing and move/copy between servers are not provided.
+
+Rename is supported only on verified ext-family, btrfs, tmpfs or XFS mounts with Linux 6.8 or later and unfiltered SSH command processes (`Seccomp: 0`). NFS, FUSE, overlay, filtered containers and unverified environments are refused before renaming, with an explicit error. This restriction does not disable browsing, viewing or transfers. Avoid concurrent parent-directory replacement/remounts; the app does not provide a server-side filesystem sandbox.
 
 ## Run a Program or Terminal
 

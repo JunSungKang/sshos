@@ -370,3 +370,42 @@ describe("bounded viewer read and consumer ACK", () => {
     disconnected.cancel();
   });
 });
+it("exposes prepared metadata without reading web content and limits growth verification to one byte", async () => {
+  const f = fixture(Buffer.from("data"));
+  f.open("web");
+  expect(f.service.peek(f.serverId, 1, f.viewerId, 1)).toBeNull();
+  await vi.waitFor(() =>
+    expect(f.service.peek(f.serverId, 1, f.viewerId, 1)?.size).toBe(4),
+  );
+  expect(f.reads).toBe(0);
+  expect(() => f.service.peek(f.serverId, 2, f.viewerId, 1)).toThrow(
+    "TOKEN_EXPIRED",
+  );
+  const frame = await f.next(0);
+  expect(frame.status).toBe("chunk");
+  if (frame.status !== "chunk") throw Error("Missing bytes");
+  expect(Buffer.from(frame.bytes)).toEqual(Buffer.from("data"));
+  expect(await f.next(1)).toMatchObject({ status: "end" });
+  f.cancel();
+  const g = fixture(Buffer.alloc(100000), { declaredSize: 4 });
+  let requested = 0;
+  const read = g.sftp.read.bind(g.sftp);
+  g.sftp.read = ((
+    handle: any,
+    bytes: any,
+    offset: any,
+    length: any,
+    position: any,
+    done: any,
+  ) => {
+    requested += length;
+    read(handle, bytes, offset, length, position, done);
+  }) as any;
+  g.open("web");
+  await expect(g.ready()).rejects.toThrow("SOURCE_CHANGED");
+  expect(requested).toBe(5);
+  expect(() => g.service.peek(g.serverId, 1, g.viewerId, 1)).toThrow(
+    "SOURCE_CHANGED",
+  );
+  g.cancel();
+});

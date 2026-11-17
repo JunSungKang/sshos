@@ -416,6 +416,13 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
     else if (request.action === "mutation:finish")
       mutations.finish(request.taskId, request.keepRestriction);
     else if (request.action === "viewer:open") readers!.open(request);
+    else if (request.action === "viewer:peek")
+      result = readers!.peek(
+        request.serverId,
+        request.generation,
+        request.viewerId,
+        request.readGeneration,
+      );
     else if (request.action === "viewer:next")
       result = await readers!.next(
         request.serverId,

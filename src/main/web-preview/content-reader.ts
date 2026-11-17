@@ -1,6 +1,10 @@
+import { WebReadBudget } from "./read-budget";
 import { randomUUID } from "node:crypto";
 import { posix } from "node:path";
-import { viewerFrameSchema } from "../../shared/viewers/reader";
+import {
+  viewerFrameSchema,
+  viewerMetadataSchema,
+} from "../../shared/viewers/reader";
 import type { EngineGateway } from "../engine-gateway";
 /** Shares the worker's bounded SFTP read pool; no resource bytes enter RPC replay caches. */
 export class WebContentReader {
@@ -13,7 +17,9 @@ export class WebContentReader {
     path: string,
     signal: AbortSignal,
     check: () => void,
+    budget: WebReadBudget = new WebReadBudget(),
   ): Promise<Buffer> {
+    budget.assertAvailable();
     if (this.waiting.length >= 32) throw new Error("REQUEST_BUSY");
     if (this.active >= 2)
       await new Promise<void>((resolve) => this.waiting.push(resolve));
@@ -22,6 +28,7 @@ export class WebContentReader {
     let opened = false;
     try {
       check();
+      budget.assertAvailable();
       if (signal.aborted) throw new Error("REQUEST_CANCELLED");
       await this.gateway.request({
         action: "viewer:open",
@@ -31,9 +38,29 @@ export class WebContentReader {
         readGeneration: 1,
         path,
         parent: posix.dirname(path),
-        kind: "image",
+        kind: "web",
       });
       opened = true;
+      let metadata:
+        | import("../../shared/viewers/reader").ViewerMetadata
+        | null = null;
+      while (!metadata) {
+        check();
+        budget.assertAvailable();
+        if (signal.aborted) throw new Error("REQUEST_CANCELLED");
+        const peek = await this.gateway.request({
+          action: "viewer:peek",
+          serverId,
+          generation,
+          viewerId,
+          readGeneration: 1,
+        });
+        metadata = viewerMetadataSchema.nullable().parse(peek);
+        if (!metadata) await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (metadata.path !== path || metadata.size > 20 * 1024 * 1024)
+        throw new Error("FILE_LIMIT");
+      budget.reserve(metadata.size);
       const parts: Buffer[] = [];
       let size = 0,
         sequence = 0;
@@ -64,7 +91,8 @@ export class WebContentReader {
         }
         if (frame.status === "end") break;
         size += frame.bytes.length;
-        if (size > 20 * 1024 * 1024) throw new Error("FILE_LIMIT");
+        if (size > metadata.size || size > 20 * 1024 * 1024)
+          throw new Error("FILE_LIMIT");
         parts.push(Buffer.from(frame.bytes));
         sequence++;
       }

@@ -132,7 +132,7 @@ describe("control generation socket retirement", () => {
     expect(() => sessions.disconnect(id, 999)).toThrow("INPUT_INVALID");
     state.clients[1]!.emit("ready");
     await pending;
-    expect(() => sessions.readClient(id, 2)).toThrow("CONNECTION_LOST");
+    expect(() => sessions.readClient(id, 2)).toThrow("SFTP_UNAVAILABLE");
     await expect(sessions.connect(id, 3, input())).rejects.toThrow(
       "SESSION_BUSY",
     );

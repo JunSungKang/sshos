@@ -90,6 +90,18 @@ export function WebPreviewPane({
         .catch(() => {});
     };
   }, [windowId, visible, value]);
+  const reload = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      setValue(await window.sshOS.web.reload(windowId));
+    } catch (e) {
+      setError(errorCodeOf(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   const change = async (js: boolean) => {
     if (!value || busy) return;
     setBusy(true);
@@ -112,14 +124,7 @@ export function WebPreviewPane({
     <section className="web-preview-pane">
       <div className="web-preview-controls">
         <strong>{value?.name ?? "HTML 미리보기"}</strong>
-        <button
-          disabled={!value || busy}
-          onClick={() => {
-            void window.sshOS.web
-              .reload(windowId)
-              .then(setValue, (e) => setError(errorCodeOf(e)));
-          }}
-        >
+        <button disabled={!value || busy} onClick={() => void reload()}>
           새로고침
         </button>
         <label>
@@ -151,7 +156,11 @@ export function WebPreviewPane({
         처리하지 않습니다.
       </p>
       {error && <p role="alert">{error}</p>}
-      <div className="web-preview-content" ref={area} />
+      <div className="web-preview-content" ref={area}>
+        <p className="web-preview-placeholder">
+          표시되지 않으면 새로고침하여 미리보기를 다시 여세요.
+        </p>
+      </div>
     </section>
   );
 }
