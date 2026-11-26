@@ -181,6 +181,7 @@ export type RelayView = {
   retryable: boolean;
   discardable: boolean;
   acknowledgeable: boolean;
+  needsAttention: boolean;
 };
 export const relayTerminal = (row: RelayReceipt) =>
   [

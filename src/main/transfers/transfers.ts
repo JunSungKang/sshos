@@ -542,7 +542,13 @@ export class TransferController {
     ) {
       this.countRepository = repo;
       this.countRevision = repo.revision;
-      const rows = repo.snapshots();
+      const rows = repo
+        .snapshots()
+        .filter(
+          (row) =>
+            row.kind !== "server_relay" &&
+            !(row.kind === "file_transfer" && row.relayParentId),
+        );
       this.unresolved = rows.filter(receiptUnresolved).length;
       this.failed = rows.filter(
         (row) =>

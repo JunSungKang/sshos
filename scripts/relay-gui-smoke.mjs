@@ -175,6 +175,8 @@ try {
   await expect(record.locator(".task-phase")).toHaveText("실패", {
     timeout: 45000,
   });
+  const shelf = page.getByRole("complementary", { name: "전송 상태" });
+  await expect(shelf).toContainText(/실패\/중단 1 · 확인 필요 1/);
   await expect(record.getByRole("status")).toContainText("도착 서버");
   await expect(record.getByText(/PC 작업 위치/)).toContainText(
     payload.length.toLocaleString("ko-KR"),
@@ -216,6 +218,7 @@ try {
   await expect(record.locator(".task-phase")).toHaveText("복사 완료", {
     timeout: 45000,
   });
+  await expect(shelf).toContainText(/실패\/중단 0 · 확인 필요 0/);
   await record.getByRole("button", { name: "도착 경로 확인" }).click();
   await expect(record.getByRole("status")).toContainText("파일 있음");
   await expect(record).toHaveCount(1);

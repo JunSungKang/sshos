@@ -58,14 +58,9 @@ export function TransferShelf({ openTasks }: { openTasks(): void }) {
   const relayQueued = jobs.filter((row) =>
     ["queued", "waiting_to_send"].includes(row.phase),
   ).length;
-  const relayUnresolved = jobs.filter(
-    (row) =>
-      row.acknowledgeable ||
-      row.discardable ||
-      row.phase === "waiting_for_space",
-  ).length;
+  const relayUnresolved = jobs.filter((row) => row.needsAttention).length;
   const relayFailed = jobs.filter((row) =>
-    ["failed", "interrupted"].includes(row.phase),
+    ["failed", "interrupted", "result_unknown"].includes(row.phase),
   ).length;
   const [snapshot, setSnapshot] = useState<Shelf>({
       active: [],

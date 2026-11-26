@@ -996,6 +996,11 @@ export class RelayController {
         destination: row.target,
         size: row.size,
         phase: recordError || state.cleanupPending ? "result_unknown" : phase,
+        needsAttention:
+          recordError ||
+          state.cleanupPending ||
+          row.phase === "waiting_for_space" ||
+          (!active && relayUnresolved(row)),
         lastConfirmedPhase: c?.lastConfirmedPhase ?? row.lastConfirmedPhase,
         bytes:
           phase === "verifying_local" || phase === "verifying_remote"

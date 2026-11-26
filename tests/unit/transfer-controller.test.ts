@@ -246,6 +246,25 @@ describe("main-owned transfer acceptance", () => {
     f.controller.observe({ ...terminal, slotOccupied: false }, false, 21);
     expect(observed).toHaveBeenCalledOnce();
     expect(f.controller.isActive(row.taskId)).toBe(false);
+
+    // An ordinary shelf must omit the retained parent and every failed owned attempt.
+    await f.repo.save({
+      ...row,
+      phase: "failed",
+      stage: "failed",
+      tempCreated: true,
+      cleanupState: "needed",
+    });
+    expect(f.controller.shelf()).toMatchObject({ failed: 0, unresolved: 0 });
+    const ordinary = transferReceipt();
+    await f.repo.save({
+      ...ordinary,
+      phase: "failed",
+      stage: "failed",
+      tempCreated: true,
+      cleanupState: "needed",
+    });
+    expect(f.controller.shelf()).toMatchObject({ failed: 1, unresolved: 1 });
   });
   it("rolls back a partially admitted download batch before dispatch", async () => {
     const disk = new RelayDiskLedger();

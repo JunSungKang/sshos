@@ -238,6 +238,7 @@ it("fixes both sessions at confirmation, hands off after A closure and verified 
   ).rejects.toThrow("TOKEN_EXPIRED");
   expect(f.specs).toHaveLength(1);
   const a = f.specs[0]!.row;
+  expect(f.controller.list()[0]?.needsAttention).toBe(false);
   expect(a.destination.endsWith("/payload")).toBe(true);
   expect(a.source).toBe("/src/CON:one");
   await f.controller.dispatchCheck(a);
@@ -271,6 +272,7 @@ it("preserves a verified stage on a B failure and retries only after confirming 
   expect(f.controller.list()[0]).toMatchObject({
     phase: "failed",
     retryable: true,
+    needsAttention: true,
   });
   expect(f.specs).toHaveLength(1);
   f.sessions[0]!.status = "disconnected";
@@ -295,9 +297,12 @@ it("preserves a verified stage on a B failure and retries only after confirming 
     acknowledgeable: true,
     publication: "unknown",
     discardable: true,
+    needsAttention: true,
   });
   await f.controller.handle("relay:acknowledge", id);
+  expect(f.controller.list()[0]?.needsAttention).toBe(true);
   await f.controller.handle("relay:discard", id);
+  expect(f.controller.list()[0]?.needsAttention).toBe(false);
   expect(f.controller.hasWork()).toBe(false);
 });
 it("blocks early destination conflicts and leaves a failed or unverifiable A copy off B", async () => {
@@ -325,6 +330,7 @@ it("preserves one job when dispatch needs more space and never replays on reopen
   expect(f.controller.list()[0]).toMatchObject({
     phase: "waiting_for_space",
     retryable: true,
+    needsAttention: true,
   });
   const p = (await f.controller.handle("relay:retryPreview", {
     parentId: id,
