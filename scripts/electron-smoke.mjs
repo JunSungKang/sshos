@@ -44,6 +44,7 @@ try {
     "file",
     "lifecycle",
     "profile",
+    "relay",
     "session",
     "settings",
     "task",
@@ -57,6 +58,43 @@ try {
     await page.evaluate(() => Object.keys(window.sshOS.web).sort()),
     ["configure", "get", "open", "present", "reload"],
   );
+  assert.deepEqual(
+    await page.evaluate(() => Object.keys(window.sshOS.relay).sort()),
+    [
+      "acknowledge",
+      "cancel",
+      "discard",
+      "folders",
+      "inspect",
+      "list",
+      "preview",
+      "releasePreview",
+      "retryPreview",
+      "start",
+    ],
+  );
+  const relayAccess = await page.evaluate(async () => {
+    const token = crypto.randomUUID();
+    const results = await Promise.allSettled([
+      window.sshOS.relay.folders(token, "/"),
+      window.sshOS.relay.preview({
+        entryToken: token,
+        destinationSessionToken: token,
+        directory: "/",
+      }),
+      window.sshOS.relay.start(token),
+      window.sshOS.relay.inspect(token),
+      window.sshOS.relay.discard(token),
+    ]);
+    return {
+      statuses: results.map((result) => result.status),
+      jobs: await window.sshOS.relay.list(),
+    };
+  });
+  assert.deepEqual(relayAccess, {
+    statuses: Array(5).fill("rejected"),
+    jobs: [],
+  });
   for (const action of ["open", "get", "present", "configure"])
     assert.equal(
       await page.evaluate(async (action) => {
