@@ -26,3 +26,26 @@ export const receiptFaultSchema = z
   .strict();
 export type ReceiptSave = z.infer<typeof receiptSaveSchema>;
 export type ReceiptACK = z.infer<typeof receiptACKSchema>;
+
+export const relayCheckSchema = z
+  .object({
+    type: z.literal("relay:checkDisk"),
+    requestId: z.uuid(),
+    backendEpoch: z.uuid(),
+    serverId: z.uuid(),
+    generation: z.int().positive(),
+    taskId: z.uuid(),
+    parentId: z.uuid(),
+  })
+  .strict();
+export const relayCheckAckSchema = z
+  .object({
+    action: z.literal("relay:diskChecked"),
+    requestId: z.uuid(),
+    backendEpoch: z.uuid(),
+    error: z
+      .string()
+      .regex(/^[A-Z_]{1,64}$/)
+      .nullable(),
+  })
+  .strict();

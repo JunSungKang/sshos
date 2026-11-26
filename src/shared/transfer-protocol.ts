@@ -18,7 +18,20 @@ export const localDirectorySchema = z
   })
   .strict();
 export const stagedTransferSchema = z
-  .object({ row: transferReceiptSchema, localDirectory: localDirectorySchema })
+  .object({
+    row: transferReceiptSchema,
+    localDirectory: localDirectorySchema,
+    relay: z
+      .object({
+        parentId: z.uuid(),
+        expectedSha256: z
+          .string()
+          .regex(/^[a-f0-9]{64}$/u)
+          .optional(),
+      })
+      .strict()
+      .optional(),
+  })
   .strict();
 export type StagedTransfer = z.infer<typeof stagedTransferSchema>;
 export const transferRuntimeSchema = z

@@ -55,6 +55,80 @@ function task(serverId: string, name: string): QueuedTransfer {
   };
 }
 describe("transfer state and queue", () => {
+  it("protects the next leg of a relay when ordinary work fills the shared queue", () => {
+    const queue = new TransferQueue(new PathLocks());
+    queue.holdRelay("A-to-B");
+    queue.holdRelay("B-to-A");
+    expect(() => queue.holdRelay("A-to-B")).toThrow("REQUEST_BUSY");
+    queue.reserve("ordinary", 98);
+    expect(() => queue.holdRelay("no-space")).toThrow("TASK_LIMIT");
+    expect(() => queue.reserve("too-many", 1)).toThrow("TASK_LIMIT");
+    const a = { ...task("A", "read-a"), relayParentId: "A-to-B" };
+    const b = { ...task("B", "read-b"), relayParentId: "B-to-A" };
+    for (const row of [a, b]) {
+      queue.reserve(row.taskId, 1, row.relayParentId);
+      queue.commit(row.taskId, [row]);
+    }
+    queue.commit("ordinary", Array.from({ length: 98 }, (_, i) => task("C", "ordinary-" + i)));
+    expect(queue.queuedCount).toBe(100);
+    expect(queue.take()?.taskId).toBe(a.taskId);
+    expect(queue.take()?.taskId).toBe(b.taskId);
+    expect(queue.take()).toBeNull();
+    expect(() => queue.reserve("second", 1, a.relayParentId)).toThrow("REQUEST_BUSY");
+    queue.finish(a.taskId, false);
+    const second = { ...task("B", "write-b"), relayParentId: a.relayParentId };
+    queue.reserve("second", 1, second.relayParentId);
+    queue.commit("second", [second]);
+    expect(queue.take()?.taskId).toBe("ordinary-0");
+    expect(queue.take()).toBeNull();
+    queue.finish(b.taskId, false);
+    expect(queue.take()?.taskId).toBe(second.taskId);
+    expect(queue.activeCount).toBe(2);
+    queue.finish(second.taskId, false);
+    queue.releaseRelay(a.relayParentId);
+    queue.releaseRelay(b.relayParentId);
+    queue.reserve("remaining", 3);
+    expect(() => queue.reserve("too-many", 1)).toThrow("TASK_LIMIT");
+  });
+  it("binds first and retry legs to the correct hold, and releases cancelled or restricted children explicitly", () => {
+    const queue = new TransferQueue(new PathLocks());
+    const parentId = "parent", row = { ...task("A", "child"), relayParentId: parentId };
+    expect(() => queue.reserve("missing-parent", 1, parentId)).toThrow("REQUEST_BUSY");
+    queue.holdRelay(parentId);
+    expect(() => queue.reserve("batch", 2, parentId)).toThrow("REQUEST_BUSY");
+    queue.reserve("preview", 1, parentId);
+    queue.reserve("other-99", 99);
+    expect(() => queue.reserve("over-100", 1)).toThrow("TASK_LIMIT");
+    queue.releaseReservation("other-99");
+    expect(() => queue.releaseRelay(parentId)).toThrow("REQUEST_BUSY");
+    expect(() => queue.reserve("duplicate", 1, parentId)).toThrow("REQUEST_BUSY");
+    expect(() => queue.commit("preview", [task("A", "stranger")])).toThrow("INPUT_INVALID");
+    queue.releaseReservation("preview");
+    queue.reserve("leg", 1, parentId);
+    queue.commit("leg", [row]);
+    expect(() => queue.reserve("duplicate", 1, parentId)).toThrow("REQUEST_BUSY");
+    expect(() => queue.releaseRelay(parentId)).toThrow("REQUEST_BUSY");
+    expect(queue.cancelQueued(row.taskId)?.relayParentId).toBe(parentId);
+    queue.reserve("again", 1, parentId);
+    queue.commit("again", [row]);
+    expect(queue.take()?.taskId).toBe(row.taskId);
+    expect(() => queue.releaseRelay(parentId)).toThrow("REQUEST_BUSY");
+    queue.finish(row.taskId, true);
+    expect(() => queue.reserve("retry", 1, parentId)).toThrow("REQUEST_BUSY");
+    queue.reserve("ordinary", 1);
+    const competing = { ...task("B", "competing"), localClaims: row.localClaims };
+    queue.commit("ordinary", [competing]);
+    expect(queue.take()).toBeNull();
+    queue.acknowledge(row.taskId);
+    expect(queue.take()?.taskId).toBe(competing.taskId);
+    queue.reserve("retry", 1, parentId);
+    queue.releaseReservation("retry");
+    queue.releaseRelay(parentId);
+    queue.holdRelay(parentId);
+    queue.releaseRelay(parentId);
+    queue.finish(competing.taskId, false);
+    queue.reserve("all", 100);
+  });
   it("locks cancellation before awaiting the durable finalization intent and forbids terminal replay", () => {
     const state = new TransferState();
     state.move("preparing");

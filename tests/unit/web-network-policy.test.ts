@@ -31,14 +31,47 @@ it("freezes native and legacy WebRTC constructors in the actual main world befor
   });
   const fail = vi.fn();
   await enforcePreviewNetworkPolicy(contents, fail);
-  expect(contents.debugger.sendCommand).toHaveBeenLastCalledWith(
+  expect(contents.debugger.sendCommand).toHaveBeenNthCalledWith(
+    2,
     "Page.addScriptToEvaluateOnNewDocument",
     { source: BLOCK_WEBRTC },
+  );
+  expect(contents.debugger.sendCommand).toHaveBeenNthCalledWith(
+    3,
+    "Page.addScriptToEvaluateOnNewDocument",
+    {
+      source: expect.stringContaining("stopImmediatePropagation"),
+      worldName: "sshos-preview-input",
+    },
+  );
+  expect(contents.debugger.sendCommand).toHaveBeenLastCalledWith(
+    "Page.setInterceptFileChooserDialog",
+    { enabled: true },
   );
   contents.debugger.emit("detach");
   contents.emit("render-process-gone");
   expect(fail).toHaveBeenCalledTimes(2);
 });
+it.each([2, 3])(
+  "denies the guest if Chromium omits the script identifier on registration %s",
+  async (missing) => {
+    let call = 0;
+    const contents: any = Object.assign(new EventEmitter(), {
+      setWebRTCIPHandlingPolicy: vi.fn(),
+      debugger: Object.assign(new EventEmitter(), {
+        attach: vi.fn(),
+        sendCommand: async () =>
+          ++call === missing ? {} : { identifier: "guard" },
+        isAttached: () => true,
+      }),
+    });
+    const fail = vi.fn();
+    await expect(enforcePreviewNetworkPolicy(contents, fail)).rejects.toThrow(
+      "ASSET_DENIED",
+    );
+    expect(fail).toHaveBeenCalledOnce();
+  },
+);
 it.each(["attach", "command", "detached"])(
   "fails closed when the %s policy path cannot be established",
   async (failure) => {

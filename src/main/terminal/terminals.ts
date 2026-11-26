@@ -14,11 +14,12 @@ import {
   type TerminalRuntime,
   type TerminalFreeze,
 } from "../../shared/terminals";
-import type {
-  TerminalDescriptor,
-  TerminalInputResult,
-  TerminalPastePreview,
-  TerminalClosePreview,
+import {
+  hasTerminalFileControls,
+  type TerminalDescriptor,
+  type TerminalInputResult,
+  type TerminalPastePreview,
+  type TerminalClosePreview,
 } from "../../shared/terminal-ui";
 import type { WindowModel } from "../../shared/windows";
 import { TerminalInputBoundary } from "../../shared/terminal-input-boundary";
@@ -52,6 +53,7 @@ type Resource = {
 };
 type Paste = {
   resource: Resource;
+  fileBracketed: boolean | null;
   version: number;
   bytes: Buffer;
   deadline: number;
@@ -601,6 +603,7 @@ export class TerminalController {
     sequence: number,
     bytes: Uint8Array,
     source: "key" | "paste",
+    fileInput = false,
   ): Promise<TerminalInputResult> {
     this.current(resource);
     if (!this.canInput(resource)) throw new Error("RESTORE_REQUIRED");
@@ -641,6 +644,7 @@ export class TerminalController {
           })
           .catch(() => {});
       }
+      if (fileInput) throw new Error("INPUT_RESULT_UNKNOWN");
       throw error;
     } finally {
       copy.fill(0);
@@ -678,6 +682,7 @@ export class TerminalController {
     const input = z
         .object({
           terminalToken: z.uuid(),
+          file: z.object({ bracketed: z.boolean() }).strict().optional(),
           text: z
             .string()
             .min(1)
@@ -691,6 +696,8 @@ export class TerminalController {
         .strict()
         .parse(payload),
       resource = this.resource(input.terminalToken);
+    if (input.file && hasTerminalFileControls(input.text))
+      throw new Error("INPUT_INVALID");
     this.current(resource);
     if (!this.canInput(resource)) throw new Error("RESTORE_REQUIRED");
     this.prunePastes();
@@ -699,12 +706,14 @@ export class TerminalController {
       token = randomUUID();
     this.pastes.set(token, {
       resource,
+      fileBracketed: input.file?.bracketed ?? null,
       version: resource.version,
       bytes,
       deadline: performance.now() + 60000,
     });
     const row = resource.runtime.execution.receipt;
     return {
+      fileBracketed: input.file?.bracketed ?? null,
       terminalName: resource.name,
       confirmationToken: token,
       terminalId: row.taskId,
@@ -712,7 +721,8 @@ export class TerminalController {
       endpoint: `${row.endpointSnapshot.username}@${row.endpointSnapshot.endpoint}`,
       text: input.text,
       byteLength: bytes.length,
-      requiresConfirmation: /[\r\n]/u.test(input.text) || bytes.length > 4096,
+      requiresConfirmation:
+        !!input.file || /[\r\n]/u.test(input.text) || bytes.length > 4096,
       expiresAt: new Date(Date.now() + 60000).toISOString(),
     };
   }
@@ -729,8 +739,14 @@ export class TerminalController {
     }
     const resource = paste.resource;
     let bytes: Buffer | null = null,
-      ownsSending = false;
+      ownsSending = false,
+      fileBytesDispatched = false;
     try {
+      if (
+        paste.fileBracketed !== null &&
+        paste.fileBracketed !== input.bracketed
+      )
+        throw new Error("TOKEN_EXPIRED");
       if (resource.version !== paste.version) throw new Error("TOKEN_EXPIRED");
       this.current(resource);
       if (resource.sending || !this.canInput(resource))
@@ -756,16 +772,21 @@ export class TerminalController {
             resource.boundary.nextSequence,
             chunk,
             "paste",
+            paste.fileBracketed !== null,
           );
         if (!result.accepted) {
           await new Promise((done) => setTimeout(done, result.retryAfterMs));
           continue;
         }
         offset += chunk.length;
+        fileBytesDispatched = paste.fileBracketed !== null;
         await new Promise((done) =>
           setTimeout(done, Math.ceil((chunk.length * 1000) / (55 * 1024))),
         );
       }
+    } catch (error) {
+      if (fileBytesDispatched) throw new Error("INPUT_RESULT_UNKNOWN");
+      throw error;
     } finally {
       paste.bytes.fill(0);
       bytes?.fill(0);

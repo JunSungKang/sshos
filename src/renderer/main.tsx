@@ -60,4 +60,15 @@ function App() {
 }
 const root = document.getElementById("root");
 if (!root) throw new Error("App root missing");
+// Chromium must never navigate the application to a dropped local file.
+// Leave propagation to the specific editor, terminal or server-copy target.
+for (const type of ["dragover", "drop"] as const) {
+  window.addEventListener(
+    type,
+    (event) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    },
+    true,
+  );
+}
 createRoot(root).render(<App />);

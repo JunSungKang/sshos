@@ -19,7 +19,8 @@ export function hasBlockingProfileWork(
 ): boolean {
   return rows.some(
     (row) =>
-      row.serverId === id &&
+      (row.serverId === id ||
+        (row.kind === "server_relay" && row.target.serverId === id)) &&
       (receiptUnresolved(row) ||
         active(row.taskId) ||
         row.recordError === true),

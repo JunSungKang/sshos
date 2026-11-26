@@ -23,6 +23,7 @@ import type {
   UploadChoice,
   DownloadDirectoryChoice,
 } from "./transfer-selections";
+import type { RelayPreview, RelayView } from "./relay";
 import type { TransferShelf } from "./transfer-ui";
 import type { ProfileDraft, ProfileView } from "./models";
 import type {
@@ -132,6 +133,7 @@ export interface DesktopBridge {
     previewPaste(
       terminalToken: string,
       text: string,
+      file?: { bracketed: boolean },
     ): Promise<TerminalPastePreview>;
     paste(confirmationToken: string, bracketed: boolean): Promise<void>;
     releasePaste(confirmationToken: string): Promise<void>;
@@ -162,6 +164,39 @@ export interface DesktopBridge {
       action: ExecutionActionPreview["action"],
     ): Promise<ExecutionActionPreview>;
     applyAction(token: string, choice?: "hide" | "stop"): Promise<void>;
+  };
+  relay: {
+    folders(
+      sessionToken: string,
+      path: string,
+      offset?: number,
+    ): Promise<{
+      path: string;
+      directories: string[];
+      nextOffset: number | null;
+      partial: boolean;
+    }>;
+    preview(input: {
+      entryToken: string;
+      destinationSessionToken: string;
+      directory: string;
+      name?: string;
+    }): Promise<RelayPreview>;
+    retryPreview(input: {
+      parentId: string;
+      destinationSessionToken: string;
+      directory: string;
+      name?: string;
+    }): Promise<RelayPreview>;
+    releasePreview(token: string): Promise<void>;
+    start(token: string): Promise<string>;
+    list(): Promise<RelayView[]>;
+    inspect(
+      id: string,
+    ): Promise<{ present: boolean | null; size: number | null }>;
+    cancel(id: string): Promise<void>;
+    discard(id: string): Promise<void>;
+    acknowledge(id: string): Promise<void>;
   };
   transfer: {
     pickUploadFiles(): Promise<UploadChoice[] | null>;

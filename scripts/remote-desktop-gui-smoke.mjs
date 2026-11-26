@@ -98,7 +98,7 @@ try {
   );
   await fs.writeFile(
     join(base, "home/fixture/site/index.html"),
-    '<html><head><link rel="stylesheet" href="assets/style.css"></head><body><h1>Remote document</h1><p id="script">script off</p><p id="authority"></p><img id="local" src="assets/picture.png"><img id="outside" src="../shared.png"><script src="assets/main.js"></script></body></html>',
+    '<html><head><link rel="stylesheet" href="assets/style.css"></head><body><h1>Remote document</h1><p id="script">script off</p><p id="authority"></p><input id="upload" type="file"><img id="local" src="assets/picture.png"><img id="outside" src="../shared.png"><script src="assets/main.js"></script></body></html>',
   );
   await fs.writeFile(join(base, "home/fixture/photo.html"), png);
   await fs.writeFile(
@@ -246,6 +246,27 @@ try {
     await inspect('document.querySelector("#outside").naturalWidth'),
     0,
   );
+  // DevTools dispatch exercises Chromium's drag target, native file input and
+  // separate guest surface. Physical Explorer/Finder gestures remain target QA.
+  const checkDrop = async () => {
+    const p = await inspect(`(() => {
+      const input = document.querySelector('#upload');
+      window.__dropFiles = 0;
+      window.addEventListener('drop', e => { window.__dropFiles += e.dataTransfer.files.length; }, {once:true});
+      const r = input.getBoundingClientRect();
+      return {x:r.x + 8,y:r.y + 5};
+    })()`);
+    await application.evaluate(async ({webContents}, {p, path}) => {
+      const wc = webContents.getAllWebContents().find(w => w.getURL().startsWith("sshos-web:"));
+      const data = {items:[], files:[path], dragOperationsMask:1};
+      for (const type of ["dragEnter","dragOver","drop"]) {
+        await wc.debugger.sendCommand("Input.dispatchDragEvent", {type, ...p, data});
+      }
+    }, {p, path:join(base,"home/fixture/site/index.html")});
+    assert.equal(await inspect('document.querySelector("#upload")?.files.length'), 0);
+    assert.equal(await inspect('window.__dropFiles'), 0);
+  };
+  await checkDrop();
   await pane
     .getByRole("checkbox", { name: "이 창에서 JavaScript 허용" })
     .click();
@@ -255,6 +276,7 @@ try {
   await expect
     .poll(() => inspect('document.querySelector("#script")?.textContent'))
     .toBe("script ran");
+  await checkDrop();
   assert.equal(
     await inspect('document.querySelector("#authority").textContent'),
     "undefined:undefined",
@@ -386,6 +408,7 @@ try {
       "zero SFTP READDIR",
       "isolated Chromium HTML with relative CSS and image resources over SFTP",
       "scripts default off and explicitly enabled per preview",
+      "Chromium file drop reaches neither guest page nor native file input with scripts off/on",
       "no preload/require/SSH authority",
       "external network blocked",
       "explicit root expansion",

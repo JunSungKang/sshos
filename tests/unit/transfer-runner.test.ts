@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 import {
   TransferRunner,
   TransferIOFailure,
@@ -21,6 +22,11 @@ function fixture(
     corrupt?: boolean;
     truncated?: boolean;
     changed?: boolean;
+    changedAtDispatch?: boolean;
+    relayParentId?: string;
+    expectedSha256?: string;
+    beforeRead?: (row: TransferReceipt) => Promise<void>;
+    confirmFailure?: Error;
     createFailure?: TransferIOFailure;
     linkFailure?: TransferIOFailure;
     cleanupFailure?: TransferIOFailure;
@@ -32,6 +38,7 @@ function fixture(
 ) {
   const data = options.data ?? Buffer.from("abc");
   const initial = transferReceipt(options.direction ?? "upload", data.length);
+  if (options.relayParentId) initial.relayParentId = options.relayParentId;
   const trace: string[] = [];
   const durable: TransferReceipt[] = [];
   const updates: ReturnType<TransferRunner["snapshot"]>[] = [];
@@ -68,12 +75,15 @@ function fixture(
         { once: true },
       );
       const source: TransferSource = {
-        read: read(data),
+        read: async (buffer, offset, length, position) => {
+          trace.push("source_read");
+          return read(data)(buffer, offset, length, position);
+        },
         stat: async () => {
           sourceStats++;
           return {
             ...initial.sourceInitialStat,
-            mtime: options.changed && sourceStats > 1 ? "2" : "1",
+            mtime: options.changedAtDispatch || (options.changed && sourceStats > 1) ? "2" : "1",
           };
         },
         close: async () => {
@@ -139,6 +149,7 @@ function fixture(
         },
         confirmDestination: async () => {
           trace.push("destination_stat");
+          if (options.confirmFailure) throw options.confirmFailure;
         },
         removeTemp: async () => {
           trace.push("temp_unlink");
@@ -153,6 +164,7 @@ function fixture(
       return ports;
     },
     {
+      beforeRead: options.beforeRead,
       persist: async (row) => {
         trace.push("save:" + row.stage + ":" + row.phase);
         if (options.failSave === row.stage)
@@ -163,6 +175,7 @@ function fixture(
       },
       update: (row) => updates.push(row),
     },
+    options.expectedSha256,
   );
   return {
     runner,
@@ -187,6 +200,84 @@ function fixture(
 }
 afterEach(() => vi.useRealTimers());
 describe("durable non-overwriting transfer orchestration", () => {
+  it("checks A metadata and available disk space before any temporary file creation or payload read", async () => {
+    const relayParentId = crypto.randomUUID();
+    const beforeRead = vi.fn(async () => { throw new Error("LOCAL_DISK_FULL"); });
+    const options = { direction: "download" as const, relayParentId, beforeRead };
+    const changed = fixture({ ...options, changedAtDispatch: true });
+    expect((await changed.runner.run()).snapshot.errorCode).toBe("SOURCE_CHANGED");
+    expect(beforeRead).not.toHaveBeenCalled();
+    const blocked = fixture(options);
+    expect((await blocked.runner.run()).snapshot).toMatchObject({
+      phase: "failed", errorCode: "LOCAL_DISK_FULL", relayParentId, tempCreated: false, transferredBytes: 0,
+    });
+    expect(beforeRead).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ relayParentId, totalBytes: 3 }));
+    expect(blocked.trace).not.toContain("source_read");
+    expect(blocked.trace).not.toContain("temp_wx");
+    expect(blocked.durable.some(row => row.stage === "temp_create_intent")).toBe(false);
+    expect(blocked.final).toBeNull();
+  });
+  it("honors cancellation while a queued relay's local-space check waits", async () => {
+    const entered = deferred<void>(), release = deferred<void>();
+    const f = fixture({ direction: "download", relayParentId: crypto.randomUUID(),
+      beforeRead: async () => { entered.resolve(); await release.promise; },
+    });
+    const run = f.runner.run();
+    await entered.promise;
+    expect(f.trace).not.toContain("source_read");
+    expect(f.runner.cancel()).toBe("cancel_requested");
+    release.resolve();
+    expect(await run).toMatchObject({ resourcesClosed: true, snapshot: {
+      phase: "cancelled", transferredBytes: 0, tempCreated: false,
+    }});
+    expect(f.trace).not.toContain("temp_wx");
+  });
+  it.each([Buffer.alloc(0), Buffer.alloc(180000, 0xfd)])(
+    "binds both relay legs to the verified private snapshot digest (case %#)",
+    async (data) => {
+      const relayParentId = crypto.randomUUID();
+      const a = fixture({ data, direction: "download", relayParentId });
+      const download = await a.runner.run();
+      const expectedSha256 = createHash("sha256").update(data).digest("hex");
+      expect(download).toMatchObject({ resourcesClosed: true, snapshot: {
+        phase: "completed", localTempIdentity: "temp", streamSha256: expectedSha256,
+      }});
+      expect(a.durable.find(row => row.stage === "temp_created")).toMatchObject({
+        localTempIdentity: "temp", transferredBytes: 0,
+      });
+      const b = fixture({ data: a.final!, relayParentId, expectedSha256 });
+      expect((await b.runner.run()).snapshot).toMatchObject({
+        phase: "completed", verifiedBytes: data.length, streamSha256: expectedSha256,
+      });
+      expect(b.final).toEqual(data);
+      expect(b.durable.some(row => row.localTempIdentity !== undefined)).toBe(false);
+    },
+  );
+  it("refuses to publish a same-size replacement stage or altered B read-back", async () => {
+    const original = Buffer.from([0, 1, 2]), expectedSha256 = createHash("sha256").update(original).digest("hex");
+    for (const options of [{ data: Buffer.from([0, 9, 2]) }, { data: original, corrupt: true }]) {
+      const f = fixture({ ...options, relayParentId: crypto.randomUUID(), expectedSha256 });
+      expect((await f.runner.run()).snapshot).toMatchObject({
+        phase: "failed", errorCode: "VERIFY_MISMATCH", destinationCreated: false, cleanupState: "needed",
+      });
+      expect(f.final).toBeNull();
+      expect(f.trace).not.toContain("exclusive_link");
+      expect(f.durable.some(row => row.dispatchAllowed)).toBe(false);
+    }
+  });
+  it("keeps B publication unknown when observing the linked destination fails and never rolls it back", async () => {
+    const data = Buffer.from("fixture"), expectedSha256 = createHash("sha256").update(data).digest("hex");
+    const f = fixture({ data, relayParentId: crypto.randomUUID(), expectedSha256,
+      confirmFailure: new Error("VERIFY_MISMATCH"),
+    });
+    expect((await f.runner.run()).snapshot).toMatchObject({
+      phase: "result_unknown", errorCode: "VERIFY_MISMATCH", lastConfirmedPhase: "content_verified",
+    });
+    expect(f.final).toEqual(data);
+    expect(f.trace.filter(event => event === "exclusive_link")).toHaveLength(1);
+    expect(f.trace).not.toContain("temp_unlink");
+    await expect(f.runner.run()).rejects.toThrow("INPUT_INVALID");
+  });
   it.each(["upload", "download"] as const)(
     "orders intent, create, hash, exclusive link and completion for %s",
     async (direction) => {

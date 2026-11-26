@@ -590,6 +590,73 @@ describe("main terminal capabilities and paste authority", () => {
     ).rejects.toThrow("TOKEN_EXPIRED");
     expect(JSON.stringify(f.repo.snapshots())).not.toContain("first");
   });
+  it("requires an explicit file send, preserves bytes and consumes a changed-mode or reused token", async () => {
+    const f = await fixture(),
+      ready = await f.restore((await f.open()).windowId);
+    const previewFile = (text: string, bracketed = false) =>
+      f.controller.handle("terminal:previewPaste", {
+        terminalToken: ready.terminalToken,
+        text,
+        file: { bracketed },
+      }) as Promise<TerminalPastePreview>;
+    const inputs = () =>
+      f.requests.filter((item) => item.action === "pty:input");
+    const send = (preview: TerminalPastePreview, bracketed: boolean) =>
+      f.controller.handle("terminal:paste", {
+        confirmationToken: preview.confirmationToken,
+        bracketed,
+      });
+    for (const control of ["\u001b", "\u007f", "\u0085", "\r", "\u0001"])
+      await expect(previewFile("test" + control)).rejects.toThrow(
+        "INPUT_INVALID",
+      );
+    await expect(previewFile("a".repeat(65537))).rejects.toThrow();
+    const boundary = await previewFile("a".repeat(65536));
+    expect(boundary.byteLength).toBe(65536);
+    await f.controller.handle(
+      "terminal:releasePaste",
+      boundary.confirmationToken,
+    );
+    const short = await previewFile("한줄");
+    expect(short).toMatchObject({
+      requiresConfirmation: true,
+      fileBracketed: false,
+    });
+    await expect(send(short, true)).rejects.toThrow("TOKEN_EXPIRED");
+    await expect(send(short, false)).rejects.toThrow("TOKEN_EXPIRED");
+    const confirmed = await previewFile("한\t줄\n");
+    expect(inputs()).toHaveLength(0);
+    await send(confirmed, false);
+    await expect(send(confirmed, false)).rejects.toThrow("TOKEN_EXPIRED");
+    expect(Buffer.concat(inputs().map((row) => row.bytes!)).toString()).toBe(
+      "한\t줄\n",
+    );
+  });
+  it("reports uncertain file delivery after losing an input acknowledgement and cannot resend", async () => {
+    const f = await fixture(),
+      ready = await f.restore((await f.open()).windowId);
+    const preview = (await f.controller.handle("terminal:previewPaste", {
+      terminalToken: ready.terminalToken,
+      text: "q".repeat(4200),
+      file: { bracketed: false },
+    })) as TerminalPastePreview;
+    const request = vi.mocked(f.gateway.request);
+    const original = request.getMockImplementation()!;
+    let chunks = 0;
+    request.mockImplementation(async (input, ...args) => {
+      if (input.action === "pty:input" && ++chunks === 2)
+        throw new Error("SESSION_UNAVAILABLE");
+      return original(input, ...args);
+    });
+    const send = () =>
+      f.controller.handle("terminal:paste", {
+        confirmationToken: preview.confirmationToken,
+        bracketed: false,
+      });
+    await expect(send()).rejects.toThrow("INPUT_RESULT_UNKNOWN");
+    await expect(send()).rejects.toThrow("TOKEN_EXPIRED");
+    expect(chunks).toBe(2);
+  });
   it("invalidates old input/paste/output capabilities on renderer replacement and requires a new restore", async () => {
     const f = await fixture(),
       window = await f.open(),

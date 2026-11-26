@@ -9,6 +9,7 @@ const cleanup = new Set([
   "file:close",
   "transfer:cancel",
   "transfer:release",
+  "transfer:releaseRelay",
   "mutation:finish",
 ]);
 export const engineRequestCapacity = (action: string): number =>

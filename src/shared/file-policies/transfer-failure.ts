@@ -25,6 +25,8 @@ const knownNative = new Set([
   "EXDEV",
   "ENOTSUP",
   "EOPNOTSUPP",
+  "ENOSPC",
+  "EDQUOT",
 ]);
 export function transferFailure(
   error: unknown,
@@ -37,7 +39,11 @@ export function transferFailure(
     typeof status === "number" || typeof status === "string" ? status : null;
   // A protocol status owns classification. Its server-supplied description is never an app code.
   let code = value === null ? errorCodeOf(error) : "INTERNAL_ERROR";
-  if (value === 3 || ["EACCES", "EPERM", "EROFS"].includes(String(value)))
+  if (native && value === "ENOSPC") code = "LOCAL_DISK_FULL";
+  else if (native && value === "EDQUOT") code = "LOCAL_QUOTA_EXCEEDED";
+  else if (!native && value === 14) code = "REMOTE_DISK_FULL";
+  else if (!native && value === 15) code = "REMOTE_QUOTA_EXCEEDED";
+  else if (value === 3 || ["EACCES", "EPERM", "EROFS"].includes(String(value)))
     code = "PERMISSION_DENIED";
   else if (value === "EEXIST") code = "NAME_CONFLICT";
   else if (

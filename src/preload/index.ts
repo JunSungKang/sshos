@@ -1,3 +1,4 @@
+import type { DesktopBridge } from "../shared/contracts";
 import { contextBridge, ipcRenderer } from "electron";
 // Keep this entry self-contained: sandboxed preload cannot require local modules.
 contextBridge.exposeInMainWorld(
@@ -67,8 +68,16 @@ contextBridge.exposeInMainWorld(
           terminalToken,
           size: { cols, rows },
         }),
-      previewPaste: (terminalToken: string, text: string) =>
-        ipcRenderer.invoke("terminal:previewPaste", { terminalToken, text }),
+      previewPaste: (
+        terminalToken: string,
+        text: string,
+        file?: { bracketed: boolean },
+      ) =>
+        ipcRenderer.invoke("terminal:previewPaste", {
+          terminalToken,
+          text,
+          file,
+        }),
       paste: (confirmationToken: string, bracketed: boolean) =>
         ipcRenderer.invoke("terminal:paste", { confirmationToken, bracketed }),
       releasePaste: (token: string) =>
@@ -98,6 +107,23 @@ contextBridge.exposeInMainWorld(
           "execution:applyAction",
           choice === undefined ? { token } : { token, choice },
         ),
+    }),
+    relay: Object.freeze({
+      folders: (sessionToken: string, path: string, offset = 0) =>
+        ipcRenderer.invoke("relay:folders", { sessionToken, path, offset }),
+      preview: (input: Parameters<DesktopBridge["relay"]["preview"]>[0]) =>
+        ipcRenderer.invoke("relay:preview", input),
+      retryPreview: (
+        input: Parameters<DesktopBridge["relay"]["retryPreview"]>[0],
+      ) => ipcRenderer.invoke("relay:retryPreview", input),
+      releasePreview: (token: string) =>
+        ipcRenderer.invoke("relay:releasePreview", token),
+      start: (token: string) => ipcRenderer.invoke("relay:start", token),
+      list: () => ipcRenderer.invoke("relay:list"),
+      inspect: (id: string) => ipcRenderer.invoke("relay:inspect", id),
+      cancel: (id: string) => ipcRenderer.invoke("relay:cancel", id),
+      discard: (id: string) => ipcRenderer.invoke("relay:discard", id),
+      acknowledge: (id: string) => ipcRenderer.invoke("relay:acknowledge", id),
     }),
     transfer: Object.freeze({
       pickUploadFiles: () => ipcRenderer.invoke("transfer:pickUploadFiles"),

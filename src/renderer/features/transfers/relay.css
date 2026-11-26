@@ -1,0 +1,82 @@
+#root [data-relay-ready="true"] {
+  outline: 1px dashed var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--control-radius);
+}
+#root [data-relay-over="true"] {
+  background: var(--selected);
+  color: var(--accent-text);
+  outline-style: solid;
+}
+#root .relay-dialog {
+  width: min(600px, 90vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+#root .relay-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin: 12px 0 16px;
+}
+#root .relay-dialog :is(select, input) {
+  width: 100%;
+}
+#root .relay-endpoint {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 8px 0 12px;
+}
+#root .relay-endpoint :is(small, strong, code) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+#root .relay-endpoint code {
+  padding: 6px 10px;
+  white-space: pre-wrap;
+}
+#root .relay-route {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+}
+#root .relay-space dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+}
+#root .relay-space dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+#root .relay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+#root .relay-actions button {
+  margin: 0;
+}
+#root .relay-folders {
+  display: grid;
+  gap: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  background: var(--background);
+  padding: 10px;
+}
+#root .relay-folders button {
+  text-align: start;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+#root .relay-shelf-card {
+  min-width: 8rem;
+  flex-shrink: 1;
+}
+#root .relay-shelf-card > strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

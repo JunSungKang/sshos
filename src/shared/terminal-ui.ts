@@ -17,7 +17,12 @@ export type TerminalDescriptor = {
 export type TerminalInputResult =
   | { accepted: false; retryAfterMs: number }
   | { accepted: true; nextSequence: number };
+export function hasTerminalFileControls(text: string): boolean {
+  // The file reader already normalized CRLF. Only HT and LF are valid C0 controls.
+  return /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/u.test(text);
+}
 export type TerminalPastePreview = {
+  fileBracketed: boolean | null;
   terminalName: string;
   confirmationToken: string;
   terminalId: string;

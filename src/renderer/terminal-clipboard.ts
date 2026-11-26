@@ -34,3 +34,13 @@ export function visiblePaste(text: string): string {
             : char,
   ).join("");
 }
+
+/** Literal marker glyphs must remain distinguishable from whitespace in a file confirmation. */
+export function visibleFilePaste(text: string): string {
+  const escaped = text.replace(/[\\␠␊␉␍\s]/gu, (char) => {
+    if (" \n\t\r".includes(char)) return char;
+    if (char === "\\") return "\\\\";
+    return "\\u{" + char.codePointAt(0)!.toString(16) + "}";
+  });
+  return visiblePaste(escaped).replaceAll(" ", "␠");
+}

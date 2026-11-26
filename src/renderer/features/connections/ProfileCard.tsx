@@ -4,6 +4,7 @@ import type { SessionView } from "../../../shared/session-contracts";
 import { ErrorPanel } from "../../ErrorPanel";
 import { userMessage } from "../../../shared/errors";
 import { connectionStatusLabel, hasLiveConnection } from "./connection-status";
+import { useRelayDropTarget } from "../transfers/RelayWorkspace";
 
 export function ProfileCard({
   profile,
@@ -33,18 +34,22 @@ export function ProfileCard({
     connected && session.os === "unknown" && !session.osConfirmed;
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
+  const target = useRelayDropTarget(session);
   return (
     <article
       className="profile-card"
       data-profile-id={profile.id}
       data-state={session?.status ?? "idle"}
       aria-label={profile.name}
+      {...(session ? target : {})}
     >
       <div className="profile-card-top">
         <h3 title={profile.name}>{profile.name}</h3>
         <span className="connection-badge">
           <i className="connection-dot" />
-          {connectionStatusLabel(session?.status)}
+          {session && target["data-relay-ready"]
+            ? "여기에 복사"
+            : connectionStatusLabel(session?.status)}
         </span>
       </div>
       <div className="profile-endpoint" title={endpoint}>

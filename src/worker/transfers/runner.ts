@@ -43,6 +43,7 @@ export type TransferLive = TransferReceipt & {
 export type TransferHooks = {
   persist(row: TransferReceipt): Promise<void>;
   update(row: TransferLive): void;
+  beforeRead?: (row: TransferReceipt) => Promise<void>;
   now?: () => number;
 };
 const codeOf = errorCodeOf;
@@ -77,6 +78,7 @@ export class TransferRunner {
       ) => void,
     ) => TransferPorts,
     private readonly hooks: TransferHooks,
+    private readonly expectedSha256?: string,
   ) {
     this.row = transferReceiptSchema.parse(initial);
     if (this.row.phase !== "queued") throw new Error("INPUT_INVALID");
@@ -218,6 +220,8 @@ export class TransferRunner {
       this.check();
       if (!sameStat(initial, this.row.sourceInitialStat))
         throw new Error("SOURCE_CHANGED");
+      await this.hooks.beforeRead?.(this.row);
+      this.check();
       await this.persist({ stage: "temp_create_intent" });
       this.check();
       this.tempRequestPending = true;
@@ -225,6 +229,9 @@ export class TransferRunner {
       this.tempRequestPending = false;
       this.row.tempCreated = true;
       await this.persist({
+        ...(this.row.relayParentId && this.row.direction === "download"
+          ? { localTempIdentity: (await this.ports.tempStat()).identity }
+          : {}),
         stage: "temp_created",
         lastConfirmedPhase: "temp_created",
         cleanupState: "needed",
@@ -247,6 +254,8 @@ export class TransferRunner {
         observer,
       );
       this.check();
+      if (this.expectedSha256 !== undefined && digest !== this.expectedSha256)
+        throw new TransferIOFailure("VERIFY_MISMATCH");
       const final = transferStatSchema.parse(await source.stat());
       this.check();
       if (!sameStat(initial, final)) throw new Error("SOURCE_CHANGED");

@@ -12,6 +12,7 @@ import {
   type TransferPorts,
   type TransferSource,
 } from "./runner";
+import { remoteCapacity } from "./remote-capacity";
 import { TransferScope, type MutationACK } from "./scope";
 import { LocalTransferFiles } from "./local";
 import type { WritePort } from "./io";
@@ -159,6 +160,15 @@ export class SFTPTransferPorts implements TransferPorts {
     await this.verifyParent();
     if (this.row.direction === "upload") {
       await this.absentDestination();
+      if (this.row.relayParentId) {
+        const report = await remoteCapacity(
+          this.remote(),
+          this.row.remoteParent,
+          this.row.totalBytes,
+          (start) => this.scope.remote(start),
+        );
+        if (report.errorCode) throw new TransferIOFailure(report.errorCode);
+      }
       return this.local.openSource();
     }
     await this.local.absentDestination();

@@ -3,13 +3,15 @@ import { LicensesController } from "./settings/licenses";
 import { configureRuntimePaths } from "./runtime-paths";
 import { DiagnosticLog } from "./settings/diagnostic-log";
 import { DiagnosticsController } from "./settings/diagnostics";
-import { errorCodeOf } from "../shared/errors";
+import { errorCodeOf, userMessage } from "../shared/errors";
 import { SettingsController } from "./settings/settings";
 import { RendererMemoryGuard } from "./desktop/renderer-memory";
 import { ResponseProbe } from "./connections/probes";
 import { z } from "zod";
 import {
   inShutdownScope,
+  relayQuitInventory,
+  discardQuitStages,
   shutdownSummary,
   runShutdown,
   type ShutdownScope,
@@ -65,6 +67,9 @@ import { ExecutionPreviews } from "./execution/execution-previews";
 import { ExecutionController } from "./execution/executions";
 import { MainStorageRecovery } from "./lifecycle/storage-recovery";
 import { TransferController } from "./transfers/transfers";
+import { RelayController } from "./transfers/relay";
+import { RelayFolders } from "./transfers/relay-folders";
+import { RelayStaging } from "../platform/local-files/relay-staging";
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -199,6 +204,8 @@ async function main(): Promise<void> {
     { stdio: "ignore", serviceName: "sshOS connection engine" },
   );
   let storageRecovery = new MainStorageRecovery(epoch, worker);
+  let relay: RelayController | null = null;
+  const staging = new RelayStaging(app.getPath("userData"));
   let receiptChannel = new MainReceiptChannel(
     epoch,
     () => receipts,
@@ -209,6 +216,10 @@ async function main(): Promise<void> {
           (recoveryAccepting || (!storageRecovering && !recoveryLocked)),
       ),
     (message) => worker.postMessage(message),
+    (row) => {
+      if (!relay) throw new Error("STORAGE_FAILED");
+      return relay.dispatchCheck(row);
+    },
   );
   let transfers: TransferController | null = null;
   let executions: ExecutionController | null = null;
@@ -353,7 +364,33 @@ async function main(): Promise<void> {
           !powerTransition,
       ),
     () => receiptChannel.settled(),
+    staging.disk,
   );
+  const relayFolders = new RelayFolders(connections, gateway);
+  relay = new RelayController({
+    files,
+    connections,
+    gateway,
+    staging,
+    transfers,
+    repository: () => receipts,
+    healthy: () =>
+      Boolean(
+        repository &&
+          !repository.store.faulted &&
+          receipts &&
+          !receipts.faulted,
+      ),
+  });
+  if (receipts)
+    await relay.restore().catch(() => {
+      recoveryLocked = true;
+    });
+  const invalidateTransfers = () => {
+    transfers?.invalidateRenderer();
+    relay?.invalidateRenderer();
+    relayFolders.invalidate();
+  };
   const executionPreviews = new ExecutionPreviews(
     files,
     connections,
@@ -498,12 +535,12 @@ async function main(): Promise<void> {
           terminals!.sessionChanged(row.serverId, row.generation, false);
         }
         viewers.interruptRenderer();
-        transfers!.invalidateRenderer();
+        invalidateTransfers();
         executionPreviews.invalidate();
         profiles?.invalidate();
         engineStopping = Promise.allSettled([
           mutations.settled(),
-          transfers!.engineStopped(),
+          transfers!.engineStopped().then(() => relay!.engineStopped()),
           executions!.engineStopped(),
           terminals!.engineStopped(),
         ]).then(() => {});
@@ -511,12 +548,14 @@ async function main(): Promise<void> {
     });
   void observeEngine(worker, epoch).catch(() => {});
   const activeOperation = (id: string) =>
+    Boolean(relay?.isActive(id)) ||
     textEditor.isActive(id) ||
     mutations.isActive(id) ||
     transfers!.isActive(id) ||
     executions!.isActive(id) ||
     terminals!.isActive(id);
   profileHasWork = (id) =>
+    Boolean(relay?.hasWork(id)) ||
     hasBlockingProfileWork(id, mutations.snapshots(), activeOperation);
   const shutdown = async (scope: ShutdownScope, budgetMs = 10000) => {
     const targets = connections!
@@ -533,11 +572,13 @@ async function main(): Promise<void> {
       {
         interrupt: () =>
           Promise.allSettled([
+            relay!.cancelForShutdown(scope?.serverId),
             transfers!.cancelForShutdown(scope?.serverId, scope?.generation),
             executions!.closeForShutdown(scope?.serverId, scope?.generation),
             terminals!.closeForShutdown(scope?.serverId, scope?.generation),
           ]).then(() => {}),
         finalizing: () =>
+          relay!.hasFinalizing(scope?.serverId) ||
           transfers!.hasFinalizing(scope?.serverId, scope?.generation),
         disconnect: () =>
           Promise.allSettled(
@@ -553,6 +594,7 @@ async function main(): Promise<void> {
                 inShutdownScope(row, scope) && activeOperation(row.taskId),
             ),
         settled: async () => {
+          await relay!.settled();
           await receiptChannel.settled();
           await receipts?.settled();
           await repository?.store.settled();
@@ -569,7 +611,7 @@ async function main(): Promise<void> {
     responseProbe?.invalidate();
     profiles?.invalidate();
     executionPreviews.invalidate();
-    transfers!.invalidateRenderer();
+    invalidateTransfers();
     viewers.interruptRenderer();
     const targets = connections!
       .views()
@@ -584,6 +626,7 @@ async function main(): Promise<void> {
     if (powerWork) return;
     // Dispatch disconnect immediately: an OS suspend cannot wait for a final link.
     const draining = Promise.allSettled([
+      relay!.cancelForShutdown(),
       transfers!.cancelForShutdown(),
       executions!.closeForShutdown(),
       terminals!.closeForShutdown(),
@@ -640,6 +683,21 @@ async function main(): Promise<void> {
     if (quitFinal || quitPrompt || lifecycleClosing) return;
     quitPrompt = true;
     try {
+      const inventory = (rows = mutations.snapshots()) => {
+        const allowed = new Set(
+          relay!
+            .list()
+            .filter((row) => row.discardable)
+            .map((row) => row.id),
+        );
+        return relayQuitInventory(rows, (id) => allowed.has(id));
+      };
+      const rows = mutations.snapshots();
+      const shown = inventory(rows);
+      const ask = (options: Electron.MessageBoxOptions) =>
+        win && !win.isDestroyed()
+          ? dialog.showMessageBox(win, options)
+          : dialog.showMessageBox(options);
       const options: Electron.MessageBoxOptions = {
         type: "question",
         title: "sshOS 종료",
@@ -648,29 +706,62 @@ async function main(): Promise<void> {
           (viewers.editingCount
             ? `편집 중인 텍스트 ${viewers.editingCount}개 · 종료하면 저장하지 않은 편집은 사라집니다.\n`
             : "") +
-          shutdownSummary(mutations.snapshots(), activeOperation, null),
-        buttons: ["계속 실행", "작업 중단 후 종료"],
+          shutdownSummary(rows, activeOperation, null, shown.detail) +
+          (shown.count
+            ? "\n진행 중인 전송의 임시 파일은 작업 중단 절차에 따라 정리될 수 있습니다."
+            : ""),
+        buttons: [
+          "계속 실행",
+          shown.count ? "보관 중인 PC 사본 유지 후 종료" : "작업 중단 후 종료",
+          ...(shown.candidates.size
+            ? [`PC 사본 ${shown.candidates.size}건 삭제 후 종료`]
+            : []),
+        ],
         defaultId: 0,
         cancelId: 0,
         noLink: true,
       };
-      const owner = win,
-        answer =
-          owner && !owner.isDestroyed()
-            ? await dialog.showMessageBox(owner, options)
-            : await dialog.showMessageBox(options);
-      if (answer.response !== 1) return;
+      const answer = await ask(options);
+      if (
+        answer.response !== 1 &&
+        !(answer.response === 2 && shown.candidates.size)
+      )
+        return;
       lifecycleClosing = true;
       profiles?.invalidate();
       executionPreviews.invalidate();
-      transfers!.invalidateRenderer();
+      invalidateTransfers();
+      const deadline = performance.now() + 9500;
+      if (answer.response === 2) {
+        const result = await discardQuitStages(
+          shown.candidates,
+          () => inventory().candidates,
+          (id, authorized) => relay!.discardForQuit(id, authorized),
+          9500,
+        );
+        if (result.error) {
+          lifecycleClosing = false;
+          await ask({
+            type: "warning",
+            title: "PC 임시 사본 정리",
+            message: "일부 PC 사본의 삭제를 확인하지 못해 종료를 중단했습니다.",
+            detail: `삭제 확인 ${result.completed}/${shown.candidates.size}건 · ${userMessage(result.error)}\n전체 작업에서 실제 상태를 확인하세요.`,
+            buttons: ["앱으로 돌아가기"],
+            defaultId: 0,
+            cancelId: 0,
+            noLink: true,
+          });
+          return;
+        }
+      }
+      const remaining = Math.max(1, Math.ceil(deadline - performance.now()));
       const hard = setTimeout(() => {
         quitFinal = true;
         worker.kill();
         app.exit(0);
-      }, 9500);
+      }, remaining);
       try {
-        await shutdown(null, 9500);
+        await shutdown(null, remaining);
       } finally {
         clearTimeout(hard);
         quitFinal = true;
@@ -1090,6 +1181,16 @@ async function main(): Promise<void> {
     });
   }
   for (const action of [
+    "relay:folders",
+    "relay:preview",
+    "relay:retryPreview",
+    "relay:start",
+    "relay:releasePreview",
+    "relay:list",
+    "relay:cancel",
+    "relay:inspect",
+    "relay:discard",
+    "relay:acknowledge",
     "transfer:pickUploadFiles",
     "transfer:pickDownloadDirectory",
     "transfer:previewUpload",
@@ -1109,6 +1210,19 @@ async function main(): Promise<void> {
           Buffer.byteLength(JSON.stringify(payload)) > 65536
         )
           throw new Error("INPUT_INVALID");
+        if (
+          action.startsWith("relay:") &&
+          action !== "relay:list" &&
+          action !== "relay:releasePreview" &&
+          (lifecycleClosing ||
+            storageRecovering ||
+            recoveryLocked ||
+            powerTransition)
+        )
+          throw new Error("REQUEST_BUSY");
+        if (action === "relay:folders") return await relayFolders.list(payload);
+        if (action.startsWith("relay:"))
+          return await relay!.handle(action, payload);
         return await transfers!.handle(action, payload);
       } catch (error) {
         throw new Error(
@@ -1255,6 +1369,7 @@ async function main(): Promise<void> {
         terminals!.hasActive ||
         executions!.hasActive ||
         mutations.hasRunning ||
+        relay!.list().some((job) => relay!.isActive(job.id)) ||
         transfers!.isRegistering ||
         transfers!.overlays().some((row) => transfers!.isActive(row.taskId)))
     )
@@ -1263,6 +1378,7 @@ async function main(): Promise<void> {
     let barrier: string | null = null;
     try {
       await transfers!.settled();
+      await relay!.settled();
       await mutations.settled();
       await textEditor.settled();
       barrier = await storageRecovery.barrier(faulted);
@@ -1289,17 +1405,15 @@ async function main(): Promise<void> {
         barrier,
         receipts
           .snapshots()
-          .filter(
-            (row) =>
-              liveExecutions.has(row.taskId) &&
-              (row.kind === "gui_exec" || row.kind === "pty") &&
-              row.recoveryUncertain,
-          )
-          .map((row) => ({
-            taskId: row.taskId,
-            fromPhase: row.recoveredFromPhase,
-          })),
+          .flatMap((row) =>
+            (row.kind === "gui_exec" || row.kind === "pty") &&
+            liveExecutions.has(row.taskId) &&
+            row.recoveryUncertain
+              ? [{ taskId: row.taskId, fromPhase: row.recoveredFromPhase }]
+              : [],
+          ),
       );
+      await relay!.restore(true);
       recoveryLocked = false;
     } catch (error) {
       if (
@@ -1353,6 +1467,7 @@ async function main(): Promise<void> {
               (recoveryAccepting || (!storageRecovering && !recoveryLocked)),
           ),
         (message) => worker.postMessage(message),
+        (row) => relay!.dispatchCheck(row),
       );
       gateway.restart(worker, epoch, receiptChannel);
       await observeEngine(worker, epoch);
@@ -1464,7 +1579,7 @@ async function main(): Promise<void> {
           profiles?.invalidate();
           executionPreviews.invalidate();
           viewers.interruptRenderer();
-          transfers?.invalidateRenderer();
+          invalidateTransfers();
           executions?.invalidateRenderer();
           terminals?.invalidateRenderer();
         }
@@ -1485,7 +1600,7 @@ async function main(): Promise<void> {
       profiles?.invalidate();
       executionPreviews.invalidate();
       viewers.interruptRenderer();
-      transfers?.invalidateRenderer();
+      invalidateTransfers();
       executions?.invalidateRenderer();
       terminals?.invalidateRenderer();
       if (
@@ -1564,7 +1679,7 @@ async function main(): Promise<void> {
       profiles?.invalidate();
       executionPreviews.invalidate();
       viewers.interruptRenderer();
-      transfers?.invalidateRenderer();
+      invalidateTransfers();
       executions?.invalidateRenderer();
       terminals?.invalidateRenderer();
       replacingRenderer = true;

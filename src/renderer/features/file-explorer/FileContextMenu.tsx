@@ -8,6 +8,7 @@ export function FileContextMenu({
   remove,
   rename,
   properties,
+  copyToServer,
 }: {
   x: number;
   y: number;
@@ -17,6 +18,7 @@ export function FileContextMenu({
   remove(): void;
   rename(): void;
   properties(): void;
+  copyToServer?(): void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -70,6 +72,11 @@ export function FileContextMenu({
       <button role="menuitem" onClick={invoke(open)}>
         열기
       </button>
+      {copyToServer && (
+        <button role="menuitem" onClick={invoke(copyToServer)}>
+          다른 서버로 복사
+        </button>
+      )}
       <button role="menuitem" disabled={!writable} onClick={invoke(remove)}>
         삭제
       </button>

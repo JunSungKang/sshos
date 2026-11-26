@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TransferShelf as Shelf } from "../../../shared/transfer-ui";
+import { useRelayJobs } from "./RelayWorkspace";
+import { RelayShelfCard, relayInFlight } from "./RelayTasks";
 export const transferLabels: Record<string, string> = {
   queued: "전송 대기",
   preparing: "전송 준비",
@@ -48,6 +50,18 @@ export function TransferProgress({
   );
 }
 export function TransferShelf({ openTasks }: { openTasks(): void }) {
+  const { jobs, listError } = useRelayJobs();
+  const relays = jobs.filter(
+    (row) =>
+      relayInFlight(row) && !["queued", "waiting_to_send"].includes(row.phase),
+  );
+  const relayQueued = jobs.filter((row) =>
+    ["queued", "waiting_to_send"].includes(row.phase),
+  ).length;
+  const relayUnresolved = jobs.filter((row) => row.needsAttention).length;
+  const relayFailed = jobs.filter((row) =>
+    ["failed", "interrupted", "result_unknown"].includes(row.phase),
+  ).length;
   const [snapshot, setSnapshot] = useState<Shelf>({
       active: [],
       queued: 0,
@@ -86,8 +100,14 @@ export function TransferShelf({ openTasks }: { openTasks(): void }) {
   return (
     <aside className="transfers" aria-label="전송 상태">
       <strong>전송</strong>
-      {snapshot.active.length === 0 ? (
-        <span>{error || "진행 중인 전송 없음"}</span>
+      {relays.slice(0, 2).map((job) => (
+        <RelayShelfCard job={job} key={job.id} />
+      ))}
+      {snapshot.active.length === 0 && relays.length === 0 ? (
+        <span>
+          {error ||
+            (relayQueued ? "서버 간 복사 대기 중" : "진행 중인 전송 없음")}
+        </span>
       ) : (
         snapshot.active.map((row) => (
           <div className="shelf-task" key={row.taskId}>
@@ -118,10 +138,12 @@ export function TransferShelf({ openTasks }: { openTasks(): void }) {
         ))
       )}
       <span>
-        대기 {snapshot.queued} · 등록 {snapshot.registering} · 실패/중단{" "}
-        {snapshot.failed} · 확인 필요 {snapshot.unresolved}
+        대기 {snapshot.queued + relayQueued} · 등록 {snapshot.registering} ·
+        실패/중단 {snapshot.failed + relayFailed} · 확인 필요{" "}
+        {snapshot.unresolved + relayUnresolved}
       </span>
       <button onClick={openTasks}>전체 작업</button>
+      {listError && <span role="status">서버 간 복사 상태 확인 실패</span>}
       {error && snapshot.active.length > 0 && (
         <span role="status">{error}</span>
       )}
