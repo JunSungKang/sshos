@@ -135,10 +135,7 @@ export class WebPreviewController {
     ses.protocol.handle("sshos-web", async (request) => {
       try {
         checkRevision();
-        if (
-          !["GET", "HEAD"].includes(request.method) ||
-          ++row.requests > 512
-        )
+        if (!["GET", "HEAD"].includes(request.method) || ++row.requests > 512)
           throw new Error("ASSET_DENIED");
         readBudget.assertAvailable();
         const { path, mime } = resourcePath(request.url, row.token, row.root);
@@ -186,6 +183,7 @@ export class WebPreviewController {
         spellcheck: false,
         devTools: false,
         webviewTag: false,
+        navigateOnDragDrop: false,
       },
     });
     row.view = view;

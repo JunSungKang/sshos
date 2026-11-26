@@ -67,8 +67,16 @@ contextBridge.exposeInMainWorld(
           terminalToken,
           size: { cols, rows },
         }),
-      previewPaste: (terminalToken: string, text: string) =>
-        ipcRenderer.invoke("terminal:previewPaste", { terminalToken, text }),
+      previewPaste: (
+        terminalToken: string,
+        text: string,
+        file?: { bracketed: boolean },
+      ) =>
+        ipcRenderer.invoke("terminal:previewPaste", {
+          terminalToken,
+          text,
+          file,
+        }),
       paste: (confirmationToken: string, bracketed: boolean) =>
         ipcRenderer.invoke("terminal:paste", { confirmationToken, bracketed }),
       releasePaste: (token: string) =>

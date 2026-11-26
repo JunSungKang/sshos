@@ -1,13 +1,14 @@
 import { createPortal } from "react-dom";
 import { ErrorPanel } from "../../ErrorPanel";
 import { errorCodeOf } from "../../../shared/errors";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
-import type {
-  TerminalDescriptor,
-  TerminalPastePreview,
+import {
+  hasTerminalFileControls,
+  type TerminalDescriptor,
+  type TerminalPastePreview,
 } from "../../../shared/terminal-ui";
 import { terminalSize } from "../../../shared/terminals";
 import { TerminalInputQueue } from "./terminal-input-queue";
@@ -21,7 +22,14 @@ import { scheduleViewerFrame } from "../viewers/viewer-stream-scheduler";
 import { registerTerminalDisplayGuard } from "../../terminal-display-guard";
 import { usePreferences } from "../settings/preferences";
 import { getTheme, terminalTheme } from "../../../shared/themes";
+import { nativeDropFile, readLocalTextFile } from "../../local-text-input";
 type Instance = { terminal: Terminal; fit: FitAddon; dispose(): void };
+type FileTarget = {
+  terminal: TerminalDescriptor;
+  epoch: number;
+  flow: number;
+  bracketed: boolean;
+};
 export function TerminalPane({
   windowId,
   visible,
@@ -36,6 +44,11 @@ export function TerminalPane({
     themeRef = useRef(theme);
   themeRef.current = theme;
   const memoryBlocked = useRef(false);
+  const filePicker = useRef<HTMLInputElement>(null),
+    pickerTarget = useRef<FileTarget | null>(null),
+    fileTarget = useRef<FileTarget | null>(null),
+    fileEpoch = useRef(0),
+    sendingFile = useRef(false);
   const host = useRef<HTMLDivElement>(null),
     instance = useRef<Instance | null>(null),
     data = useRef<TerminalDescriptor | null>(null),
@@ -63,6 +76,7 @@ export function TerminalPane({
     [notice, setNotice] = useState(""),
     [pending, setPending] = useState(0),
     [paste, setPaste] = useState<TerminalPastePreview | null>(null),
+    [fileOver, setFileOver] = useState(false),
     [menu, setMenu] = useState(false);
   const syncInput = () => {
     const ready =
@@ -82,11 +96,56 @@ export function TerminalPane({
     instance.current?.dispose();
     instance.current = null;
   };
+  const invalidateFile = () => {
+    fileEpoch.current++;
+    pickerTarget.current = null;
+    setFileOver(false);
+    if (!fileTarget.current || sendingFile.current) return;
+    fileTarget.current = null;
+    if (pasteValue.current) {
+      void window.sshOS.terminal
+        .releasePaste(pasteValue.current.confirmationToken)
+        .catch(() => {});
+      pasteValue.current = null;
+    }
+    pasteBusy.current = false;
+    pasteHold.current = false;
+    setPaste(null);
+    syncInput();
+  };
+  const captureFileTarget = (): FileTarget | null => {
+    const terminal = data.current;
+    if (
+      !show.current ||
+      !terminal?.inputAllowed ||
+      !instance.current ||
+      phase.current !== "live" ||
+      pasteBusy.current
+    )
+      return null;
+    return {
+      terminal,
+      epoch: fileEpoch.current,
+      flow: flow.current,
+      bracketed: instance.current.terminal.modes.bracketedPasteMode,
+    };
+  };
+  const fileTargetIsCurrent = (target: FileTarget) =>
+    alive.current &&
+    show.current &&
+    phase.current === "live" &&
+    target.epoch === fileEpoch.current &&
+    target.flow === flow.current &&
+    data.current?.inputAllowed === true &&
+    data.current.terminalToken === target.terminal.terminalToken &&
+    data.current.readGeneration === target.terminal.readGeneration &&
+    instance.current?.terminal.modes.bracketedPasteMode === target.bracketed;
   const paused = () => {
     phase.current = "failed";
     syncInput();
   };
   const blockDisplay = () => {
+    invalidateFile();
     memoryBlocked.current = true;
     flow.current++;
     paused();
@@ -149,6 +208,8 @@ export function TerminalPane({
       }
     }
     pasteBusy.current = false;
+    fileTarget.current = null;
+    sendingFile.current = false;
     pasteHold.current = false;
     pasteValue.current = null;
     if (alive.current) setPaste(null);
@@ -156,6 +217,21 @@ export function TerminalPane({
     if (show.current) instance.current?.terminal.focus();
   };
   const sendPaste = async (preview: TerminalPastePreview) => {
+    if (preview.fileBracketed !== null) {
+      if (sendingFile.current) return;
+      if (
+        !fileTarget.current ||
+        !fileTargetIsCurrent(fileTarget.current) ||
+        preview !== pasteValue.current
+      ) {
+        invalidateFile();
+        setNotice(
+          "터미널 대상이나 붙여넣기 모드가 변경되어 파일 입력을 취소했습니다.",
+        );
+        return;
+      }
+      sendingFile.current = true;
+    }
     try {
       await window.sshOS.terminal.paste(
         preview.confirmationToken,
@@ -164,6 +240,13 @@ export function TerminalPane({
       await finishPaste();
     } catch (failure) {
       setError(errorCodeOf(failure));
+      if (
+        preview.fileBracketed !== null &&
+        errorCodeOf(failure) === "INPUT_RESULT_UNKNOWN"
+      )
+        setNotice(
+          "파일 내용 일부가 원격 프로그램에 도달했을 수 있습니다. 터미널에서 결과를 확인하세요.",
+        );
       await finishPaste();
       throw failure;
     }
@@ -172,6 +255,7 @@ export function TerminalPane({
     value: TerminalDescriptor,
     text: string,
     owned = false,
+    file?: FileTarget,
   ) => {
     if (!text) {
       if (owned) await finishPaste();
@@ -184,6 +268,8 @@ export function TerminalPane({
     }
     try {
       await queue.current?.settled();
+      if (file && !fileTargetIsCurrent(file))
+        throw new Error("REQUEST_CANCELLED");
       if (
         !alive.current ||
         data.current?.terminalToken !== value.terminalToken ||
@@ -195,10 +281,12 @@ export function TerminalPane({
       const preview = await window.sshOS.terminal.previewPaste(
         value.terminalToken,
         text,
+        file ? { bracketed: file.bracketed } : undefined,
       );
       if (
         !alive.current ||
-        data.current?.terminalToken !== value.terminalToken
+        data.current?.terminalToken !== value.terminalToken ||
+        (file && !fileTargetIsCurrent(file))
       ) {
         await window.sshOS.terminal.releasePaste(preview.confirmationToken);
         throw new Error("REQUEST_CANCELLED");
@@ -207,8 +295,35 @@ export function TerminalPane({
       if (preview.requiresConfirmation) setPaste(preview);
       else await sendPaste(preview);
     } catch (failure) {
-      if (alive.current) {
+      if (alive.current && (!file || fileTarget.current === file)) {
         setError(errorCodeOf(failure));
+        await finishPaste();
+      }
+    }
+  };
+  const previewFile = async (file: File, target: FileTarget | null) => {
+    if (!target || !fileTargetIsCurrent(target) || pasteBusy.current) {
+      setNotice("입력할 터미널을 다시 선택해 주세요.");
+      return;
+    }
+    fileTarget.current = target;
+    pasteBusy.current = true;
+    syncInput();
+    try {
+      const text = await readLocalTextFile(file, 65536);
+      if (fileTarget.current !== target) return;
+      if (!fileTargetIsCurrent(target))
+        throw new Error("터미널 상태가 변경되어 파일 입력을 취소했습니다.");
+      if (hasTerminalFileControls(text))
+        throw new Error("터미널 제어 문자가 포함된 파일은 입력할 수 없습니다.");
+      await preparePaste(target.terminal, text, true, target);
+    } catch (error) {
+      if (alive.current && fileTarget.current === target) {
+        setNotice(
+          error instanceof Error
+            ? error.message
+            : "텍스트 파일을 읽을 수 없습니다.",
+        );
         await finishPaste();
       }
     }
@@ -361,6 +476,7 @@ export function TerminalPane({
   const restore = async (value: TerminalDescriptor) => {
     const frozen = value.restore;
     if (!frozen || memoryBlocked.current) return;
+    invalidateFile();
     const version = ++flow.current;
     phase.current = "restoring";
     syncInput();
@@ -433,6 +549,7 @@ export function TerminalPane({
       return;
     }
     if (value.status === "disconnected" || value.status === "unavailable") {
+      invalidateFile();
       phase.current = "failed";
       syncInput();
       if (value.status === "disconnected") {
@@ -538,7 +655,8 @@ export function TerminalPane({
           .catch(() => {});
     };
   }, [windowId]);
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (!visible) invalidateFile();
     syncInput();
     applySize();
     if (visible) instance.current?.terminal.focus();
@@ -684,6 +802,29 @@ export function TerminalPane({
           붙여넣기
         </button>
         <button
+          disabled={!ready}
+          onClick={() => {
+            pickerTarget.current = captureFileTarget();
+            if (pickerTarget.current) filePicker.current?.click();
+          }}
+        >
+          텍스트 파일 입력…
+        </button>
+        <input
+          type="file"
+          hidden
+          ref={filePicker}
+          onChange={(event) => {
+            const target = pickerTarget.current;
+            pickerTarget.current = null;
+            const files = event.currentTarget.files;
+            const file = files?.length === 1 ? files[0] : undefined;
+            event.currentTarget.value = "";
+            if (event.nativeEvent.isTrusted && file)
+              void previewFile(file, target);
+          }}
+        />
+        <button
           disabled={
             !descriptor ||
             descriptor.status === "disconnected" ||
@@ -752,9 +893,44 @@ export function TerminalPane({
       )}
       <div
         ref={host}
+        data-local-text-drop="console"
         className="terminal-host"
+        onDragOverCapture={(event) => {
+          event.preventDefault();
+          const accepts =
+            !!captureFileTarget() && event.dataTransfer.types.includes("Files");
+          event.dataTransfer.dropEffect = accepts ? "copy" : "none";
+          setFileOver(accepts);
+        }}
+        onDragLeaveCapture={(event) => {
+          if (
+            !(event.relatedTarget instanceof Node) ||
+            !event.currentTarget.contains(event.relatedTarget)
+          )
+            setFileOver(false);
+        }}
+        onDropCapture={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setFileOver(false);
+          try {
+            const file = nativeDropFile(event.nativeEvent);
+            if (file) void previewFile(file, captureFileTarget());
+          } catch (error) {
+            setNotice(
+              error instanceof Error
+                ? error.message
+                : "텍스트 파일 하나를 선택해 주세요.",
+            );
+          }
+        }}
         onPointerDown={() => setMenu(false)}
       />
+      {fileOver && (
+        <p className="terminal-notice" role="status">
+          여기에 놓아 이 터미널에 보낼 텍스트 미리보기
+        </p>
+      )}
       {menu && (
         <menu className="terminal-context">
           <li>

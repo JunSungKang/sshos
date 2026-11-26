@@ -198,8 +198,17 @@ describe("isolated remote web resource resolution", () => {
       javascript: false,
       webSecurity: true,
       webviewTag: false,
+      navigateOnDragDrop: false,
     });
     expect(view.options.webPreferences.preload).toBeUndefined();
+    expect(view.webContents.debugger.sendCommand).toHaveBeenCalledWith(
+      "Page.addScriptToEvaluateOnNewDocument",
+      expect.objectContaining({ worldName: "sshos-preview-input" }),
+    );
+    expect(view.webContents.debugger.sendCommand).toHaveBeenCalledWith(
+      "Page.setInterceptFileChooserDialog",
+      { enabled: true },
+    );
     expect(ses.name.startsWith("persist:")).toBe(false);
     expect(ses.options.cache).toBe(false);
     expect(view.webContents.open()).toEqual({ action: "deny" });

@@ -1,12 +1,14 @@
 import { ErrorPanel } from "../../ErrorPanel";
 import { errorCodeOf } from "../../../shared/errors";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { SessionView } from "../../../shared/session-contracts";
 import type { ViewerDescriptor } from "../../../shared/viewers/reader";
 import { TEXT_LIMIT, type DecodedText } from "../../../shared/viewers/text";
 import type { ImageHeader } from "../../../shared/viewers/image-header";
 import { ViewerDecoder } from "../../ViewerDecoder";
 import { scheduleViewerFrame } from "./viewer-stream-scheduler";
+import { useTextFileInsertion } from "./use-text-file-insertion";
 
 const explain = errorCodeOf;
 export function ViewerPane({
@@ -44,6 +46,7 @@ export function ViewerPane({
   const [zoom, setZoom] = useState<"fit" | 25 | 50 | 100 | 200>("fit");
   const [area, setArea] = useState({ width: 500, height: 300 });
   const viewport = useRef<HTMLDivElement>(null);
+  const editor = useRef<HTMLTextAreaElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const decoder = useRef<ViewerDecoder | null>(null);
   const alive = useRef(true);
@@ -218,6 +221,7 @@ export function ViewerPane({
   const reread = async () => {
     const previous = descriptorRef.current;
     if (!previous || restartPending) return;
+    insertion.invalidate();
     setRestartPending(true);
     job.current++;
     decoder.current?.dispose();
@@ -238,7 +242,7 @@ export function ViewerPane({
   };
   const beginEdit = async () => {
     const value = descriptorRef.current;
-    if (!value || !text || editBusy) return;
+    if (!value || !text || editBusy) return false;
     setEditBusy(true);
     setError("");
     try {
@@ -247,13 +251,22 @@ export function ViewerPane({
         value.readGeneration,
         true,
       );
-      if (alive.current) {
-        setDraft(text.text);
-        setEditing(true);
-        setStatus("편집 중 · 저장 전에는 원격 파일이 변경되지 않습니다.");
+      if (
+        alive.current &&
+        descriptorRef.current?.readGeneration === value.readGeneration
+      ) {
+        flushSync(() => {
+          setDraft(text.text);
+          setEditing(true);
+          setEditBusy(false);
+          setStatus("편집 중 · 저장 전에는 원격 파일이 변경되지 않습니다.");
+        });
+        return true;
       }
+      return false;
     } catch (failure) {
       if (alive.current) setError(explain(failure));
+      return false;
     } finally {
       if (alive.current) setEditBusy(false);
     }
@@ -261,6 +274,7 @@ export function ViewerPane({
   const cancelEdit = async () => {
     const value = descriptorRef.current;
     if (!value || editBusy) return;
+    insertion.invalidate();
     setEditBusy(true);
     try {
       await window.sshOS.viewer.setEditing(
@@ -283,6 +297,7 @@ export function ViewerPane({
   const save = async () => {
     const value = descriptorRef.current;
     if (!value || editBusy || !dirty || !connected) return;
+    insertion.invalidate();
     setEditBusy(true);
     setError("");
     setStatus("원격 파일 저장 중");
@@ -310,6 +325,27 @@ export function ViewerPane({
       if (alive.current) setEditBusy(false);
     }
   };
+  const canInsert =
+    kind === "text" &&
+    connected &&
+    !editBusy &&
+    !restartPending &&
+    !!text &&
+    text.lineEnding !== "mixed" &&
+    descriptor?.readState === "complete" &&
+    (session?.os === "supported" || session?.osConfirmed === true);
+  const insertion = useTextFileInsertion({
+    viewport,
+    editor,
+    token: descriptor?.viewerToken,
+    generation: descriptor?.readGeneration,
+    text,
+    editing,
+    draft,
+    available: canInsert,
+    beginEdit,
+    notice: setStatus,
+  });
   const scale = image
     ? zoom === "fit"
       ? Math.max(
@@ -371,12 +407,21 @@ export function ViewerPane({
                 (session?.os !== "supported" && !session?.osConfirmed)
               }
               onClick={() => {
+                insertion.invalidate();
                 void beginEdit();
               }}
             >
               편집
             </button>
           ))}
+        {kind === "text" && (
+          <>
+            <button disabled={!canInsert} onClick={insertion.choose}>
+              {editing ? "커서에 파일 삽입…" : "문서 처음에 파일 삽입…"}
+            </button>
+            {insertion.controls}
+          </>
+        )}
         {kind === "image" && (
           <label>
             배율
@@ -419,17 +464,35 @@ export function ViewerPane({
           target={descriptor?.path ?? null}
         />
       )}
-      <div className="viewer-viewport" ref={viewport}>
+      <div
+        className="viewer-viewport"
+        ref={viewport}
+        onDrop={kind === "text" ? insertion.onDrop : undefined}
+        onDragOver={kind === "text" ? insertion.onDragOver : undefined}
+        onDragLeave={(e) => {
+          if (
+            !(e.relatedTarget instanceof Node) ||
+            !e.currentTarget.contains(e.relatedTarget)
+          )
+            insertion.resetPosition();
+        }}
+      >
         {kind === "text" ? (
           editing ? (
             <textarea
+              ref={editor}
               className="text-editor"
               aria-label="텍스트 편집 내용"
               value={draft}
               readOnly={editBusy || !connected}
               spellCheck={false}
               maxLength={TEXT_LIMIT}
-              onChange={(event) => setDraft(event.currentTarget.value)}
+              onCompositionStart={insertion.startComposition}
+              onCompositionEnd={insertion.endComposition}
+              onChange={(event) => {
+                insertion.invalidate();
+                setDraft(event.currentTarget.value);
+              }}
               onKeyDown={(event) => {
                 if (
                   (event.ctrlKey || event.metaKey) &&
@@ -460,6 +523,33 @@ export function ViewerPane({
           </div>
         )}
       </div>
+      {insertion.marker && (
+        <div
+          aria-hidden="true"
+          className="file-insertion-marker"
+          style={{
+            position: "fixed",
+            zIndex: 3000,
+            pointerEvents: "none",
+            left: insertion.marker.x,
+            top: insertion.marker.y,
+            height: insertion.marker.height,
+            borderLeft: "2px solid currentColor",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              bottom: "100%",
+              whiteSpace: "nowrap",
+              background: "var(--raised)",
+              padding: "2px 6px",
+            }}
+          >
+            여기에 텍스트 삽입
+          </span>
+        </div>
+      )}
       <output
         className="viewer-status"
         aria-live="polite"
@@ -576,7 +666,7 @@ function VirtualText({ value }: { value: DecodedText }) {
               }}
             >
               <span aria-hidden="true">{line + 1}</span>
-              <pre>{value.text.slice(start, end)}</pre>
+              <pre data-text-start={start}>{value.text.slice(start, end)}</pre>
             </div>
           );
         })}

@@ -16,6 +16,80 @@ try{
  const firstWindow=await page.evaluate(async()=>(await window.sshOS.desktop.getWindowSnapshot()).find(row=>row.kind==='terminal'));let descriptor=await page.evaluate(id=>window.sshOS.terminal.get(id),firstWindow.windowId);await page.waitForTimeout(1100);assert.equal(await page.evaluate(async token=>{try{await window.sshOS.terminal.requestPaste(token);return false;}catch(error){return error.message.includes('INPUT_INVALID');}},descriptor.terminalToken),true);
  const boundary=await page.evaluate(async token=>{const result=[];for(const text of ['a'.repeat(65536),'\n'.repeat(65536),'가'.repeat(21845)+'a']){const preview=await window.sshOS.terminal.previewPaste(token,text);result.push({length:preview.byteLength,confirmation:preview.requiresConfirmation,exact:preview.text===text});await window.sshOS.terminal.releasePaste(preview.confirmationToken);}for(const text of ['a'.repeat(65537),'가'.repeat(21846)]){try{await window.sshOS.terminal.previewPaste(token,text);result.push('unexpected acceptance');}catch(error){result.push(error.message.includes('INPUT_INVALID'));}}return result;},descriptor.terminalToken);assert.deepEqual(boundary,[{length:65536,confirmation:true,exact:true},{length:65536,confirmation:true,exact:true},{length:65536,confirmation:true,exact:true},true,true]);assert.equal(Buffer.concat(sessions[0].raw).toString().includes('aaaa'),false);
  const input=first.getByLabel('원격 터미널 입력');await input.click();await input.pressSequentially('echo fixture',{delay:20});await input.press('Enter');await expect.poll(()=>sessions[0].commands).toEqual(['echo fixture']);await input.press('Control+C');await expect.poll(()=>Buffer.concat(sessions[0].raw).includes(3)).toBe(true);assert.deepEqual(sessions[0].signals,[]);
+ // Use the real renderer file-picker route with a local, owned fixture. OS Finder/Explorer drops remain a native acceptance test.
+ const filePath=join(base,'terminal-file.txt');
+ await fs.writeFile(filePath,'\uFEFFfirst\tline\r\n');
+ const pickFile=async()=>{
+   const chooser=page.waitForEvent('filechooser');
+   await first.getByRole('button',{name:'텍스트 파일 입력…'}).click();
+   await (await chooser).setFiles(filePath);
+ };
+ const rawSize=()=>Buffer.concat(sessions[0].raw).length;
+ const beforeFile=rawSize();
+ const excludedDrops=await input.evaluate(element=>
+   ["text/plain","text/uri-list","mixed"].map(kind=>{
+     const transfer=new DataTransfer();
+     transfer.setData(kind==="mixed"?"text/plain":kind,"irrelevant");
+     if(kind==="mixed")transfer.items.add(new File(["fixture"],"fixture.txt"));
+     const event=new DragEvent("drop",{bubbles:true,cancelable:true,dataTransfer:transfer});
+     element.dispatchEvent(event);
+     return event.defaultPrevented;
+   })
+ );
+ assert.deepEqual(excludedDrops,[true,true,true]);
+ assert.equal(rawSize(),beforeFile);
+ await pickFile();
+ const filePreview=page.getByRole('dialog',{name:'터미널 붙여넣기 확인'});
+ await expect(filePreview.getByRole('button',{name:'취소'})).toBeFocused();
+ await expect(filePreview.getByText(/마지막 줄바꿈 있음/)).toBeVisible();
+ assert.equal(rawSize(),beforeFile);
+ await filePreview.getByRole('button',{name:'취소'}).click();
+ await expect(filePreview).toHaveCount(0);
+ assert.equal(rawSize(),beforeFile);
+ // Leave the active Console and return while Chromium is still reading the chosen file.
+ await page.evaluate(()=>{
+   const original=Blob.prototype.arrayBuffer;
+   Blob.prototype.arrayBuffer=async function(){
+     Blob.prototype.arrayBuffer=original;
+     await new Promise(resolve=>{window.__finishTerminalFileRead=resolve;});
+     return original.call(this);
+   };
+ });
+ await pickFile();
+ await page.waitForFunction(()=>typeof window.__finishTerminalFileRead==='function');
+ await page.getByRole('button',{name:'Desktop',exact:true}).click();
+ await launcher.click();
+ await page.evaluate(()=>{window.__finishTerminalFileRead();delete window.__finishTerminalFileRead;});
+ await first.getByText('입력 가능',{exact:true}).waitFor();
+ await expect(filePreview).toHaveCount(0);
+ assert.equal(rawSize(),beforeFile);
+ await fs.writeFile(filePath,'short-file');
+ // Chromium supplies a trusted File backed by this fixture path. This covers shell routing, not Finder/Explorer gesture delivery.
+ const dragClient=await page.context().newCDPSession(page);
+ try {
+   const box=await first.locator('.terminal-host').boundingBox();
+   assert.ok(box);
+   const point={x:box.x+box.width/2,y:box.y+box.height/2};
+   const data={items:[],files:[filePath],dragOperationsMask:1};
+   for(const type of ['dragEnter','dragOver','drop'])
+     await dragClient.send('Input.dispatchDragEvent',{type,...point,data});
+ } finally {await dragClient.detach();}
+ await expect(filePreview.locator('pre')).toHaveText('short-file');
+ assert.equal(rawSize(),beforeFile);
+ sessions[0].stream.write('\x1b[?2004lmode-change');
+ await expect.poll(()=>first.locator('.xterm-rows').textContent()).toContain('mode-change');
+ await filePreview.getByRole('button',{name:'이 터미널에 보내기'}).click();
+ await expect(filePreview).toHaveCount(0);
+ assert.equal(rawSize(),beforeFile);
+ sessions[0].stream.write('\x1b[?2004hmode-restored');
+ await expect.poll(()=>first.locator('.xterm-rows').textContent()).toContain('mode-restored');
+ await fs.writeFile(filePath,'\uFEFFfirst\tline\r\n');
+ await pickFile();
+ await filePreview.getByRole('button',{name:'이 터미널에 보내기'}).click();
+ await expect(filePreview).toHaveCount(0);
+ assert.equal(Buffer.concat(sessions[0].raw).subarray(beforeFile).toString(),'\x1b[200~first\tline\n\x1b[201~');
+ await input.press('Control+C');
+ await expect.poll(rawSize).toBeGreaterThan(beforeFile+Buffer.byteLength('\x1b[200~first\tline\n\x1b[201~'));
  const beforePaste=Buffer.concat(sessions[0].raw).length;await first.getByRole('button',{name:'붙여넣기',exact:true}).click();let paste=page.getByRole('dialog',{name:'터미널 붙여넣기 확인'});await paste.getByText('터미널 1 붙여넣기',{exact:true}).waitFor();assert.equal(Buffer.concat(sessions[0].raw).length,beforePaste);sessions[0].stream.write('\x1b[c');await page.waitForTimeout(200);assert.equal(sessions[0].attributes.length,1);await page.screenshot({path:join(localPath('evidence'),'d09-paste-confirmation.png')});await paste.getByRole('button',{name:'확인하고 붙여넣기',exact:true}).click();await paste.waitFor({state:'detached'});await expect.poll(()=>sessions[0].attributes.length).toBe(2);assert.ok(Buffer.concat(sessions[0].raw).toString().includes('\x1b[200~line-one\nline-two\x1b[201~'));await first.getByText('입력 가능',{exact:true}).waitFor();
  await page.getByRole('button',{name:'새 터미널',exact:true}).click();const second=page.getByRole('region',{name:'터미널 2 · PTY GUI 검사',exact:true});await second.getByText('입력 가능',{exact:true}).waitFor();await expect.poll(()=>sessions[1]?.attributes.length).toBe(1);assert.equal(fixture.metrics.authenticationRequests,2);
  await application.evaluate(({app})=>{app.__ptyClipboard.deferred=true;app.__ptyClipboard.resolve=null;});await page.locator('.console-tabs:visible').getByRole('button',{name:/터미널 1$/}).click();await first.getByRole('button',{name:'붙여넣기',exact:true}).click();await expect.poll(()=>application.evaluate(({app})=>Boolean(app.__ptyClipboard.resolve))).toBe(true);await page.locator('.console-tabs:visible').getByRole('button',{name:/터미널 2$/}).click();const beforeA=Buffer.concat(sessions[0].raw).length,beforeB=Buffer.concat(sessions[1].raw).length;await application.evaluate(({app})=>{app.__ptyClipboard.resolve('target-A\nstill-A');app.__ptyClipboard.deferred=false;});paste=page.getByRole('dialog',{name:'터미널 붙여넣기 확인'});await paste.getByText('터미널 1 붙여넣기',{exact:true}).waitFor();await paste.getByRole('button',{name:'확인하고 붙여넣기',exact:true}).click();await paste.waitFor({state:'detached'});await expect.poll(()=>Buffer.concat(sessions[0].raw).length).toBeGreaterThan(beforeA);assert.equal(Buffer.concat(sessions[1].raw).length,beforeB);assert.ok(Buffer.concat(sessions[0].raw).toString().includes('\x1b[200~target-A\nstill-A\x1b[201~'));
@@ -23,5 +97,5 @@ try{
  const minimizedStart=await page.evaluate(id=>window.sshOS.terminal.get(id),firstWindow.windowId);await page.getByRole('button',{name:'Desktop',exact:true}).click();sessions[0].stream.write('\r\nminimized-output\r\n');await expect.poll(()=>page.evaluate(async id=>(await window.sshOS.terminal.get(id)).nextOffset,firstWindow.windowId)).toBeGreaterThan(minimizedStart.nextOffset);await page.getByRole('button',{name:'Console',exact:true}).click();await expect.poll(()=>first.locator('.xterm-rows').textContent()).toContain('minimized-output');await page.screenshot({path:join(localPath('evidence'),'d09-terminal-workspace.png')});assert.ok(fixture.metrics.windowChanges.every(value=>value.cols>=2 && value.cols<=500 && value.rows>=1 && value.rows<=200));
  descriptor=await page.evaluate(id=>window.sshOS.terminal.get(id),firstWindow.windowId);assert.equal(await page.evaluate(async id=>{try{await window.sshOS.desktop.closeWindow(id);return false;}catch(error){return error.message.includes('CLOSE_CONFIRM_REQUIRED');}},firstWindow.windowId),true);await page.getByRole('button',{name:/^터미널 1.* 닫기$/}).click();let close=page.getByRole('dialog',{name:'터미널 세션 닫기'});await close.getByRole('button',{name:'유지',exact:true}).click();await page.getByRole('button',{name:/^터미널 1.* 닫기$/}).click();close=page.getByRole('dialog',{name:'터미널 세션 닫기'});await close.getByRole('button',{name:'세션 닫기',exact:true}).click();await first.waitFor({state:'detached'});await expect.poll(()=>page.evaluate(async id=>{try{await window.sshOS.task.previewRecordAction(id,'acknowledge');return true;}catch{return false;}},descriptor.terminalId)).toBe(true);assert.equal((await page.evaluate(id=>window.sshOS.task.inspect(id),descriptor.terminalId)).channelClosed,true);await second.getByText('입력 가능',{exact:true}).waitFor();sessions[1].stream.exit(0);sessions[1].stream.end();await second.getByText('종료 코드 0 · 채널 종료 확인',{exact:true}).waitFor();await page.screenshot({path:join(localPath('evidence'),'d09-terminal-exit.png')});
  await expect.poll(()=>page.evaluate(async()=>(await window.sshOS.task.list(0)).rows.filter(row=>row.kind==='pty').length)).toBe(2);const stored=await page.evaluate(()=>window.sshOS.task.list(0));assert.ok(stored.rows.some(row=>row.kind==='pty'&&row.phase==='result_unknown'));assert.ok(stored.rows.some(row=>row.kind==='pty'&&row.phase==='exited'));for(const name of (await fs.readdir(join(env.SSHOS_RUNTIME_ROOT,'data/receipts'))).filter(name=>name.endsWith('.json'))){const text=await fs.readFile(join(env.SSHOS_RUNTIME_ROOT,'data/receipts',name),'utf8');for(const value of ['echo fixture','line-one','target-A','"stdin"','"stdout"','"argv"'])assert.equal(text.includes(value),false);}assert.equal((await page.evaluate(()=>window.sshOS.session.list())).sessions.find(row=>row.serverId===profileId).status,'connected');assert.equal(fixture.metrics.shells,2);
- const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['actual xterm GUI over restricted main/worker SSH PTY bridge','live DA response, typed input and Ctrl+C byte with no TERM','OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs','native-gesture gate refuses unprompted clipboard read','multiline paste confirmation and exact bracketed bytes without added newline','automatic response held behind paste and next sequence synchronized','delayed clipboard result remains pinned to terminal1 after focus moves to terminal2','renderer reload replays output without new shell or old DA responses','Console hidden by Desktop consumes output and resizes stay within bounds','confirmed terminal close yields unknown, normal exit0 remains distinct','receipts exclude input/output/argv'],limitation:'Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain.'};await fs.writeFile(join(localPath('evidence'),'d09-terminal-gui.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+ const report={status:'pass',platform:process.platform,architecture:process.arch,assertions:['actual xterm GUI over restricted main/worker SSH PTY bridge','live DA response, typed input and Ctrl+C byte with no TERM','OSC title/hyperlink/clipboard requests do not alter app identity or invoke clipboard APIs','native-gesture gate refuses unprompted clipboard read','trusted Chromium file drop and actual file picker require explicit approval, stale mode and hidden tab cancel without sending, normalized file payload reaches one PTY','multiline paste confirmation and exact bracketed bytes without added newline','automatic response held behind paste and next sequence synchronized','delayed clipboard result remains pinned to terminal1 after focus moves to terminal2','renderer reload replays output without new shell or old DA responses','Console hidden by Desktop consumes output and resizes stay within bounds','confirmed terminal close yields unknown, normal exit0 remains distinct','receipts exclude input/output/argv'],limitation:'Current Mac development Electron with emulated SSH programs and test-main mocked clipboard read and foreground-focus APIs; native Finder/Explorer drag, foreground focus, vi/IME/OS clipboard and target Ubuntu/OpenSSH/platform matrix remain.'};await fs.writeFile(join(localPath('evidence'),'d09-terminal-gui.json'),JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
 }catch(error){if(application){try{const p=await application.firstWindow();console.error((await p.locator('body').innerText()).slice(-12000));console.error(await application.evaluate(({app,BrowserWindow})=>({inputs:app.__ptyInput,clipboard:app.__ptyClipboard,focus:BrowserWindow.getAllWindows()[0].webContents.isFocused()})));await p.screenshot({path:join(localPath('evidence'),'d09-terminal-failure.png')});}catch{}}throw error;}finally{if(application)await closeTestApplication(application);if(fixture)await fixture.close();await fs.rm(base,{recursive:true,force:true});await fs.rm(env.SSHOS_RUNTIME_ROOT,{recursive:true,force:true});}

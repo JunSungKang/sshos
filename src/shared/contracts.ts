@@ -132,6 +132,7 @@ export interface DesktopBridge {
     previewPaste(
       terminalToken: string,
       text: string,
+      file?: { bracketed: boolean },
     ): Promise<TerminalPastePreview>;
     paste(confirmationToken: string, bracketed: boolean): Promise<void>;
     releasePaste(confirmationToken: string): Promise<void>;
