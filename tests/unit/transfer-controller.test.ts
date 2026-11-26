@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { resolve } from "node:path";
+import { relayReceiptSchema } from "../../src/shared/relay";
+import { RelayDiskLedger } from "../../src/platform/local-files/relay-disk";
 import { TransferController } from "../../src/main/transfers/transfers";
 import { ReceiptRepository } from "../../src/main/persistence/receipts";
 import type {
@@ -20,7 +22,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
   for (const root of owned.splice(0)) await rm(root, { recursive: true });
 });
-async function fixture(count = 2) {
+async function fixture(
+  count = 2,
+  direction: "upload" | "download" = "upload",
+  disk?: RelayDiskLedger,
+) {
   await mkdir(resolve(".local/tmp"), { recursive: true });
   const root = await mkdtemp(resolve(".local/tmp/main-transfers-"));
   owned.push(root);
@@ -29,7 +35,7 @@ async function fixture(count = 2) {
     serverId = crypto.randomUUID(),
     sessionToken = crypto.randomUUID();
   const specs: StagedTransfer[] = Array.from({ length: count }, () => {
-    const row = transferReceipt();
+    const row = transferReceipt(direction);
     row.serverId = serverId;
     row.backendEpoch = epoch;
     row.destination += "-" + row.taskId;
@@ -98,6 +104,7 @@ async function fixture(count = 2) {
     () => repo,
     () => true,
     async () => {},
+    disk,
   );
   const runtime = (
     index: number,
@@ -155,6 +162,121 @@ async function fixture(count = 2) {
   };
 }
 describe("main-owned transfer acceptance", () => {
+  it("binds relay dispatch and closure to the parent's durable child ID", async () => {
+    const f = await fixture(1, "download");
+    const spec = f.specs[0]!;
+    await expect(
+      f.controller.registerRelay(spec, f.batch.sessionToken),
+    ).rejects.toThrow("INPUT_INVALID");
+    const row = spec.row;
+    const origin = {
+      ...row.endpointSnapshot,
+      hostKeyFingerprint: row.hostKeyFingerprint,
+      serverId: row.serverId,
+      generation: row.generation,
+      path: row.source,
+    };
+    const target = {
+      ...origin,
+      serverId: crypto.randomUUID(),
+      host: "b.invalid",
+      endpoint: "b.invalid:22",
+      path: "/home/copied",
+    };
+    const parentId = crypto.randomUUID();
+    row.relayParentId = parentId;
+    spec.relay = { parentId };
+    await f.repo.save(
+      relayReceiptSchema.parse({
+        kind: "server_relay",
+        taskId: parentId,
+        serverId: row.serverId,
+        generation: row.generation,
+        backendEpoch: row.backendEpoch,
+        endpointSnapshot: row.endpointSnapshot,
+        hostKeyFingerprint: row.hostKeyFingerprint,
+        origin,
+        target,
+        source: row.source,
+        destination: target.path,
+        size: row.totalBytes,
+        sourceStat: row.sourceInitialStat,
+        legIds: [row.taskId],
+        downloadId: row.taskId,
+        uploadId: null,
+        stageArea: {
+          jobId: parentId,
+          root: spec.localDirectory,
+          directory: spec.localDirectory,
+          volumeId: "1",
+          filePath: row.destination,
+        },
+        stageStat: null,
+        digest: null,
+        phase: "queued",
+        lastConfirmedPhase: "accepted",
+        publication: "none",
+        localCleanup: "needed",
+        remoteCleanup: "none",
+        errorCode: null,
+        acknowledgedAt: null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      }),
+    );
+    const observed = vi.fn();
+    f.controller.onRelaySettled(observed);
+    await f.controller.registerRelay(spec, f.batch.sessionToken);
+    expect(f.requests[0]).toMatchObject({
+      action: "transfer:reserve",
+      relayParentId: parentId,
+      count: 1,
+    });
+    await f.controller.cancelForShutdown();
+    expect(f.requests.some((q) => q.action === "transfer:cancel")).toBe(false);
+    const terminal = {
+      ...f.runtime(0),
+      phase: "interrupted" as const,
+      active: false,
+      cleanupPending: false,
+    };
+    f.controller.observe(terminal, false, 20);
+    expect(f.controller.isActive(row.taskId)).toBe(true);
+    expect(observed).not.toHaveBeenCalled();
+    f.controller.observe({ ...terminal, slotOccupied: false }, false, 21);
+    expect(observed).toHaveBeenCalledOnce();
+    expect(f.controller.isActive(row.taskId)).toBe(false);
+  });
+  it("rolls back a partially admitted download batch before dispatch", async () => {
+    const disk = new RelayDiskLedger();
+    const reserve = vi
+      .spyOn(disk, "reserveOrdinary")
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(Error("LOCAL_DISK_FULL"));
+    const release = vi.spyOn(disk, "release");
+    const f = await fixture(2, "download", disk);
+    await expect(f.start()).rejects.toThrow("LOCAL_DISK_FULL");
+    expect(reserve).toHaveBeenCalledTimes(2);
+    expect(release.mock.calls).toEqual([[f.specs[0]!.row.taskId]]);
+    expect(f.requests).toEqual([]);
+    expect(f.repo.snapshots()).toEqual([]);
+  });
+  it("retains an ordinary download reservation until the transfer slot has closed", async () => {
+    const disk = new RelayDiskLedger();
+    vi.spyOn(disk, "reserveOrdinary").mockResolvedValue();
+    const release = vi.spyOn(disk, "release");
+    const f = await fixture(1, "download", disk);
+    await f.start();
+    const runtime = {
+      ...f.runtime(0),
+      phase: "interrupted" as const,
+      active: false,
+    };
+    f.controller.observe(runtime, false, 20);
+    expect(release).not.toHaveBeenCalled();
+    f.controller.observe({ ...runtime, slotOccupied: false }, false, 21);
+    expect(release.mock.calls).toEqual([[runtime.taskId]]);
+  });
   it("rejects an old engine, mismatched session owner or faulted repository before reserving any batch", async () => {
     const f = await fixture(1);
     f.rotateEngine();

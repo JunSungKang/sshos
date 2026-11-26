@@ -1,3 +1,4 @@
+import type { RelayDiskLedger } from "../../platform/local-files/relay-disk";
 import { randomUUID } from "node:crypto";
 import { basename } from "node:path";
 import { z } from "zod";
@@ -49,6 +50,7 @@ export class TransferController {
     private readonly storage: () => ReceiptRepository | null,
     private readonly stateHealthy: () => boolean,
     private readonly receiptSettled: () => Promise<void>,
+    private readonly disk?: RelayDiskLedger,
   ) {}
   private repository(): ReceiptRepository {
     const repo = this.storage();
@@ -72,6 +74,7 @@ export class TransferController {
       job &&
         (job.registering ||
           job.runtime?.active ||
+          job.runtime?.slotOccupied ||
           job.runtime?.cleanupPending ||
           !transferTerminal(job.runtime?.phase ?? "queued")),
     );
@@ -112,9 +115,10 @@ export class TransferController {
   ): Promise<void> {
     const rows = [...this.jobs.values()].filter(
         (job) =>
-          !serverId ||
-          (job.spec.row.serverId === serverId &&
-            job.spec.row.generation === generation),
+          !job.spec.row.relayParentId &&
+          (!serverId ||
+            (job.spec.row.serverId === serverId &&
+              job.spec.row.generation === generation)),
       ),
       epoch = this.gateway.epoch,
       deadline = performance.now() + 10000;
@@ -195,8 +199,27 @@ export class TransferController {
     job.runtime = structuredClone(runtime);
     job.sequence = sequence;
     if (
+      job.spec.row.direction === "download" &&
+      !job.spec.row.relayParentId &&
+      !runtime.active &&
+      !runtime.slotOccupied &&
+      !runtime.cleanupPending &&
+      transferTerminal(runtime.phase)
+    )
+      void this.disk?.release(runtime.taskId);
+    if (
+      job.spec.row.relayParentId &&
+      !runtime.active &&
+      !runtime.slotOccupied &&
+      !runtime.cleanupPending &&
+      transferTerminal(runtime.phase)
+    ) {
+      this.relayObserver?.(job.spec.row, runtime);
+    }
+    if (
       !job.registering &&
       !runtime.active &&
+      !runtime.slotOccupied &&
       !runtime.cleanupPending &&
       transferTerminal(runtime.phase) &&
       !runtime.recordError
@@ -250,8 +273,11 @@ export class TransferController {
             if (
               saved?.kind === "file_transfer" &&
               transferTerminal(saved.phase)
-            )
+            ) {
+              if (saved.direction === "download" && !saved.relayParentId)
+                await this.disk?.release(id);
               this.jobs.delete(id);
+            }
           }
         break;
       }
@@ -261,21 +287,71 @@ export class TransferController {
       this.resyncing.delete(key);
     }
   }
+  private relayObserver:
+    | ((row: TransferReceipt, runtime: TransferRuntime) => void)
+    | null = null;
+  onRelaySettled(
+    observer: (row: TransferReceipt, runtime: TransferRuntime) => void,
+  ): void {
+    this.relayObserver = observer;
+  }
+  async registerRelay(
+    spec: StagedTransfer,
+    sessionToken: string,
+  ): Promise<void> {
+    if (!spec.row.relayParentId) throw new Error("INPUT_INVALID");
+    const { serverId, generation, backendEpoch: epoch } = spec.row;
+    const op = this.register({
+      serverId,
+      generation,
+      sessionToken,
+      epoch,
+      specs: [spec],
+      selectionTokens: [],
+    });
+    this.registrations.add(op);
+    try {
+      await op;
+    } finally {
+      this.registrations.delete(op);
+    }
+  }
   private async register(batch: ConfirmedTransfer): Promise<string[]> {
     const repo = this.repository(),
       reservationToken = randomUUID();
     let reserved = false,
       commitSent = false;
     const saved: StagedTransfer[] = [];
+    const ordinary: string[] = [];
     const check = () => {
       this.current(batch);
       this.repository();
       for (const spec of batch.specs) {
         const claims = transferClaims(spec.row);
-        repo.checkNew(batch.serverId, claims.remote, claims.local);
+        repo.checkNew(
+          batch.serverId,
+          claims.remote,
+          claims.local,
+          spec.row.relayParentId,
+        );
       }
     };
     try {
+      check();
+      for (const spec of batch.specs) {
+        if (
+          this.disk &&
+          spec.row.direction === "download" &&
+          !spec.row.relayParentId
+        ) {
+          await this.disk.reserveOrdinary(
+            spec.row.taskId,
+            spec.localDirectory,
+            spec.row.totalBytes,
+          );
+          ordinary.push(spec.row.taskId);
+        }
+      }
       check();
       await this.gateway.request({
         action: "transfer:reserve",
@@ -283,6 +359,9 @@ export class TransferController {
         generation: batch.generation,
         reservationToken,
         count: batch.specs.length,
+        ...(batch.specs[0]?.row.relayParentId
+          ? { relayParentId: batch.specs[0].row.relayParentId }
+          : {}),
       });
       reserved = true;
       check();
@@ -334,6 +413,7 @@ export class TransferController {
           if (
             job.runtime &&
             !job.runtime.active &&
+            !job.runtime.slotOccupied &&
             transferTerminal(job.runtime.phase) &&
             !job.runtime.recordError &&
             !job.runtime.cleanupPending
@@ -343,6 +423,8 @@ export class TransferController {
       }
       return result;
     } catch (error) {
+      if (!commitSent)
+        await Promise.all(ordinary.map((id) => this.disk?.release(id)));
       if (reserved && !commitSent)
         await this.gateway
           .request({
@@ -413,6 +495,8 @@ export class TransferController {
     await this.receiptSettled();
     await this.storage()?.settled();
     for (const [id, job] of this.jobs) {
+      if (job.spec.row.direction === "download" && !job.spec.row.relayParentId)
+        await this.disk?.release(id);
       const { recordError, ...row } = this.merged(job),
         recovered = {
           ...recoverTransfer(row, false),
@@ -472,6 +556,7 @@ export class TransferController {
       registering = 0;
     for (const job of rows) {
       const row = this.merged(job);
+      if (row.relayParentId) continue;
       if (job.registering) registering++;
       else if (row.phase === "queued") queued++;
       if (job.runtime?.slotOccupied)

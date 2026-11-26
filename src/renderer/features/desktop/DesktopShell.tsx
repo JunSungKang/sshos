@@ -37,6 +37,10 @@ import type { ExecutionActionPreview } from "../../../shared/execution-ui";
 import { TransferShelf } from "../transfers/TransferShelf";
 import { TaskManager } from "../tasks/TaskManager";
 import { ViewerPane } from "../viewers/ViewerPane";
+import {
+  RelayWorkspace,
+  useRelayDropTarget,
+} from "../transfers/RelayWorkspace";
 
 const labels: Record<WindowKind, string> = {
   home: "홈",
@@ -566,14 +570,12 @@ export function DesktopShell({
     )
     .sort((a, b) => b.lastFocusedSequence - a.lastFocusedSequence)[0]?.windowId;
   return (
-    <main className={`desktop mode-${displayMode}`}>
+    <RelayWorkspace
+      sessions={sessions}
+      shellClass={`desktop mode-${displayMode}`}
+    >
       <aside className="sidebar">
-        <div className="brand">
-          <img src={logo} alt="" />
-          <strong>
-            sshOS<small>시오스</small>
-          </strong>
-        </div>
+        <BowDropTarget />
         <nav aria-label="주 메뉴">
           {(
             [
@@ -1078,7 +1080,22 @@ export function DesktopShell({
             ))}
         </footer>
       )}
-    </main>
+    </RelayWorkspace>
+  );
+}
+
+function BowDropTarget() {
+  const target = useRelayDropTarget();
+  return (
+    <div className="brand" {...target}>
+      <img src={logo} alt="" draggable={false} />
+      <strong>
+        sshOS
+        <small>
+          {target["data-relay-ready"] ? "다른 서버로 복사" : "시오스"}
+        </small>
+      </strong>
+    </div>
   );
 }
 

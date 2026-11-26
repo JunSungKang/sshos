@@ -45,6 +45,10 @@ Browsing and account home/start/OS discovery use fixed non-PTY SSH commands. Dir
 
 Execution uses validated source/cwd capabilities→fixed confirmation→POSIX-quoted exec→bounded stdout/stderr/observed exit. PTY has separate sequenced input, resize, paste and restore ACK barriers. Remote strings never choose a new command or local authority.
 
+A server-to-server copy runs entirely on the client. Main records one parent with both SSH identities and a separate receipt for each SFTP leg. The download uses a user-private directory under app data. Before the first read, main checks the staging volume against the entire file size, a rounded-up 10% margin and other reservations. A verified, closed download supplies the SHA-256 required for the subsequent upload. The worker verifies both the upload stream and the destination temporary file before exclusive publication. After restart, main restores evidence for inspection and identity-checked cleanup. A retained copy requires explicit confirmation to retry during the originating app session.
+
+The editor and Console consume a local file supplied by a native drop or file picker. The renderer binds the selection to the captured document or terminal. The editor modifies the draft and uses the existing Save workflow. The Console sends only after showing the complete input and receiving confirmation for its original PTY. The web preview guest cannot receive local files through this flow.
+
 Files use persisted intent→owned exclusive temp→bounded transfer→full SHA256 read-back→durable finalization→exclusive hardlink→destination observation→separate cleanup→receipt. Existing destinations remain intact. External writers and exec/PTY are outside SFTP path-lock participation.
 
 Main stores checksummed state/receipts using one serialized atomic-replacement writer and backup. OS encryption protects explicitly saved secrets. Lost acknowledgements/backup recovery/dispatch uncertainty remain unknown, with no replay or inferred remote process death. Layout lives only in main memory; UI restoration is not reconnect.

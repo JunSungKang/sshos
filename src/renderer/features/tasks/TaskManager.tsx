@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { TransferProgress } from "../transfers/TransferShelf";
 import type { FileReceipt } from "../../../shared/receipts";
 import type { RecordActionPreview, TaskPage } from "../../../shared/mutations";
+import { RelayTaskList } from "../transfers/RelayTasks";
+import { useRelayJobs } from "../transfers/RelayWorkspace";
 const phaseLabels: Record<string, string> = {
   prepared: "대기·준비",
   dispatched: "변경 요청 처리 중",
@@ -34,6 +36,7 @@ export function TaskManager({
 }: {
   openExecution(id: string): void;
 }) {
+  const { jobs } = useRelayJobs();
   const [page, setPage] = useState<TaskPage>({
     rows: [],
     nextOffset: null,
@@ -42,7 +45,10 @@ export function TaskManager({
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<
-    (FileReceipt & { recordError?: boolean }) | null
+    | (Exclude<FileReceipt, { kind: "server_relay" }> & {
+        recordError?: boolean;
+      })
+    | null
   >(null);
   const [confirmation, setConfirmation] = useState<RecordActionPreview | null>(
     null,
@@ -92,7 +98,8 @@ export function TaskManager({
       {error && (
         <ErrorPanel error={error} phase={null} target={"로컬 작업 기록"} />
       )}
-      {page.rows.length === 0 && <p>표시할 작업이 없습니다.</p>}
+      {page.rows.length === 0 && !jobs.length && <p>표시할 작업이 없습니다.</p>}
+      <RelayTaskList />
       {page.rows.map((row) => (
         <article key={row.taskId}>
           <strong>
@@ -185,7 +192,9 @@ export function TaskManager({
             onClick={() => {
               void window.sshOS.task
                 .inspect(row.taskId)
-                .then(setDetail)
+                .then((receipt) => {
+                  if (receipt.kind !== "server_relay") setDetail(receipt);
+                })
                 .catch((failure) => setError(errorCodeOf(failure)));
             }}
           >
@@ -336,7 +345,8 @@ export function TaskManager({
             <ErrorPanel
               error={detail.errorCode}
               download={
-                detail.kind === "file_transfer" && detail.direction === "download"
+                detail.kind === "file_transfer" &&
+                detail.direction === "download"
               }
               phase={detail.lastConfirmedPhase}
               target={

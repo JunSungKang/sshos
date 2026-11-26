@@ -8,6 +8,12 @@ import {
   receiptTerminal as terminal,
   type FileReceipt,
 } from "../../shared/receipts";
+import {
+  currentRelayLeg,
+  recoverRelay,
+  relayTerminal,
+  relayUnresolved,
+} from "../../shared/relay";
 import { recoverExecution } from "../../shared/executions";
 import { recoverTransfer } from "../../shared/transfers";
 import {
@@ -45,6 +51,8 @@ export class ReceiptRepository {
   private version = 0;
   private pendingRevision = -1;
   private pendingRows: FileReceipt[] = [];
+  private relayBudgets = new Map<string, number>();
+  private requiredEvidenceSlots = 0;
   get revision(): number {
     return this.version;
   }
@@ -122,7 +130,9 @@ export class ReceiptRepository {
           ? recoverMutation(loaded.value, loaded.recovered)
           : loaded.value.kind === "file_transfer"
             ? recoverTransfer(loaded.value, loaded.recovered)
-            : recoverExecution(loaded.value, loaded.recovered);
+            : loaded.value.kind === "server_relay"
+              ? recoverRelay(loaded.value, loaded.recovered)
+              : recoverExecution(loaded.value, loaded.recovered);
       repo.stores.set(id, store);
       if (recovered !== loaded.value) {
         try {
@@ -134,10 +144,60 @@ export class ReceiptRepository {
       // One startup cleanup pass, processed in batches so legitimate completed
       // history cannot hit the retained-record bound before pruning is reached.
       if (++loadedSincePrune >= 1000) {
-        await repo.prune(continuity?.executionIds);
+        await repo.prune(continuity?.executionIds, true);
         if (repo.stores.size + repo.damaged.size > 5000)
           throw new Error("STORAGE_FAILED");
         loadedSincePrune = 0;
+      }
+    }
+    // Resolve cross-file checkpoints only after the complete set of known IDs is loaded.
+    // A backed-up, missing or damaged child can never authorize dispatch or prove publication.
+    for (const parent of repo.snapshots()) {
+      if (
+        parent.kind !== "server_relay" ||
+        parent.recoveryUncertain ||
+        !parent.recoveredFromPhase ||
+        parent.phase !== "result_unknown" ||
+        !parent.uploadId
+      )
+        continue;
+      const child = repo.get(parent.uploadId);
+      if (
+        child?.kind !== "file_transfer" ||
+        child.recoveryUncertain ||
+        child.direction !== "upload" ||
+        !currentRelayLeg(parent, child)
+      )
+        continue;
+      if (
+        child.phase === "completed" &&
+        child.dispatchAllowed &&
+        child.destinationCreated &&
+        child.streamSha256 === parent.digest &&
+        parent.digest &&
+        child.verifiedBytes === parent.size &&
+        child.transferredBytes === parent.size
+      ) {
+        await repo.save({
+          ...parent,
+          phase: "completed",
+          publication: "confirmed",
+          lastConfirmedPhase: "destination_confirmed",
+          remoteCleanup: child.cleanupState,
+          errorCode: null,
+        });
+      } else if (
+        !child.dispatchAllowed &&
+        !child.destinationCreated &&
+        child.phase !== "result_unknown"
+      ) {
+        await repo.save({
+          ...parent,
+          phase: "interrupted",
+          publication: "none",
+          remoteCleanup: child.cleanupState,
+          errorCode: "CONNECTION_LOST",
+        });
       }
     }
     await repo.prune(continuity?.executionIds);
@@ -169,19 +229,52 @@ export class ReceiptRepository {
     serverId: string,
     claims: PathClaim[],
     localClaims: PathClaim[] = [],
+    ownRelay?: string,
   ): void {
     if (this.faulted) throw new Error("STORAGE_FAILED");
     // A100-row registration rechecks every claim before each durable write/RPC.
     // Unresolved rows change only with this repository revision, so do not clone
     // and sort all historical receipts for every individual claim.
     if (this.pendingRevision !== this.version) {
-      this.pendingRows = [...this.stores.values()]
-        .map((store) => store.snapshot())
-        .filter(unresolved);
+      const rows = [...this.stores.values()].map((store) => store.snapshot());
+      this.pendingRows = rows.filter(unresolved);
+      this.relayBudgets.clear();
+      const children = new Map<string, number>();
+      for (const row of this.pendingRows)
+        if (row.kind === "file_transfer" && row.relayParentId)
+          children.set(
+            row.relayParentId,
+            1 + (children.get(row.relayParentId) ?? 0),
+          );
+      this.requiredEvidenceSlots = this.pendingRows.length;
+      for (const parent of rows)
+        if (parent.kind === "server_relay" && !relayTerminal(parent)) {
+          const occupied =
+            (children.get(parent.taskId) ?? 0) + (unresolved(parent) ? 1 : 0);
+          const promised = Math.max(0, 3 - occupied);
+          this.relayBudgets.set(parent.taskId, promised);
+          this.requiredEvidenceSlots += promised;
+        }
       this.pendingRevision = this.version;
     }
     const pending = this.pendingRows;
-    if (pending.length >= 100) throw new Error("UNRESOLVED_LIMIT");
+    if (
+      this.requiredEvidenceSlots -
+        (ownRelay ? (this.relayBudgets.get(ownRelay) ?? 0) : 0) >=
+      100
+    )
+      throw new Error("UNRESOLVED_LIMIT");
+    if (
+      pending.some(
+        (row) =>
+          row.kind === "server_relay" &&
+          !row.acknowledgedAt &&
+          row.publication === "unknown" &&
+          row.target.serverId === serverId &&
+          claimsConflict(claims, [{ path: row.destination, mode: "write" }]),
+      )
+    )
+      throw new Error("RESULT_UNKNOWN");
     if (
       pending.some(
         (row) =>
@@ -213,6 +306,27 @@ export class ReceiptRepository {
     )
       throw new Error("RESULT_UNKNOWN");
   }
+  private parentOwns(id: string, child?: FileReceipt): boolean {
+    for (const store of this.stores.values()) {
+      const row = store.snapshot();
+      if (
+        row.kind === "server_relay" &&
+        (row.legIds.includes(id) ||
+          (child?.kind === "file_transfer" &&
+            child.relayParentId === row.taskId)) &&
+        (!relayTerminal(row) || relayUnresolved(row))
+      )
+        return true;
+    }
+    return false;
+  }
+  checkRelayAdmission(): void {
+    this.checkNew("", []);
+    if (this.requiredEvidenceSlots + 3 > 100)
+      throw new Error("UNRESOLVED_LIMIT");
+    if (this.stores.size + this.damaged.size + 3 > 5000)
+      throw new Error("TASK_LIMIT");
+  }
   async save(receipt: FileReceipt): Promise<void> {
     const operation = this.tail.then(async () => {
       if (this.faulted) throw new Error("STORAGE_FAILED");
@@ -243,45 +357,100 @@ export class ReceiptRepository {
                 row.tempPath,
                 row.createdAt,
               ]
-            : row.kind === "file_transfer"
+            : row.kind === "server_relay"
               ? [
                   row.kind,
                   row.taskId,
-                  row.serverId,
-                  row.generation,
                   row.backendEpoch,
-                  row.endpointSnapshot,
-                  row.hostKeyFingerprint,
-                  row.direction,
-                  row.source,
-                  row.destination,
-                  row.tempPath,
-                  row.remoteParent,
-                  row.localParent,
-                  row.sourceInitialStat,
-                  row.totalBytes,
+                  row.origin,
+                  row.sourceStat,
+                  row.target.serverId,
+                  row.target.host,
+                  row.target.username,
+                  row.target.port,
+                  row.target.hostKeyFingerprint,
                   row.createdAt,
                 ]
-              : [
-                  row.kind,
-                  row.taskId,
-                  row.serverId,
-                  row.generation,
-                  row.backendEpoch,
-                  row.endpointSnapshot,
-                  row.hostKeyFingerprint,
-                  row.executionId,
-                  row.terminalId,
-                  row.source,
-                  row.cwd,
-                  row.createdAt,
-                ];
+              : row.kind === "file_transfer"
+                ? [
+                    row.kind,
+                    row.taskId,
+                    row.serverId,
+                    row.generation,
+                    row.backendEpoch,
+                    row.endpointSnapshot,
+                    row.hostKeyFingerprint,
+                    row.relayParentId,
+                    row.direction,
+                    row.source,
+                    row.destination,
+                    row.tempPath,
+                    row.remoteParent,
+                    row.localParent,
+                    row.sourceInitialStat,
+                    row.totalBytes,
+                    row.createdAt,
+                  ]
+                : [
+                    row.kind,
+                    row.taskId,
+                    row.serverId,
+                    row.generation,
+                    row.backendEpoch,
+                    row.endpointSnapshot,
+                    row.hostKeyFingerprint,
+                    row.executionId,
+                    row.terminalId,
+                    row.source,
+                    row.cwd,
+                    row.createdAt,
+                  ];
         if (
           JSON.stringify(immutable(previous)) !==
           JSON.stringify(immutable(parsed))
         )
           throw new Error("INPUT_INVALID");
-        if (terminal(previous) && previous.phase !== parsed.phase)
+        if (
+          previous.kind === "file_transfer" &&
+          parsed.kind === "file_transfer" &&
+          ((previous.localTempIdentity &&
+            previous.localTempIdentity !== parsed.localTempIdentity) ||
+            (previous.streamSha256 &&
+              previous.streamSha256 !== parsed.streamSha256))
+        )
+          throw new Error("INPUT_INVALID");
+        if (
+          previous.kind === "server_relay" &&
+          parsed.kind === "server_relay" &&
+          (previous.legIds.some((id, index) => parsed.legIds[index] !== id) ||
+            (previous.downloadId !== parsed.downloadId &&
+              previous.legIds.includes(parsed.downloadId)) ||
+            (parsed.uploadId !== null &&
+              previous.uploadId !== parsed.uploadId &&
+              previous.legIds.includes(parsed.uploadId)) ||
+            (previous.publication === "confirmed" &&
+              parsed.publication !== "confirmed") ||
+            (previous.digest && parsed.digest !== previous.digest))
+        )
+          throw new Error("INPUT_INVALID");
+        if (
+          previous.kind !== "server_relay" &&
+          terminal(previous) &&
+          previous.phase !== parsed.phase
+        )
+          throw new Error("INPUT_INVALID");
+      }
+      // Existing child identity is immutable. An older attempt can still receive
+      // a cleanup acknowledgement, but may never become the current leg again.
+      if (!store && parsed.kind === "file_transfer" && parsed.relayParentId) {
+        const parent = this.get(parsed.relayParentId);
+        if (
+          parent?.kind !== "server_relay" ||
+          !parent.stageArea ||
+          (parsed.direction === "upload" &&
+            (!parent.stageStat || !parent.digest)) ||
+          !currentRelayLeg(parent, parsed)
+        )
           throw new Error("INPUT_INVALID");
       }
       try {
@@ -324,17 +493,57 @@ export class ReceiptRepository {
     });
   }
   async forget(id: string): Promise<void> {
-    await this.tail;
-    const row = this.stores.get(id)?.snapshot();
-    if (!this.damaged.has(id) && (!row || !terminal(row) || unresolved(row)))
-      throw new Error("INPUT_INVALID");
-    await this.remove(id);
+    const operation = this.tail.then(async () => {
+      const row = this.get(id);
+      if (
+        this.parentOwns(id, row) ||
+        (row?.kind === "file_transfer" &&
+          row.relayParentId &&
+          this.damaged.has(row.relayParentId)) ||
+        (this.damaged.has(id) &&
+          this.snapshots().some(
+            (r) => r.kind === "file_transfer" && r.relayParentId === id,
+          ))
+      )
+        throw new Error("REQUEST_BUSY");
+      if (!this.damaged.has(id) && (!row || !terminal(row) || unresolved(row)))
+        throw new Error("INPUT_INVALID");
+      await this.remove(id);
+    });
+    this.tail = operation.catch(() => {});
+    await operation;
   }
   private async prune(
     preserved: ReadonlySet<string> = new Set(),
+    partialScan = false,
   ): Promise<void> {
-    const eligible = this.snapshots().filter(
-      (row) => terminal(row) && !unresolved(row) && !preserved.has(row.taskId),
+    const rows = this.snapshots();
+    const protectedParents = rows.filter(
+      (row) =>
+        row.kind === "server_relay" &&
+        (!relayTerminal(row) || relayUnresolved(row)),
+    );
+    const protectedLegs = new Set(
+      protectedParents.flatMap((row) =>
+        row.kind === "server_relay" ? row.legIds : [],
+      ),
+    );
+    const protectedParentIds = new Set(
+      protectedParents.map((row) => row.taskId),
+    );
+    const eligible = rows.filter(
+      (row) =>
+        terminal(row) &&
+        !unresolved(row) &&
+        !preserved.has(row.taskId) &&
+        !(
+          row.kind === "file_transfer" &&
+          row.relayParentId &&
+          (partialScan ||
+            protectedLegs.has(row.taskId) ||
+            protectedParentIds.has(row.relayParentId) ||
+            this.damaged.has(row.relayParentId))
+        ),
     );
     for (const [index, row] of eligible.entries())
       if (

@@ -1,3 +1,5 @@
+import { relayCheckAckSchema } from "../shared/receipt-channel";
+import type { TransferReceipt } from "../shared/transfers";
 import { randomUUID } from "node:crypto";
 import { fileReceiptSchema, type FileReceipt } from "../shared/receipts";
 import {
@@ -29,6 +31,7 @@ export class WorkerReceiptWriter {
   private fail(): void {
     if (!this.fault) {
       this.fault = true;
+      for (const finish of this.checks.values()) finish("STORAGE_FAILED");
       for (const value of this.pending.values()) {
         clearTimeout(value.timer);
         value.reject(new Error("STORAGE_FAILED"));
@@ -102,7 +105,43 @@ export class WorkerReceiptWriter {
       }
     });
   }
+  private checks = new Map<string, (error: string | null) => void>();
+  checkRelay(row: TransferReceipt): Promise<void> {
+    if (this.faulted || !row.relayParentId || this.checks.size >= 2)
+      return Promise.reject(new Error("STORAGE_FAILED"));
+    const requestId = randomUUID();
+    return new Promise((resolve, reject) => {
+      const finish = (code: string | null) => {
+        clearTimeout(timer);
+        this.checks.delete(requestId);
+        if (code) reject(new Error(code));
+        else if (this.faulted) reject(new Error("STORAGE_FAILED"));
+        else resolve();
+      };
+      const timer = setTimeout(() => finish("IO_TIMEOUT"), 30000);
+      this.checks.set(requestId, finish);
+      try {
+        this.post({
+          type: "relay:checkDisk",
+          requestId,
+          backendEpoch: this.epoch,
+          serverId: row.serverId,
+          generation: row.generation,
+          taskId: row.taskId,
+          parentId: row.relayParentId,
+        });
+      } catch {
+        finish("ENGINE_STOPPED");
+      }
+    });
+  }
   accept(raw: unknown): boolean {
+    const probe = relayCheckAckSchema.safeParse(raw);
+    if (probe.success) {
+      if (probe.data.backendEpoch === this.epoch)
+        this.checks.get(probe.data.requestId)?.(probe.data.error);
+      return true;
+    }
     const parsed = receiptACKSchema.safeParse(raw);
     if (!parsed.success) return false;
     const ack = parsed.data;

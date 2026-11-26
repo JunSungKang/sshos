@@ -16,6 +16,8 @@ import { scheduleFilePage } from "./file-page-scheduler";
 import { imageSignature } from "../../../shared/viewers/image-header";
 import { FileOpenChoice } from "./FileOpenChoice";
 import { scheduleViewerFrame } from "../viewers/viewer-stream-scheduler";
+import { useRelayActions } from "../transfers/RelayWorkspace";
+import { relaySource } from "../transfers/relay-input";
 
 const explain = (error: unknown) => {
   reportWindowLimit(error);
@@ -104,6 +106,11 @@ export function FileExplorer({
   const currentView = useRef({ page, connected });
   currentView.current = { page, connected };
   const selectedRow = rows.find((row) => row.entryToken === selected);
+  const relay = useRelayActions();
+  const copySource = (row: EntryView) =>
+    storageHealthy && !busy && !opening
+      ? relaySource(session, generation, page?.path, row)
+      : null;
   const observeMutation = async (id: string) => {
     const origin = page;
     setNotice("작업을 시작했습니다. 전체 작업에서 기록을 확인할 수 있습니다.");
@@ -139,7 +146,6 @@ export function FileExplorer({
     }
   };
   const load = async (action: () => Promise<DirectoryPage>) => {
-    setContext(null);
     setContext(null);
     const id = ++request.current;
     setBusy(true);
@@ -701,6 +707,17 @@ export function FileExplorer({
                     row.entryToken && selection.includes(row.entryToken),
                   )}
                   onClick={(event) => select(row.entryToken, event)}
+                  draggable={Boolean(relay && copySource(row))}
+                  onDragStart={(event) => {
+                    const source = copySource(row);
+                    if (!relay || !source) {
+                      event.preventDefault();
+                      return;
+                    }
+                    setSelection([source.entryToken]);
+                    relay.begin(event, source);
+                  }}
+                  onDragEnd={() => relay?.end()}
                   onContextMenu={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -795,6 +812,14 @@ export function FileExplorer({
               })
             }
             properties={() => setProperties(context.row.entryToken!)}
+            {...(relay && copySource(context.row)
+              ? {
+                  copyToServer: () => {
+                    const source = copySource(context.row);
+                    if (source) relay.copy(source);
+                  },
+                }
+              : {})}
           />,
           document.getElementById("root") ?? document.body,
         )}

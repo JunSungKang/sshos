@@ -534,7 +534,10 @@ export class MutationController {
     if (action === "task:list") {
       const offset = z.int().min(0).max(10000).parse(payload);
       const values = [
-        ...this.snapshots().map((row) => ({ row })),
+        ...this.snapshots()
+          .filter((row) => row.kind !== "server_relay")
+          .filter((row) => !(row.kind === "file_transfer" && row.relayParentId))
+          .map((row) => ({ row })),
         ...(this.storage()?.damagedIds() ?? []).map((damagedId) => ({
           damagedId,
         })),
@@ -596,7 +599,12 @@ export class MutationController {
     if (action === "task:inspect") {
       const id = z.uuid().parse(payload);
       const row = this.snapshots().find((row) => row.taskId === id);
-      if (!row) throw new Error("INPUT_INVALID");
+      if (
+        !row ||
+        row.kind === "server_relay" ||
+        (row.kind === "file_transfer" && row.relayParentId)
+      )
+        throw new Error("INPUT_INVALID");
       return this.display(row);
     }
     if (action === "task:previewRecordAction") {
@@ -611,6 +619,11 @@ export class MutationController {
         (!row && !this.storage()?.damagedIds().includes(input.id))
       )
         throw new Error("INPUT_INVALID");
+      if (
+        row?.kind === "server_relay" ||
+        (row?.kind === "file_transfer" && row.relayParentId)
+      )
+        throw new Error("REQUEST_BUSY");
       if (input.action === "acknowledge" && (!row || !receiptUnresolved(row)))
         throw new Error("INPUT_INVALID");
       if (

@@ -25,6 +25,12 @@ export const errorMessages = {
   SOURCE_CHANGED: "선택한 이후 원본 파일이 변경됐습니다.",
   VERIFY_READ_DENIED: "업로드한 내용을 다시 읽어 확인할 권한이 없습니다.",
   VERIFY_MISMATCH: "전송한 내용과 목적지 내용이 일치하지 않습니다.",
+  LOCAL_DISK_FULL: "PC의 저장 공간이 부족합니다.",
+  LOCAL_QUOTA_EXCEEDED: "PC 계정의 디스크 사용 한도에 도달했습니다.",
+  LOCAL_SPACE_UNKNOWN: "PC의 임시 저장 디스크에서 사용 가능한 공간을 확인할 수 없습니다.",
+  REMOTE_DISK_FULL: "도착 서버의 저장 공간이 부족합니다.",
+  REMOTE_QUOTA_EXCEEDED: "도착 서버 계정의 디스크 사용 한도에 도달했습니다.",
+  REMOTE_WRITE_FAILED: "도착 서버가 쓰기를 완료하지 못했습니다.",
   IO_TIMEOUT: "작업 응답이 제한 시간 안에 도착하지 않았습니다.",
   CANCEL_TOO_LATE: "최종 파일을 만드는 단계여서 취소할 수 없습니다.",
   STORAGE_FAILED:

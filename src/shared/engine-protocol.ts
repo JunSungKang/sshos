@@ -14,6 +14,7 @@ import {
   mutationObservationSchema,
   mutationReceiptSchema,
 } from "./mutations";
+import { MAX_TRANSFER_BYTES } from "./transfers";
 import { TEXT_LIMIT } from "./viewers/text";
 import { viewerReadKindSchema } from "./viewers/reader";
 import {
@@ -323,7 +324,39 @@ export const engineRequestSchema = z.discriminatedUnion("action", [
   z
     .object({
       ...identity,
+      action: z.literal("relay:observeDestination"),
+      path: remotePathSchema,
+      parent: remotePathSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...identity,
+      action: z.literal("relay:inspectDestination"),
+      path: remotePathSchema,
+      parent: remotePathSchema,
+      size: z.int().min(0).max(MAX_TRANSFER_BYTES),
+    })
+    .strict(),
+  z
+    .object({
+      ...identity,
+      action: z.literal("transfer:holdRelay"),
+      parentId: z.uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      ...identity,
+      action: z.literal("transfer:releaseRelay"),
+      parentId: z.uuid(),
+    })
+    .strict(),
+  z
+    .object({
+      ...identity,
       action: z.literal("transfer:reserve"),
+      relayParentId: z.uuid().optional(),
       reservationToken: z.uuid(),
       count: z.int().min(1).max(100),
     })

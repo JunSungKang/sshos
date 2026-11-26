@@ -26,6 +26,14 @@ Desktop lists, properties and confirmed file/folder changes use SSH commands. Op
 
 Use Refresh to see external changes. Viewers require an explicit reread; they do not watch the server. The last listing/content can remain visible read-only after disconnect, with its read time.
 
+## Copy a file between servers
+
+Connect to both servers from this PC. In Desktop, choose **다른 서버로 복사** on a regular file, or drag it onto the bow or a connected destination server's workspace button. Choose the destination folder or enter its absolute path. Review both accounts, filenames and the space estimate, then confirm once. The app receives and verifies a temporary copy on this PC, uploads it and reads it back on the destination before publishing it under the final name. The servers do not need network access to each other.
+
+The working volume on the PC must have the file size plus 10% available after applicable reservations. A 1 GB file needs 1.10 GB. The preview shows any local shortage. Remote capacity can be unavailable even on a working SFTP connection. Destination quota, permissions or filesystem support can still prevent publication. Existing names are preserved. The source stays on the original server.
+
+The transfer shelf and Tasks show one copy and its current phase. If the source has been verified and only the upload failed before publication, use the available retry action in the same app session after reconnecting to the original destination. If publication is uncertain, inspect the destination. A confirmed copy that still has temporary files offers cleanup separately. When restarting after an interruption, use Tasks to inspect evidence and safely discard an owned local remnant. New attempts require user confirmation.
+
 ## Transfers and File Changes
 
 Select upload files or a download folder using the native dialog, review the server/path/conflict preview and confirm. A conflicting destination offers another name, skip or cancel. The app never overwrites it.
@@ -34,7 +42,7 @@ The persistent shelf separates byte transfer from full content verification. Upl
 
 Download verifies the bytes written to the local temporary file after checking the remote file's reported size and modification time. A detected source change stops the download before it creates the final file. Other users can edit a file during the download, and edits that leave the reported attributes unchanged may go undetected. For a point-in-time copy, select an immutable copy or snapshot provided by the server. The task details distinguish observed source changes, temporary file verification failures and local name conflicts.
 
-Right-click an operable file or folder for Open, Delete, Rename and Properties. Rename stays within the same parent and never replaces an existing destination. Delete permanently removes the item and all descendants after confirmation; there is no trash or undo. It uses one server recursive command, not client-side per-entry deletion. A failed deletion may be partial; a disconnect can leave the result unknown. Basic properties refresh the selected item and show numeric owner/group IDs, permissions, size and times. Folder size is the directory entry size, not recursive disk usage. Recursive transfers, permission editing and move/copy between servers are not provided.
+Right-click an operable file or folder for Open, Delete, Rename and Properties. Rename stays within the same parent and never replaces an existing destination. Delete permanently removes the item and all descendants after confirmation; there is no trash or undo. It uses one server recursive command, not client-side per-entry deletion. A failed deletion may be partial; a disconnect can leave the result unknown. Basic properties refresh the selected item and show numeric owner/group IDs, permissions, size and times. Folder size is the directory entry size, not recursive disk usage. Server-to-server copy accepts a single regular file and leaves the original in place. Folder transfers and permission changes are outside its scope.
 
 Rename is supported only on verified ext-family, btrfs, tmpfs or XFS mounts with Linux 6.8 or later and unfiltered SSH command processes (`Seccomp: 0`). NFS, FUSE, overlay, filtered containers and unverified environments are refused before renaming, with an explicit error. This restriction does not disable browsing, viewing or transfers. Avoid concurrent parent-directory replacement/remounts; the app does not provide a server-side filesystem sandbox.
 
@@ -85,6 +93,12 @@ Dragon Ball and Doraemon presets have been removed; a saved selection of either 
 Settings manages saved trust and saved credential removal, redacted diagnostics and offline license notices. Review an export before sharing it. Local task records contain endpoint/path information and are not anonymous.
 
 Disconnect and app exit list affected transfers/executions/terminals and offer an explicit keep-or-stop choice. Closing the app is not a hidden tray-background mode. Reopening the app does not replay old work.
+
+## Insert a local text file
+
+Drop one UTF-8 text file from Finder or Windows Explorer on the text being edited, or use the local file picker. The insertion is a single undoable edit. A read-only viewer offers to enter edit mode when supported. Check the insertion point and choose Save to write to the server. Both the dropped file and the final encoded document must fit the 2 MiB editor limit.
+
+In Console, even a one-line dropped file opens a preview showing the fixed terminal and its input. Select the intended editing mode in the remote program before sending. A newline in the file can execute a command at a shell prompt. sshOS adds no Enter key and sends only after confirmation. Use a file of up to 64 KiB. Switching targets invalidates the pending file input.
 
 ## Editing Text and Viewing Images
 

@@ -38,6 +38,8 @@ Native acceptance covers Windows 11 x64 and macOS 14 arm64/x64 with Ubuntu Serve
 
 For each executed row record checkId, status, binary SHA256, source revision, app version, client/server OS/CPU/OpenSSH, fixture settings, procedure, expected/actual, evidence and defectId. Keep failures and retests separately. Screenshots cannot prove byte integrity, host trust, egress or native signatures.
 
+The Electron relay fixture runs two independent loopback SSH endpoints. It checks the destination picker, confirmation before payload I/O, name conflicts, read-back failure, explicit retry from the retained copy, and final byte identity. The text and terminal fixtures deliver local files through Chromium's drag event path. Repeat these gestures with Finder and Explorer for native acceptance, and repeat the transfer with real Ubuntu/OpenSSH accounts whose servers cannot reach each other.
+
 ## Documentation Checks
 
 The documentation validator checks public links and rejects tracked private planning paths, including ignored paths that were force-added. It runs without private planning archives. It does not certify product behavior, legal compliance or native acceptance.

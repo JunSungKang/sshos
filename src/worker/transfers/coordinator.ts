@@ -33,6 +33,7 @@ type Reservation = {
   serverId: string;
   generation: number;
   count: number;
+  relayParentId?: string;
   rows: Map<number, StagedTransfer>;
 };
 type Factory = (spec: StagedTransfer, hooks: TransferHooks) => Running;
@@ -53,7 +54,8 @@ export class TransferCoordinator {
     private readonly epoch: string,
     private readonly sessions: Pick<SessionManager, "control" | "auxiliary">,
     locks: PathLocks,
-    private readonly writer: Pick<WorkerReceiptWriter, "persist" | "faulted">,
+    private readonly writer: Pick<WorkerReceiptWriter, "persist" | "faulted"> &
+      Partial<Pick<WorkerReceiptWriter, "checkRelay">>,
     private readonly emit: (row: TransferRuntime) => void,
     factory?: Factory,
   ) {
@@ -72,6 +74,7 @@ export class TransferCoordinator {
               late,
             ),
           hooks,
+          spec.relay?.expectedSha256,
         ));
   }
   private healthy(): void {
@@ -84,19 +87,29 @@ export class TransferCoordinator {
   private permission(serverId: string, generation: number): void {
     this.sessions.control(serverId, generation, true).check();
   }
+  holdRelay(serverId: string, generation: number, parentId: string): void {
+    this.healthy();
+    this.permission(serverId, generation);
+    this.queue.holdRelay(parentId);
+  }
+  releaseRelay(parentId: string): void {
+    this.queue.releaseRelay(parentId);
+  }
   reserve(
     serverId: string,
     generation: number,
     token: string,
     count: number,
+    relayParentId?: string,
   ): void {
     this.healthy();
     this.permission(serverId, generation);
-    this.queue.reserve(token, count);
+    this.queue.reserve(token, count, relayParentId);
     this.reservations.set(token, {
       serverId,
       generation,
       count,
+      ...(relayParentId ? { relayParentId } : {}),
       rows: new Map(),
     });
   }
@@ -129,6 +142,10 @@ export class TransferCoordinator {
       index >= reservation.count ||
       row.serverId !== serverId ||
       row.generation !== generation ||
+      spec.relay?.parentId !== reservation.relayParentId ||
+      row.relayParentId !== reservation.relayParentId ||
+      (spec.relay !== undefined &&
+        (row.direction === "upload") !== Boolean(spec.relay.expectedSha256)) ||
       row.backendEpoch !== this.epoch ||
       row.phase !== "queued" ||
       row.transferredBytes !== 0 ||
@@ -186,6 +203,7 @@ export class TransferCoordinator {
           taskId: spec.row.taskId,
           serverId,
           generation,
+          ...(spec.relay ? { relayParentId: spec.relay.parentId } : {}),
           remoteClaims: claims.remote,
           localClaims: claims.local,
         };
@@ -262,6 +280,15 @@ export class TransferCoordinator {
       try {
         job.runner = this.factory(job.spec, {
           persist: (row) => this.writer.persist(row),
+          ...(job.spec.relay && job.spec.row.direction === "download"
+            ? {
+                beforeRead: async (row: typeof job.spec.row) => {
+                  if (!this.writer.checkRelay)
+                    throw new Error("STORAGE_FAILED");
+                  await this.writer.checkRelay(row);
+                },
+              }
+            : {}),
           update: (row) => this.publish(entryId, row),
         });
         void job.runner
@@ -284,7 +311,8 @@ export class TransferCoordinator {
               active: false,
               slotOccupied: false,
             };
-            if (summary.recordError) this.errors.set(entryId, summary);
+            if (summary.recordError || job.spec.relay)
+              this.errors.set(entryId, summary);
             this.notify(summary);
             this.jobs.delete(entryId);
             this.drain();
@@ -322,7 +350,8 @@ export class TransferCoordinator {
         recordError = true;
       }
       const summary = { ...this.runtime(job), active: false, recordError };
-      if (recordError) this.errors.set(summary.taskId, summary);
+      if (recordError || job.spec.relay)
+        this.errors.set(summary.taskId, summary);
       this.notify(summary);
       this.jobs.delete(summary.taskId);
       this.drain();

@@ -1,3 +1,6 @@
+import { errorCodeOf } from "../shared/errors";
+import type { TransferReceipt } from "../shared/transfers";
+import { relayCheckSchema } from "../shared/receipt-channel";
 import { createHash } from "node:crypto";
 import {
   receiptSaveSchema,
@@ -19,6 +22,7 @@ export class MainReceiptChannel {
     private readonly repository: () => ReceiptRepository | null,
     private readonly stateHealthy: () => boolean,
     private readonly post: (message: unknown) => void,
+    private readonly checkDisk?: (receipt: TransferReceipt) => Promise<void>,
   ) {}
   private send(ack: ReceiptACK): void {
     try {
@@ -51,6 +55,7 @@ export class MainReceiptChannel {
       // Main must have durably accepted this exact resource before worker writes.
       const existing = repo.get(request.receipt.taskId);
       if (
+        request.receipt.kind === "server_relay" ||
         !existing ||
         existing.backendEpoch !== this.epoch ||
         existing.serverId !== request.serverId ||
@@ -70,6 +75,56 @@ export class MainReceiptChannel {
     return { hash, ack: { ...this.identity(request), ok } };
   }
   accept(raw: unknown): boolean {
+    if (
+      raw &&
+      typeof raw === "object" &&
+      "type" in raw &&
+      raw.type === "relay:checkDisk"
+    ) {
+      const parsed = relayCheckSchema.safeParse(raw);
+      if (!parsed.success || parsed.data.backendEpoch !== this.epoch)
+        return true;
+      const q = parsed.data;
+      void (async () => {
+        let error: string | null = null;
+        try {
+          const repo = this.repository(),
+            row = repo?.get(q.taskId);
+          if (!repo || repo.faulted || !this.stateHealthy())
+            throw Error("STORAGE_FAILED");
+          if (
+            !this.checkDisk ||
+            row?.kind !== "file_transfer" ||
+            row.direction !== "download" ||
+            row.relayParentId !== q.parentId ||
+            row.serverId !== q.serverId ||
+            row.generation !== q.generation ||
+            row.backendEpoch !== this.epoch
+          )
+            throw Error("TOKEN_EXPIRED");
+          await this.checkDisk(row);
+          if (
+            this.repository() !== repo ||
+            repo.faulted ||
+            !this.stateHealthy()
+          )
+            throw Error("STORAGE_FAILED");
+        } catch (cause) {
+          error = errorCodeOf(cause);
+        }
+        try {
+          this.post({
+            action: "relay:diskChecked",
+            requestId: q.requestId,
+            backendEpoch: this.epoch,
+            error,
+          });
+        } catch {
+          /* Expiry leaves the worker stopped. */
+        }
+      })();
+      return true;
+    }
     if (
       !raw ||
       typeof raw !== "object" ||

@@ -7,6 +7,7 @@ import {
   verifyDirectory,
   type ControlAccess,
 } from "../remote-files/sftp-control";
+import { remoteCapacity } from "./remote-capacity";
 import { remoteTransferStat } from "./ports";
 export class TransferInspector {
   constructor(
@@ -15,10 +16,23 @@ export class TransferInspector {
       generation: number,
     ) => ControlAccess,
   ) {}
+  async destination(
+    serverId: string,
+    generation: number,
+    path: string,
+    parent: string,
+    size: number,
+  ) {
+    await this.inspect(serverId, generation, "upload", path, parent);
+    const control = this.control(serverId, generation);
+    return remoteCapacity(control.sftp, parent, size, (start) =>
+      controlCall(control, start),
+    );
+  }
   async inspect(
     serverId: string,
     generation: number,
-    direction: "upload" | "download",
+    direction: "upload" | "download" | "observe",
     path: string,
     parent: string,
   ): Promise<TransferStat | null> {
@@ -34,7 +48,7 @@ export class TransferInspector {
       );
     } catch (error) {
       if ((error as { code?: number }).code === 2) {
-        if (direction === "upload") return null;
+        if (direction !== "download") return null;
         throw new Error("PATH_UNSUPPORTED");
       }
       throw error;

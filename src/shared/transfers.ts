@@ -49,6 +49,8 @@ export const transferReceiptSchema = z
   .object({
     kind: z.literal("file_transfer"),
     taskId: z.uuid(),
+    relayParentId: z.uuid().optional(),
+    localTempIdentity: z.string().min(1).max(128).optional(),
     serverId: z.uuid(),
     generation: z.int().positive(),
     backendEpoch: z.uuid(),

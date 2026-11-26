@@ -1,3 +1,4 @@
+import { relayReceiptSchema, relayTerminal, relayUnresolved } from "./relay";
 import { z } from "zod";
 import { executionReceiptSchema, executionTerminal } from "./executions";
 import { mutationReceiptSchema } from "./mutations";
@@ -5,12 +6,14 @@ import { transferReceiptSchema, transferTerminal } from "./transfers";
 export const fileReceiptSchema = z.discriminatedUnion("kind", [
   mutationReceiptSchema,
   transferReceiptSchema,
+  relayReceiptSchema,
   executionReceiptSchema,
 ]);
 export type OperationReceipt = z.infer<typeof fileReceiptSchema>;
 // Legacy API name retained while callers migrate to the four-kind record union.
 export type FileReceipt = OperationReceipt;
 export function receiptUnresolved(row: FileReceipt): boolean {
+  if (row.kind === "server_relay") return relayUnresolved(row);
   return (
     row.acknowledgedAt === null &&
     (row.phase === "result_unknown" ||
@@ -21,6 +24,7 @@ export function receiptUnresolved(row: FileReceipt): boolean {
   );
 }
 export function receiptTerminal(row: FileReceipt): boolean {
+  if (row.kind === "server_relay") return relayTerminal(row);
   return row.kind === "file_transfer"
     ? transferTerminal(row.phase)
     : row.kind === "file_mutation"

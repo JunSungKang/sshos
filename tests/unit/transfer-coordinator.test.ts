@@ -14,7 +14,7 @@ import { transferReceipt } from "../fixtures/transfers";
 const tick = async () => {
   for (let i = 0; i < 30; i++) await Promise.resolve();
 };
-function fixture() {
+function fixture(checkRelay?: WorkerReceiptWriter["checkRelay"]) {
   const epoch = crypto.randomUUID();
   let fault = false;
   const emitted: TransferRuntime[] = [],
@@ -25,6 +25,7 @@ function fixture() {
     { finish(phase?: TransferPhase, closed?: boolean): void }
   >();
   const writer = {
+    ...(checkRelay ? { checkRelay } : {}),
     get faulted() {
       return fault;
     },
@@ -84,6 +85,7 @@ function fixture() {
         },
         interrupt: () => done("interrupted"),
         run: async () => {
+          if (hooks.beforeRead) await hooks.beforeRead(spec.row);
           started.push(spec.row.taskId);
           live = { ...live, phase: "preparing" };
           hooks.update(live);
@@ -98,8 +100,8 @@ function fixture() {
       };
     },
   );
-  const spec = (serverId: string): StagedTransfer => {
-    const row = transferReceipt();
+  const spec = (serverId: string, direction: "upload" | "download" = "upload"): StagedTransfer => {
+    const row = transferReceipt(direction);
     row.serverId = serverId;
     row.backendEpoch = epoch;
     row.source += "-" + row.taskId;
@@ -133,6 +135,46 @@ function fixture() {
   };
 }
 describe("transfer coordinator queue and resource ownership", () => {
+  it("binds each relay leg and permits A to read only after the main process acknowledges the disk check", async () => {
+    const disk=Promise.withResolvers<void>(), gate=vi.fn(()=>disk.promise), f=fixture(gate);
+    const a=crypto.randomUUID(), b=crypto.randomUUID(), parent=crypto.randomUUID();
+    const spec=f.spec(a,"download"), token=crypto.randomUUID();
+    spec.relay={parentId:parent};
+    spec.row.relayParentId=parent;
+    f.coordinator.holdRelay(a,1,parent);
+    f.coordinator.reserve(a,1,token,1,parent);
+    expect(()=>f.coordinator.stage(a,1,token,0,{...spec, relay:{parentId:crypto.randomUUID()}}))
+      .toThrow("INPUT_INVALID");
+    expect(()=>f.coordinator.stage(a,1,token,0,{...spec, row:{...spec.row,relayParentId:crypto.randomUUID()}}))
+      .toThrow("INPUT_INVALID");
+    expect(()=>f.coordinator.stage(a,1,token,0,{...spec, relay:{parentId:parent,expectedSha256:"a".repeat(64)}}))
+      .toThrow("INPUT_INVALID");
+    f.coordinator.stage(a,1,token,0,spec);
+    f.coordinator.commit(a,1,token);
+    await tick();
+    expect(gate).toHaveBeenCalledWith(expect.objectContaining({taskId:spec.row.taskId,relayParentId:parent}));
+    expect(f.started).toEqual([]);
+    disk.resolve();
+    await tick();
+    expect(f.started).toEqual([spec.row.taskId]);
+    f.runners.get(spec.row.taskId)!.finish();
+    await tick();
+    expect(f.coordinator.snapshot(a,1).rows.find(r=>r.taskId===spec.row.taskId))
+      .toMatchObject({active:false,slotOccupied:false,phase:"completed"});
+    const outgoing=f.spec(b,"upload"), next=crypto.randomUUID();
+    outgoing.row.relayParentId=parent;
+    f.coordinator.reserve(b,1,next,1,parent);
+    expect(()=>f.coordinator.stage(b,1,next,0,{...outgoing,relay:{parentId:parent}})).toThrow("INPUT_INVALID");
+    outgoing.relay={parentId:parent,expectedSha256:"b".repeat(64)};
+    f.coordinator.stage(b,1,next,0,outgoing);
+    f.coordinator.commit(b,1,next);
+    await tick();
+    expect(gate).toHaveBeenCalledTimes(1);
+    expect(f.started).toEqual([spec.row.taskId,outgoing.row.taskId]);
+    f.runners.get(outgoing.row.taskId)!.finish();
+    await tick();
+    f.coordinator.releaseRelay(parent);
+  });
   it("rejects invalid staged identities/indices, accepts exact stage replay and prevents duplicate cross-reservation tasks", () => {
     const f = fixture(),
       server = crypto.randomUUID(),

@@ -451,12 +451,47 @@ async function execute(request: EngineRequest): Promise<EngineEvent> {
             request.parent,
           ),
       );
+    else if (request.action === "relay:observeDestination")
+      result = await sessions.withMetadata(
+        request.serverId,
+        request.generation,
+        () =>
+          transferInspector.inspect(
+            request.serverId,
+            request.generation,
+            "observe",
+            request.path,
+            request.parent,
+          ),
+      );
+    else if (request.action === "relay:inspectDestination")
+      result = await sessions.withMetadata(
+        request.serverId,
+        request.generation,
+        () =>
+          transferInspector.destination(
+            request.serverId,
+            request.generation,
+            request.path,
+            request.parent,
+            request.size,
+          ),
+      );
+    else if (request.action === "transfer:holdRelay")
+      transfers!.holdRelay(
+        request.serverId,
+        request.generation,
+        request.parentId,
+      );
+    else if (request.action === "transfer:releaseRelay")
+      transfers!.releaseRelay(request.parentId);
     else if (request.action === "transfer:reserve")
       transfers!.reserve(
         request.serverId,
         request.generation,
         request.reservationToken,
         request.count,
+        request.relayParentId,
       );
     else if (request.action === "transfer:stage")
       transfers!.stage(

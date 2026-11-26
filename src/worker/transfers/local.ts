@@ -135,6 +135,7 @@ export class LocalTransferFiles {
       "temp_create_ack",
     );
     this.writeHandle = handle;
+    if (this.row.relayParentId) await this.captureTempIdentity(handle);
     return {
       write: async (bytes, offset, length, position) => {
         await this.captureTempIdentity(handle);
